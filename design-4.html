@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ДЕНИСОВ — Кафе и пекарня · Дизайн 4 (Classic)</title>
+  <meta name="description" content="ДЕНИСОВ — кафе и пекарня на Московском проспекте в Санкт-Петербурге." />
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            linen: '#F3ECDE',
+            wheat: '#E6D8BF',
+            bottle: '#2C3A2E',
+            leaf: '#43563B',
+            gild: '#A9843F',
+            cocoa: '#3A2E24',
+          },
+          fontFamily: {
+            serif: ['"EB Garamond"', 'Georgia', 'serif'],
+            sans: ['"Ysabeau"', 'system-ui', 'sans-serif'],
+          },
+          letterSpacing: { ultra: '0.4em', wide2: '0.24em' },
+        },
+      },
+    };
+  </script>
+
+  <style>
+    @font-face { font-family:'EB Garamond'; src:url('fonts/EBGaramond-VariableFont_wght.ttf') format('truetype'); font-weight:400 800; font-style:normal; font-display:swap; }
+    @font-face { font-family:'EB Garamond'; src:url('fonts/EBGaramond-Italic-VariableFont_wght.ttf') format('truetype'); font-weight:400 800; font-style:italic; font-display:swap; }
+    @font-face { font-family:'Ysabeau'; src:url('fonts/Ysabeau-VariableFont_wght.ttf') format('truetype'); font-weight:100 900; font-style:normal; font-display:swap; }
+    @font-face { font-family:'Ysabeau'; src:url('fonts/Ysabeau-Italic-VariableFont_wght.ttf') format('truetype'); font-weight:100 900; font-style:italic; font-display:swap; }
+
+    html { scroll-behavior:smooth; }
+    body { background:#F3ECDE; }
+    .reveal { opacity:0; transform:translateY(26px); transition:opacity 1s cubic-bezier(.22,1,.36,1), transform 1s cubic-bezier(.22,1,.36,1); }
+    .reveal.in { opacity:1; transform:translateY(0); }
+    .arch { border-top-left-radius:9999px; border-top-right-radius:9999px; overflow:hidden; }
+    .u { position:relative; }
+    .u::after { content:''; position:absolute; left:0; bottom:-3px; width:0; height:1px; background:currentColor; transition:width .4s ease; }
+    .u:hover::after { width:100%; }
+    .orn { display:flex; align-items:center; justify-content:center; gap:1rem; color:#A9843F; }
+    .orn::before, .orn::after { content:''; height:1px; width:56px; background:currentColor; opacity:.5; }
+    .zoomimg { transition: transform 1.2s cubic-bezier(.22,1,.36,1); }
+    .zoom:hover .zoomimg { transform: scale(1.05); }
+  </style>
+</head>
+
+<body class="font-sans text-cocoa antialiased">
+
+  <a href="designs.html" class="fixed bottom-5 right-5 z-[80] rounded-full bg-bottle px-4 py-2 font-sans text-[11px] uppercase tracking-wide2 text-linen shadow-lg transition hover:bg-gild">← Все дизайны</a>
+
+  <!-- HEADER -->
+  <header class="sticky top-0 z-50 bg-linen/90 backdrop-blur">
+    <div class="mx-auto flex max-w-[1400px] flex-col items-center gap-3 px-6 py-5 md:px-10">
+      <a href="#top" class="font-serif text-3xl tracking-[0.4em] text-bottle md:text-4xl">ДЕНИСОВ</a>
+      <div class="orn w-full max-w-xs"></div>
+      <nav class="hidden items-center gap-10 font-sans text-[12px] uppercase tracking-wide2 text-cocoa/70 md:flex">
+        <a href="#about" class="u">О кафе</a>
+        <a href="#menu" class="u">Меню</a>
+        <a href="#gallery" class="u">Атмосфера</a>
+        <a href="#visit" class="u">Контакты</a>
+      </nav>
+      <button id="mBtn" class="absolute right-6 top-6 md:hidden text-bottle" aria-label="Меню">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><line x1="3" y1="8" x2="21" y2="8"/><line x1="3" y1="16" x2="21" y2="16"/></svg>
+      </button>
+    </div>
+    <nav id="mNav" class="hidden flex flex-col items-center gap-3 pb-6 font-serif text-2xl text-bottle md:!hidden">
+      <a href="#about">О кафе</a><a href="#menu">Меню</a><a href="#gallery">Атмосфера</a><a href="#visit">Контакты</a>
+    </nav>
+  </header>
+
+  <!-- HERO — centered, arched image -->
+  <section id="top" class="px-6 pt-14 text-center md:pt-20">
+    <div class="mx-auto max-w-3xl">
+      <p class="reveal font-sans text-[11px] uppercase tracking-ultra text-gild">Кафе · Пекарня · с 2026</p>
+      <h1 class="reveal mt-6 font-serif text-6xl leading-[0.95] text-bottle sm:text-7xl md:text-8xl">
+        Уют старой<br><span class="italic">Европы</span>
+      </h1>
+      <p class="reveal mx-auto mt-8 max-w-xl font-serif text-xl italic leading-relaxed text-cocoa/70 md:text-2xl">
+        Домашняя кухня, свежая выпечка и кофе на Московском проспекте.
+      </p>
+    </div>
+    <div class="reveal mx-auto mt-14 max-w-4xl">
+      <div class="arch zoom aspect-[3/4] sm:aspect-[16/12]">
+        <img src="images/web/SVM06194.jpg" alt="Свежий хлеб кафе ДЕНИСОВ" class="zoomimg h-full w-full object-cover" />
+      </div>
+    </div>
+  </section>
+
+  <!-- ABOUT -->
+  <section id="about" class="px-6 py-24 text-center md:py-36">
+    <div class="mx-auto max-w-3xl">
+      <div class="orn reveal mb-8"></div>
+      <h2 class="reveal font-serif text-3xl leading-snug text-bottle md:text-5xl">
+        Небольшое кафе с характером старого европейского дома, где утро начинается с запаха свежего хлеба.
+      </h2>
+      <p class="reveal mx-auto mt-8 max-w-2xl font-serif text-lg leading-relaxed text-cocoa/70 md:text-xl">
+        «ДЕНИСОВ» — всего 34 места, тёплое дерево, латунь и мягкий свет. Мы вдохновлялись
+        архитектурой Европы первой трети XX века. Здесь варят кофе, пекут по утрам
+        и готовят честную домашнюю кухню.
+      </p>
+      <div class="reveal mx-auto mt-14 grid max-w-2xl grid-cols-3 gap-8">
+        <div><p class="font-serif text-4xl text-leaf md:text-5xl">34</p><p class="mt-2 font-sans text-[11px] uppercase tracking-wide2 text-cocoa/50">места</p></div>
+        <div><p class="font-serif text-4xl text-leaf md:text-5xl">08—22</p><p class="mt-2 font-sans text-[11px] uppercase tracking-wide2 text-cocoa/50">ежедневно</p></div>
+        <div><p class="font-serif text-4xl text-leaf md:text-5xl">71/3</p><p class="mt-2 font-sans text-[11px] uppercase tracking-wide2 text-cocoa/50">Московский пр.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- MENU — symmetric arched cards -->
+  <section id="menu" class="bg-wheat/50 px-6 py-24 md:py-36">
+    <div class="mx-auto max-w-[1400px]">
+      <div class="mb-16 text-center">
+        <div class="orn reveal mb-6"></div>
+        <h2 class="reveal font-serif text-4xl text-bottle md:text-6xl">Избранное из меню</h2>
+      </div>
+      <div class="grid grid-cols-2 gap-8 md:grid-cols-4">
+        <article class="reveal zoom text-center">
+          <div class="arch aspect-[3/4]"><img src="images/web/SVM06059.jpg" class="zoomimg h-full w-full object-cover" alt="Пирожки"></div>
+          <h3 class="mt-5 font-serif text-2xl text-bottle">Домашние пирожки</h3>
+          <p class="mt-1 font-serif text-lg italic text-gild">180 ₽</p>
+        </article>
+        <article class="reveal zoom text-center">
+          <div class="arch aspect-[3/4]"><img src="images/web/SVM06129.jpg" class="zoomimg h-full w-full object-cover" alt="Борщ"></div>
+          <h3 class="mt-5 font-serif text-2xl text-bottle">Борщ</h3>
+          <p class="mt-1 font-serif text-lg italic text-gild">320 ₽</p>
+        </article>
+        <article class="reveal zoom text-center">
+          <div class="arch aspect-[3/4]"><img src="images/web/SVM06265.jpg" class="zoomimg h-full w-full object-cover" alt="Салат"></div>
+          <h3 class="mt-5 font-serif text-2xl text-bottle">Салат с креветками</h3>
+          <p class="mt-1 font-serif text-lg italic text-gild">420 ₽</p>
+        </article>
+        <article class="reveal zoom text-center">
+          <div class="arch aspect-[3/4]"><img src="images/web/SVM06174.jpg" class="zoomimg h-full w-full object-cover" alt="Лосось"></div>
+          <h3 class="mt-5 font-serif text-2xl text-bottle">Стейк из лосося</h3>
+          <p class="mt-1 font-serif text-lg italic text-gild">690 ₽</p>
+        </article>
+        <article class="reveal zoom text-center">
+          <div class="arch aspect-[3/4]"><img src="images/web/SVM06308.jpg" class="zoomimg h-full w-full object-cover" alt="Греческий салат"></div>
+          <h3 class="mt-5 font-serif text-2xl text-bottle">Греческий салат</h3>
+          <p class="mt-1 font-serif text-lg italic text-gild">380 ₽</p>
+        </article>
+        <article class="reveal zoom text-center">
+          <div class="arch aspect-[3/4]"><img src="images/web/SVM06211.jpg" class="zoomimg h-full w-full object-cover" alt="Морс"></div>
+          <h3 class="mt-5 font-serif text-2xl text-bottle">Домашний морс</h3>
+          <p class="mt-1 font-serif text-lg italic text-gild">150 ₽</p>
+        </article>
+        <article class="reveal zoom text-center">
+          <div class="arch aspect-[3/4]"><img src="images/web/SVM06106.jpg" class="zoomimg h-full w-full object-cover" alt="Трюфели"></div>
+          <h3 class="mt-5 font-serif text-2xl text-bottle">Шоколадные трюфели</h3>
+          <p class="mt-1 font-serif text-lg italic text-gild">90 ₽</p>
+        </article>
+        <article class="reveal zoom text-center">
+          <div class="arch aspect-[3/4]"><img src="images/web/SVM06062.jpg" class="zoomimg h-full w-full object-cover" alt="Меренга"></div>
+          <h3 class="mt-5 font-serif text-2xl text-bottle">Меренга</h3>
+          <p class="mt-1 font-serif text-lg italic text-gild">160 ₽</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- QUOTE band -->
+  <section class="bg-bottle px-6 py-24 text-center text-linen md:py-32">
+    <div class="mx-auto max-w-4xl">
+      <div class="orn reveal mb-8 text-gild"></div>
+      <p class="reveal font-serif text-3xl italic leading-snug md:text-5xl">
+        «Хороший день начинается с чашки кофе, свежей булочки и тихого утреннего света.»
+      </p>
+    </div>
+  </section>
+
+  <!-- GALLERY -->
+  <section id="gallery" class="px-6 py-24 md:py-36">
+    <div class="mx-auto max-w-[1400px]">
+      <div class="mb-14 text-center">
+        <div class="orn reveal mb-6"></div>
+        <h2 class="reveal font-serif text-4xl text-bottle md:text-6xl">Атмосфера вкуса</h2>
+      </div>
+      <div class="grid grid-cols-2 gap-4 md:grid-cols-3">
+        <div class="zoom aspect-[4/5] overflow-hidden rounded-lg"><img src="images/web/SVM06238.jpg" class="zoomimg h-full w-full object-cover" alt=""></div>
+        <div class="zoom aspect-[4/5] overflow-hidden rounded-lg"><img src="images/web/SVM06197.jpg" class="zoomimg h-full w-full object-cover" alt=""></div>
+        <div class="zoom aspect-[4/5] overflow-hidden rounded-lg"><img src="images/web/SVM06147.jpg" class="zoomimg h-full w-full object-cover" alt=""></div>
+        <div class="zoom aspect-[4/5] overflow-hidden rounded-lg"><img src="images/web/SVM06135.jpg" class="zoomimg h-full w-full object-cover" alt=""></div>
+        <div class="zoom aspect-[4/5] overflow-hidden rounded-lg"><img src="images/web/SVM06315.jpg" class="zoomimg h-full w-full object-cover" alt=""></div>
+        <div class="zoom aspect-[4/5] overflow-hidden rounded-lg"><img src="images/web/SVM06257.jpg" class="zoomimg h-full w-full object-cover" alt=""></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- VISIT -->
+  <section id="visit" class="bg-wheat/50 px-6 py-24 text-center md:py-36">
+    <div class="mx-auto max-w-2xl">
+      <div class="orn reveal mb-6"></div>
+      <h2 class="reveal font-serif text-4xl leading-tight text-bottle md:text-6xl">Заходите на чашку кофе</h2>
+      <div class="reveal mx-auto mt-12 grid max-w-xl gap-8 sm:grid-cols-2">
+        <div><p class="font-sans text-[11px] uppercase tracking-wide2 text-cocoa/45">Адрес</p><p class="mt-2 font-serif text-xl text-bottle">Санкт-Петербург,<br>Московский пр., 71/3</p></div>
+        <div><p class="font-sans text-[11px] uppercase tracking-wide2 text-cocoa/45">Часы работы</p><p class="mt-2 font-serif text-xl text-bottle">Ежедневно<br>08:00 – 22:00</p></div>
+      </div>
+      <a href="#" class="reveal mt-12 inline-block rounded-full bg-bottle px-8 py-3 font-sans text-[11px] uppercase tracking-wide2 text-linen transition hover:bg-gild">Забронировать стол</a>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="bg-bottle px-6 py-14 text-center text-linen">
+    <p class="font-serif text-3xl tracking-[0.4em]">ДЕНИСОВ</p>
+    <div class="orn mx-auto my-5 max-w-xs text-gild"></div>
+    <p class="font-sans text-[11px] uppercase tracking-wide2 text-linen/50">© 2026 · Санкт-Петербург · Московский пр., 71/3</p>
+  </footer>
+
+  <script>
+    const mNav = document.getElementById('mNav');
+    document.getElementById('mBtn').addEventListener('click', () => mNav.classList.toggle('hidden'));
+    mNav.querySelectorAll('a').forEach(a => a.addEventListener('click', () => mNav.classList.add('hidden')));
+    const io = new IntersectionObserver((es) => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }), { threshold: .12 });
+    document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+  </script>
+</body>
+</html>

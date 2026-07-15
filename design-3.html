@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ДЕНИСОВ — Кафе и пекарня · Дизайн 3 (Dark Modern)</title>
+  <meta name="description" content="ДЕНИСОВ — кафе и пекарня на Московском проспекте в Санкт-Петербурге." />
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            night: '#14140F',
+            coal: '#1E1E17',
+            bone: '#EDE7DA',
+            gold: '#C9A24B',
+            moss: '#7C8A5F',
+          },
+          fontFamily: {
+            serif: ['"EB Garamond"', 'Georgia', 'serif'],
+            sans: ['"Ysabeau"', 'system-ui', 'sans-serif'],
+          },
+          letterSpacing: { ultra: '0.45em', wide2: '0.28em' },
+        },
+      },
+    };
+  </script>
+
+  <style>
+    @font-face { font-family:'EB Garamond'; src:url('fonts/EBGaramond-VariableFont_wght.ttf') format('truetype'); font-weight:400 800; font-style:normal; font-display:swap; }
+    @font-face { font-family:'EB Garamond'; src:url('fonts/EBGaramond-Italic-VariableFont_wght.ttf') format('truetype'); font-weight:400 800; font-style:italic; font-display:swap; }
+    @font-face { font-family:'Ysabeau'; src:url('fonts/Ysabeau-VariableFont_wght.ttf') format('truetype'); font-weight:100 900; font-style:normal; font-display:swap; }
+    @font-face { font-family:'Ysabeau'; src:url('fonts/Ysabeau-Italic-VariableFont_wght.ttf') format('truetype'); font-weight:100 900; font-style:italic; font-display:swap; }
+
+    html { scroll-behavior:smooth; }
+    body { background:#14140F; }
+    .reveal { opacity:0; transform:translateY(30px); transition:opacity 1s cubic-bezier(.22,1,.36,1), transform 1s cubic-bezier(.22,1,.36,1); }
+    .reveal.in { opacity:1; transform:translateY(0); }
+    @keyframes kb { from{transform:scale(1.05)} to{transform:scale(1.18)} }
+    .kb { animation: kb 24s ease-out forwards; }
+    .u { position:relative; }
+    .u::after { content:''; position:absolute; left:0; bottom:-4px; width:0; height:1px; background:#C9A24B; transition:width .4s ease; }
+    .u:hover::after { width:100%; }
+    .hscroll { scrollbar-width:none; } .hscroll::-webkit-scrollbar{ display:none; }
+    .card img { transition: transform 1.1s cubic-bezier(.22,1,.36,1); }
+    .card:hover img { transform: scale(1.06); }
+  </style>
+</head>
+
+<body class="font-sans text-bone antialiased">
+
+  <a href="designs.html" class="fixed bottom-5 right-5 z-[80] rounded-full border border-gold/50 bg-night/80 px-4 py-2 font-sans text-[11px] uppercase tracking-wide2 text-gold backdrop-blur transition hover:bg-gold hover:text-night">← Все дизайны</a>
+
+  <!-- HEADER -->
+  <header class="fixed top-0 left-0 z-50 w-full">
+    <div class="mx-auto flex max-w-[1600px] items-center justify-between px-6 py-6 md:px-12">
+      <a href="#top" class="font-serif text-2xl tracking-[0.3em] md:text-3xl">ДЕНИСОВ</a>
+      <nav class="hidden items-center gap-10 font-sans text-[12px] uppercase tracking-wide2 text-bone/80 md:flex">
+        <a href="#about" class="u">О кафе</a>
+        <a href="#menu" class="u">Меню</a>
+        <a href="#gallery" class="u">Атмосфера</a>
+        <a href="#visit" class="u">Контакты</a>
+      </nav>
+      <a href="#visit" class="hidden rounded-full border border-gold/60 px-5 py-2 font-sans text-[11px] uppercase tracking-wide2 text-gold transition hover:bg-gold hover:text-night md:inline-block">Забронировать</a>
+      <button id="mBtn" class="md:hidden text-bone" aria-label="Меню">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><line x1="3" y1="8" x2="21" y2="8"/><line x1="3" y1="16" x2="21" y2="16"/></svg>
+      </button>
+    </div>
+    <nav id="mNav" class="hidden flex flex-col gap-3 bg-coal px-6 py-6 font-serif text-2xl md:!hidden">
+      <a href="#about">О кафе</a><a href="#menu">Меню</a><a href="#gallery">Атмосфера</a><a href="#visit">Контакты</a>
+    </nav>
+  </header>
+
+  <!-- HERO -->
+  <section id="top" class="relative h-screen w-full overflow-hidden">
+    <img src="images/web/SVM06197.jpg" alt="" class="absolute inset-0 h-full w-full object-cover kb" />
+    <div class="absolute inset-0 bg-night/70"></div>
+    <div class="absolute inset-0 bg-gradient-to-t from-night via-night/30 to-night/60"></div>
+
+    <div class="relative z-10 flex h-full flex-col items-center justify-center px-6 text-center">
+      <p class="mb-8 font-sans text-[11px] uppercase tracking-ultra text-gold">Кафе · Пекарня · Санкт-Петербург</p>
+      <h1 class="font-serif text-[22vw] leading-[0.8] md:text-[13rem]">Денисов</h1>
+      <p class="mt-8 max-w-xl font-serif text-xl italic leading-relaxed text-bone/80 md:text-2xl">
+        Домашняя кухня и свежая выпечка в атмосфере старой Европы.
+      </p>
+    </div>
+
+    <div class="absolute bottom-8 left-0 z-10 w-full">
+      <div class="mx-auto flex max-w-[1600px] items-center justify-between px-6 font-sans text-[11px] uppercase tracking-wide2 text-bone/50 md:px-12">
+        <span>Московский пр., 71/3</span>
+        <span>08:00 — 22:00</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ABOUT -->
+  <section id="about" class="px-6 py-28 md:px-12 md:py-40">
+    <div class="mx-auto max-w-[1300px]">
+      <p class="reveal font-sans text-[11px] uppercase tracking-ultra text-gold">О кафе</p>
+      <h2 class="reveal mt-8 font-serif text-4xl leading-tight md:text-7xl">
+        Небольшое кафе с характером старого европейского дома, где утро начинается
+        с запаха <span class="italic text-gold">свежего хлеба.</span>
+      </h2>
+      <div class="mt-16 grid gap-10 md:grid-cols-3">
+        <p class="reveal font-serif text-lg leading-relaxed text-bone/70 md:col-span-2 md:text-xl">
+          «ДЕНИСОВ» — всего 34 места, тёплое дерево, латунь и мягкий свет. Мы вдохновлялись
+          европейской архитектурой первой трети XX века — виллами Франции, венской классикой
+          и пражскими домами. Здесь варят кофе, пекут по утрам и готовят честную домашнюю кухню.
+        </p>
+        <div class="reveal grid grid-cols-2 gap-8 self-end">
+          <div><p class="font-serif text-5xl text-gold">34</p><p class="mt-2 font-sans text-[11px] uppercase tracking-wide2 text-bone/50">места</p></div>
+          <div><p class="font-serif text-5xl text-gold">2026</p><p class="mt-2 font-sans text-[11px] uppercase tracking-wide2 text-bone/50">с года</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- MENU — horizontal scroll cards -->
+  <section id="menu" class="border-y border-bone/10 bg-coal py-24 md:py-32">
+    <div class="mx-auto mb-14 flex max-w-[1600px] items-end justify-between px-6 md:px-12">
+      <h2 class="font-serif text-4xl md:text-7xl">Меню</h2>
+      <p class="hidden font-sans text-[11px] uppercase tracking-wide2 text-bone/40 md:block">← прокрутите →</p>
+    </div>
+    <div class="hscroll flex snap-x snap-mandatory gap-6 overflow-x-auto px-6 pb-4 md:px-12">
+      <!-- card -->
+      <article class="card w-[78vw] shrink-0 snap-start sm:w-[46vw] md:w-[30vw] lg:w-[24vw]">
+        <div class="aspect-[4/5] overflow-hidden"><img src="images/web/SVM06059.jpg" class="h-full w-full object-cover" alt="Пирожки"></div>
+        <div class="mt-4 flex items-baseline justify-between"><h3 class="font-serif text-2xl">Домашние пирожки</h3><span class="font-serif text-lg text-gold">180 ₽</span></div>
+        <p class="mt-1 font-sans text-[11px] uppercase tracking-wide2 text-bone/40">Выпечка</p>
+      </article>
+      <article class="card w-[78vw] shrink-0 snap-start sm:w-[46vw] md:w-[30vw] lg:w-[24vw]">
+        <div class="aspect-[4/5] overflow-hidden"><img src="images/web/SVM06129.jpg" class="h-full w-full object-cover" alt="Борщ"></div>
+        <div class="mt-4 flex items-baseline justify-between"><h3 class="font-serif text-2xl">Борщ</h3><span class="font-serif text-lg text-gold">320 ₽</span></div>
+        <p class="mt-1 font-sans text-[11px] uppercase tracking-wide2 text-bone/40">Супы</p>
+      </article>
+      <article class="card w-[78vw] shrink-0 snap-start sm:w-[46vw] md:w-[30vw] lg:w-[24vw]">
+        <div class="aspect-[4/5] overflow-hidden"><img src="images/web/SVM06265.jpg" class="h-full w-full object-cover" alt="Салат"></div>
+        <div class="mt-4 flex items-baseline justify-between"><h3 class="font-serif text-2xl">Салат с креветками</h3><span class="font-serif text-lg text-gold">420 ₽</span></div>
+        <p class="mt-1 font-sans text-[11px] uppercase tracking-wide2 text-bone/40">Салаты</p>
+      </article>
+      <article class="card w-[78vw] shrink-0 snap-start sm:w-[46vw] md:w-[30vw] lg:w-[24vw]">
+        <div class="aspect-[4/5] overflow-hidden"><img src="images/web/SVM06174.jpg" class="h-full w-full object-cover" alt="Лосось"></div>
+        <div class="mt-4 flex items-baseline justify-between"><h3 class="font-serif text-2xl">Стейк из лосося</h3><span class="font-serif text-lg text-gold">690 ₽</span></div>
+        <p class="mt-1 font-sans text-[11px] uppercase tracking-wide2 text-bone/40">Горячее</p>
+      </article>
+      <article class="card w-[78vw] shrink-0 snap-start sm:w-[46vw] md:w-[30vw] lg:w-[24vw]">
+        <div class="aspect-[4/5] overflow-hidden"><img src="images/web/SVM06211.jpg" class="h-full w-full object-cover" alt="Морс"></div>
+        <div class="mt-4 flex items-baseline justify-between"><h3 class="font-serif text-2xl">Домашний морс</h3><span class="font-serif text-lg text-gold">150 ₽</span></div>
+        <p class="mt-1 font-sans text-[11px] uppercase tracking-wide2 text-bone/40">Напитки</p>
+      </article>
+      <article class="card w-[78vw] shrink-0 snap-start sm:w-[46vw] md:w-[30vw] lg:w-[24vw]">
+        <div class="aspect-[4/5] overflow-hidden"><img src="images/web/SVM06106.jpg" class="h-full w-full object-cover" alt="Трюфели"></div>
+        <div class="mt-4 flex items-baseline justify-between"><h3 class="font-serif text-2xl">Шоколадные трюфели</h3><span class="font-serif text-lg text-gold">90 ₽</span></div>
+        <p class="mt-1 font-sans text-[11px] uppercase tracking-wide2 text-bone/40">Десерты</p>
+      </article>
+    </div>
+  </section>
+
+  <!-- FEATURE full-bleed -->
+  <section class="relative h-[80vh] overflow-hidden">
+    <img src="images/web/SVM06194.jpg" alt="" class="absolute inset-0 h-full w-full object-cover" />
+    <div class="absolute inset-0 bg-night/60"></div>
+    <div class="relative z-10 flex h-full items-center px-6 md:px-12">
+      <div class="reveal max-w-xl">
+        <p class="font-sans text-[11px] uppercase tracking-ultra text-gold">Пекарня</p>
+        <h2 class="mt-6 font-serif text-5xl leading-tight md:text-7xl">Свежая выпечка<br><span class="italic font-light">каждое утро</span></h2>
+        <p class="mt-8 font-serif text-lg leading-relaxed text-bone/80 md:text-xl">
+          Пирожки, слойки, кексы, меренги и ремесленный хлеб — всё печётся у нас,
+          небольшими партиями, из простых и честных продуктов.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- GALLERY -->
+  <section id="gallery" class="px-6 py-24 md:px-12 md:py-32">
+    <div class="mx-auto max-w-[1600px]">
+      <div class="reveal mb-12 flex items-end justify-between">
+        <h2 class="font-serif text-4xl md:text-7xl">Атмосфера</h2>
+        <p class="font-sans text-[11px] uppercase tracking-ultra text-gold">Галерея</p>
+      </div>
+      <div class="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
+        <div class="card col-span-2 row-span-2 overflow-hidden"><img src="images/web/SVM06238.jpg" class="h-full w-full object-cover" alt=""></div>
+        <div class="card aspect-square overflow-hidden"><img src="images/web/SVM06147.jpg" class="h-full w-full object-cover" alt=""></div>
+        <div class="card aspect-square overflow-hidden"><img src="images/web/SVM06212.jpg" class="h-full w-full object-cover" alt=""></div>
+        <div class="card aspect-square overflow-hidden"><img src="images/web/SVM06135.jpg" class="h-full w-full object-cover" alt=""></div>
+        <div class="card aspect-square overflow-hidden"><img src="images/web/SVM06315.jpg" class="h-full w-full object-cover" alt=""></div>
+        <div class="card aspect-square overflow-hidden"><img src="images/web/SVM06068.jpg" class="h-full w-full object-cover" alt=""></div>
+        <div class="card aspect-square overflow-hidden"><img src="images/web/SVM06257.jpg" class="h-full w-full object-cover" alt=""></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- VISIT -->
+  <section id="visit" class="border-t border-bone/10 bg-coal px-6 py-24 md:px-12 md:py-32">
+    <div class="mx-auto grid max-w-[1600px] gap-14 md:grid-cols-2">
+      <div class="reveal">
+        <p class="font-sans text-[11px] uppercase tracking-ultra text-gold">Как нас найти</p>
+        <h2 class="mt-6 font-serif text-4xl leading-tight md:text-6xl">Заходите на кофе<br>и что-нибудь тёплое.</h2>
+        <div class="mt-12 space-y-8">
+          <div><p class="font-sans text-[11px] uppercase tracking-wide2 text-bone/40">Адрес</p><p class="mt-2 font-serif text-2xl">Санкт-Петербург, Московский пр., 71/3</p></div>
+          <div><p class="font-sans text-[11px] uppercase tracking-wide2 text-bone/40">Часы работы</p><p class="mt-2 font-serif text-2xl">Ежедневно · 08:00 – 22:00</p></div>
+          <a href="#" class="inline-block rounded-full border border-gold/60 px-6 py-3 font-sans text-[11px] uppercase tracking-wide2 text-gold transition hover:bg-gold hover:text-night">Забронировать стол</a>
+        </div>
+      </div>
+      <div class="reveal aspect-[4/5] overflow-hidden md:aspect-auto"><img src="images/web/SVM06255.jpg" class="h-full w-full object-cover" alt=""></div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="px-6 py-16 md:px-12">
+    <div class="mx-auto flex max-w-[1600px] flex-col items-start justify-between gap-6 border-t border-bone/10 pt-10 md:flex-row md:items-center">
+      <p class="font-serif text-3xl tracking-[0.3em]">ДЕНИСОВ</p>
+      <p class="font-sans text-[11px] uppercase tracking-wide2 text-bone/40">© 2026 · Санкт-Петербург · Московский пр., 71/3</p>
+    </div>
+  </footer>
+
+  <script>
+    const mNav = document.getElementById('mNav');
+    document.getElementById('mBtn').addEventListener('click', () => mNav.classList.toggle('hidden'));
+    mNav.querySelectorAll('a').forEach(a => a.addEventListener('click', () => mNav.classList.add('hidden')));
+    const io = new IntersectionObserver((es) => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }), { threshold: .15 });
+    document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+  </script>
+</body>
+</html>

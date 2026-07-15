@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ДЕНИСОВ — Кафе и пекарня · Санкт-Петербург</title>
+  <meta name="description" content="ДЕНИСОВ — уютное кафе и пекарня на Московском проспекте в Санкт-Петербурге. Домашняя и европейская кухня, свежая выпечка, кофе и домашние морсы." />
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            ivory: '#F4EFE6',
+            cream: '#EAE2D3',
+            ink: '#1C1A16',
+            forest: '#33402F',
+            olive: '#4A5A40',
+            brass: '#B08D57',
+          },
+          fontFamily: {
+            serif: ['"EB Garamond"', 'Georgia', 'serif'],
+            sans: ['"Ysabeau"', 'system-ui', 'sans-serif'],
+          },
+          letterSpacing: {
+            ultra: '0.42em',
+            wide2: '0.28em',
+          },
+        },
+      },
+    };
+  </script>
+
+  <style>
+    @font-face {
+      font-family: 'EB Garamond';
+      src: url('fonts/EBGaramond-VariableFont_wght.ttf') format('truetype');
+      font-weight: 400 800; font-style: normal; font-display: swap;
+    }
+    @font-face {
+      font-family: 'EB Garamond';
+      src: url('fonts/EBGaramond-Italic-VariableFont_wght.ttf') format('truetype');
+      font-weight: 400 800; font-style: italic; font-display: swap;
+    }
+    @font-face {
+      font-family: 'Ysabeau';
+      src: url('fonts/Ysabeau-VariableFont_wght.ttf') format('truetype');
+      font-weight: 100 900; font-style: normal; font-display: swap;
+    }
+    @font-face {
+      font-family: 'Ysabeau';
+      src: url('fonts/Ysabeau-Italic-VariableFont_wght.ttf') format('truetype');
+      font-weight: 100 900; font-style: italic; font-display: swap;
+    }
+
+    html { scroll-behavior: smooth; }
+    body { background-color: #F4EFE6; }
+
+    @keyframes slowZoom { from { transform: scale(1.05); } to { transform: scale(1.16); } }
+    .animate-slow-zoom { animation: slowZoom 22s ease-out forwards; }
+
+    /* ---- Hero slider ---- */
+    .hero-slide {
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 1.2s cubic-bezier(.4,0,.2,1);
+      z-index: 0;
+    }
+    .hero-slide.is-active {
+      opacity: 1;
+      visibility: visible;
+      z-index: 1;
+    }
+    /* Overlays must sit above slides (active slide is z-index: 1) */
+    .hero-overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      pointer-events: none;
+    }
+    .hero-overlay--dim {
+      background: rgba(0, 0, 0, 0.55);
+    }
+    .hero-overlay--gradient {
+      background: linear-gradient(
+        to top,
+        rgba(28, 26, 22, 0.92) 0%,
+        rgba(28, 26, 22, 0.5) 45%,
+        rgba(28, 26, 22, 0.62) 100%
+      );
+    }
+    /* Only the visible slide's image slowly zooms */
+    .hero-slide img { transform: scale(1.05); }
+    .hero-slide.is-active img { animation: slowZoom 8s ease-out forwards; }
+
+    /* Dot indicators with a filling progress ring */
+    .hero-dot {
+      position: relative;
+      display: inline-flex;
+      height: 24px;
+      width: 24px;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .hero-dot span {
+      height: 6px;
+      width: 6px;
+      border-radius: 9999px;
+      background: rgba(244, 239, 230, .35);
+      transition: background .4s ease, transform .4s ease;
+    }
+    .hero-dot.is-active span { background: #F4EFE6; transform: scale(1.15); }
+    .hero-dot svg { position: absolute; inset: 0; height: 24px; width: 24px; transform: rotate(-90deg); pointer-events: none; }
+    .hero-dot circle {
+      fill: none;
+      stroke: #F4EFE6;
+      stroke-width: 1;
+      stroke-linecap: round;
+      opacity: 0;
+      stroke-dasharray: 63; /* 2*pi*r, r=10 */
+      stroke-dashoffset: 63;
+    }
+    .hero-dot.is-active circle { opacity: .9; }
+    .hero-dot.is-active.run circle {
+      transition: stroke-dashoffset var(--hero-duration, 6000ms) linear;
+      stroke-dashoffset: 0;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .hero-slide.is-active img { animation: none; }
+      .hero-dot.is-active.run circle { transition: none; }
+    }
+
+    /* Scroll reveal */
+    .reveal { opacity: 0; transform: translateY(28px); transition: opacity 1s cubic-bezier(.22,1,.36,1), transform 1s cubic-bezier(.22,1,.36,1); }
+    .reveal.in { opacity: 1; transform: translateY(0); }
+
+    /* Hero intro fade */
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
+    .fade-up { opacity: 0; animation: fadeUp 1.4s cubic-bezier(.22,1,.36,1) forwards; }
+    .d1 { animation-delay: .25s; } .d2 { animation-delay: .5s; } .d3 { animation-delay: .8s; } .d4 { animation-delay: 1.1s; }
+
+    .hairline { height: 1px; background: currentColor; }
+    .link-underline { position: relative; }
+    .link-underline::after { content: ''; position: absolute; left: 0; bottom: -3px; width: 0; height: 1px; background: currentColor; transition: width .4s ease; }
+    .link-underline:hover::after { width: 100%; }
+  </style>
+</head>
+
+<body class="font-sans text-ink antialiased selection:bg-forest selection:text-ivory">
+
+  <a href="designs.html" class="fixed bottom-5 right-5 z-[80] rounded-full bg-forest px-4 py-2 font-sans text-[11px] uppercase tracking-wide2 text-ivory shadow-lg transition hover:bg-brass">← Все дизайны</a>
+
+  <!-- ================= HEADER ================= -->
+  <header id="site-header" class="fixed top-0 left-0 z-50 w-full transition-all duration-500">
+    <div class="mx-auto flex max-w-[1600px] items-center justify-between px-6 py-6 md:px-10 md:py-8">
+      <a href="#top" id="brand" class="font-serif text-2xl tracking-[0.3em] text-ivory transition-colors duration-500 md:text-3xl">
+        ДЕНИСОВ
+      </a>
+
+      <nav id="desktop-nav" class="hidden items-center gap-10 font-sans text-[12px] uppercase tracking-wide2 text-ivory/90 transition-colors duration-500 lg:flex">
+        <a href="#about" class="link-underline">О кафе</a>
+        <a href="#menu" class="link-underline">Меню</a>
+        <a href="#gallery" class="link-underline">Атмосфера</a>
+        <a href="#visit" class="link-underline">Контакты</a>
+      </nav>
+
+      <button id="menu-btn" aria-label="Открыть меню" class="p-2 -mr-2 text-ivory transition-colors duration-500">
+        <svg id="icon-open" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round">
+          <line x1="3" y1="8" x2="21" y2="8"></line>
+          <line x1="3" y1="16" x2="21" y2="16"></line>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- ================= MOBILE / OVERLAY MENU ================= -->
+  <div id="overlay" class="fixed inset-0 z-[60] translate-x-full bg-forest text-ivory transition-transform duration-700 ease-[cubic-bezier(.76,0,.24,1)]">
+    <div class="flex h-full flex-col p-8 md:p-12">
+      <div class="flex items-center justify-between">
+        <span class="font-serif text-2xl tracking-[0.3em]">ДЕНИСОВ</span>
+        <button id="close-btn" aria-label="Закрыть меню" class="p-2 -mr-2">
+          <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round">
+            <line x1="5" y1="5" x2="19" y2="19"></line>
+            <line x1="19" y1="5" x2="5" y2="19"></line>
+          </svg>
+        </button>
+      </div>
+
+      <nav class="flex flex-1 flex-col justify-center gap-3">
+        <a href="#about" class="overlay-link font-serif text-5xl leading-tight transition-opacity hover:opacity-60 md:text-7xl">О кафе</a>
+        <a href="#menu" class="overlay-link font-serif text-5xl leading-tight transition-opacity hover:opacity-60 md:text-7xl">Меню</a>
+        <a href="#gallery" class="overlay-link font-serif text-5xl leading-tight transition-opacity hover:opacity-60 md:text-7xl">Атмосфера</a>
+        <a href="#visit" class="overlay-link font-serif text-5xl leading-tight transition-opacity hover:opacity-60 md:text-7xl">Контакты</a>
+      </nav>
+
+      <div class="flex flex-col gap-1 font-sans text-[12px] uppercase tracking-wide2 text-ivory/70 md:flex-row md:justify-between">
+        <span>Санкт-Петербург · Московский пр., 71/3</span>
+        <span>Ежедневно 08:00 – 22:00</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= HERO ================= -->
+  <section id="top" class="relative h-screen w-full overflow-hidden bg-ink">
+    <!-- Slider track: crossfading image layers -->
+    <div id="hero-slider" class="absolute inset-0">
+      <div class="hero-slide is-active absolute inset-0" data-label="Ремесленный хлеб">
+        <img src="images/web/SVM06194.jpg" alt="Свежий ремесленный хлеб кафе ДЕНИСОВ" class="h-full w-full object-cover" />
+      </div>
+      <div class="hero-slide absolute inset-0" data-label="Свежая выпечка">
+        <img src="images/web/SVM06059.jpg" alt="Домашние пирожки кафе ДЕНИСОВ" class="h-full w-full object-cover" />
+      </div>
+      <div class="hero-slide absolute inset-0" data-label="Домашние блюда">
+        <img src="images/web/SVM06197.jpg" alt="Горячее блюдо кафе ДЕНИСОВ" class="h-full w-full object-cover" />
+      </div>
+      <div class="hero-slide absolute inset-0" data-label="Домашние морсы">
+        <img src="images/web/SVM06212.jpg" alt="Домашний морс кафе ДЕНИСОВ" class="h-full w-full object-cover" />
+      </div>
+      <div class="hero-slide absolute inset-0" data-label="Десерты">
+        <img src="images/web/SVM06106.jpg" alt="Шоколадные трюфели кафе ДЕНИСОВ" class="h-full w-full object-cover" />
+      </div>
+
+      <!-- Dark overlays — z-index above active slide -->
+      <div class="hero-overlay hero-overlay--dim" aria-hidden="true"></div>
+      <div class="hero-overlay hero-overlay--gradient" aria-hidden="true"></div>
+    </div>
+
+    <div class="relative z-10 flex h-full flex-col justify-center px-6 md:px-10">
+      <div class="mx-auto w-full max-w-[1600px]">
+        <p class="fade-up d1 mb-6 font-sans text-[11px] uppercase tracking-ultra text-ivory/70">
+          Кафе · Пекарня · с 2026
+        </p>
+        <h1 class="fade-up d2 max-w-4xl font-serif text-6xl leading-[0.98] text-ivory sm:text-7xl md:text-[7.5rem]">
+          Денисов
+        </h1>
+        <p class="fade-up d3 mt-6 max-w-xl font-serif text-xl italic leading-relaxed text-ivory/85 md:text-2xl">
+          Домашняя кухня и свежая выпечка<br class="hidden sm:block" />
+          в атмосфере старой Европы.
+        </p>
+      </div>
+    </div>
+
+    <!-- bottom-left meta + live slide caption -->
+    <div class="absolute bottom-24 left-6 z-10 md:bottom-28 md:left-10">
+      <div class="mx-auto max-w-[1600px]">
+        <p class="fade-up d4 font-sans text-[11px] uppercase tracking-wide2 text-ivory/60">
+          Санкт-Петербург — Московский проспект, 71/3
+        </p>
+        <p id="hero-caption" class="mt-3 font-serif text-lg italic text-ivory/85 transition-opacity duration-500 md:text-xl">
+          Ремесленный хлеб
+        </p>
+      </div>
+    </div>
+
+    <!-- slider dots -->
+    <div id="hero-dots" class="absolute bottom-10 left-1/2 z-10 flex -translate-x-1/2 items-center gap-4 fade-up d4">
+      <!-- dots are injected by JS -->
+    </div>
+  </section>
+
+  <!-- ================= ABOUT ================= -->
+  <section id="about" class="bg-ivory px-6 py-24 md:px-10 md:py-36">
+    <div class="mx-auto max-w-[1600px]">
+      <div class="grid gap-12 md:grid-cols-12 md:gap-16">
+        <div class="reveal md:col-span-4">
+          <p class="font-sans text-[11px] uppercase tracking-ultra text-brass">О кафе</p>
+          <div class="hairline mt-6 w-16 text-brass/50"></div>
+        </div>
+        <div class="reveal md:col-span-8">
+          <h2 class="font-serif text-3xl leading-tight text-ink sm:text-4xl md:text-5xl">
+            Небольшое кафе с характером старого европейского дома —
+            где утро начинается с запаха свежего хлеба.
+          </h2>
+          <p class="mt-8 max-w-2xl font-serif text-lg leading-relaxed text-ink/70 md:text-xl">
+            «ДЕНИСОВ» — это всего 34 места, тёплое дерево, латунь и мягкий свет.
+            Мы вдохновлялись архитектурой Европы первой трети XX века — виллами Франции,
+            венской классикой и пражскими домами. Здесь варят кофе, пекут по утрам
+            и готовят честную домашнюю и европейскую кухню.
+          </p>
+
+          <div class="mt-14 grid grid-cols-2 gap-8 sm:grid-cols-4">
+            <div class="reveal">
+              <p class="font-serif text-4xl text-forest md:text-5xl">34</p>
+              <p class="mt-2 font-sans text-[11px] uppercase tracking-wide2 text-ink/50">посадочных места</p>
+            </div>
+            <div class="reveal">
+              <p class="font-serif text-4xl text-forest md:text-5xl">08—22</p>
+              <p class="mt-2 font-sans text-[11px] uppercase tracking-wide2 text-ink/50">ежедневно</p>
+            </div>
+            <div class="reveal">
+              <p class="font-serif text-4xl text-forest md:text-5xl">1924</p>
+              <p class="mt-2 font-sans text-[11px] uppercase tracking-wide2 text-ink/50">дух эпохи</p>
+            </div>
+            <div class="reveal">
+              <p class="font-serif text-4xl text-forest md:text-5xl">№71/3</p>
+              <p class="mt-2 font-sans text-[11px] uppercase tracking-wide2 text-ink/50">Московский пр.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= FEATURE: BAKERY ================= -->
+  <section class="bg-forest text-ivory">
+    <div class="mx-auto grid max-w-[1600px] items-stretch md:grid-cols-2">
+      <div class="relative min-h-[60vh] overflow-hidden md:min-h-[85vh]">
+        <img src="images/web/SVM06059.jpg" alt="Свежая выпечка — пирожки" class="h-full w-full object-cover" />
+      </div>
+      <div class="flex items-center px-6 py-20 md:px-16 md:py-28">
+        <div class="reveal max-w-lg">
+          <p class="font-sans text-[11px] uppercase tracking-ultra text-brass">Пекарня</p>
+          <h2 class="mt-6 font-serif text-4xl leading-tight md:text-6xl">
+            Свежая выпечка<br /><span class="italic font-light">каждое утро</span>
+          </h2>
+          <p class="mt-8 font-serif text-lg leading-relaxed text-ivory/80 md:text-xl">
+            Пирожки, слойки, кексы, меренги и ремесленный хлеб — всё печётся у нас,
+            небольшими партиями, из простых и честных продуктов. То, что хочется
+            взять к кофе и унести с собой.
+          </p>
+          <a href="#menu" class="link-underline mt-10 inline-block font-sans text-[12px] uppercase tracking-wide2 text-ivory">
+            Смотреть меню
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= MENU ================= -->
+  <section id="menu" class="bg-ivory px-6 py-24 md:px-10 md:py-36">
+    <div class="mx-auto max-w-[1600px]">
+      <div class="reveal flex flex-col items-start justify-between gap-6 md:flex-row md:items-end">
+        <div>
+          <p class="font-sans text-[11px] uppercase tracking-ultra text-brass">Избранное из меню</p>
+          <h2 class="mt-5 font-serif text-4xl leading-none text-ink md:text-6xl">Что у нас на столе</h2>
+        </div>
+        <p class="max-w-sm font-serif text-base italic text-ink/60 md:text-lg">
+          Домашняя и европейская кухня — выпечка, супы, салаты, горячее и домашние напитки.
+        </p>
+      </div>
+
+      <div class="mt-16 grid grid-cols-2 gap-x-6 gap-y-12 md:grid-cols-3 lg:grid-cols-4">
+
+        <article class="reveal group">
+          <div class="aspect-[4/5] overflow-hidden bg-cream">
+            <img src="images/web/SVM06059.jpg" alt="Пирожки" class="h-full w-full object-cover transition-transform duration-[1200ms] ease-out group-hover:scale-105" />
+          </div>
+          <div class="mt-4 flex items-baseline justify-between gap-3">
+            <h3 class="font-serif text-xl text-ink md:text-2xl">Домашние пирожки</h3>
+          </div>
+          <p class="mt-1 font-sans text-[12px] uppercase tracking-wide2 text-ink/45">Выпечка</p>
+        </article>
+
+        <article class="reveal group">
+          <div class="aspect-[4/5] overflow-hidden bg-cream">
+            <img src="images/web/SVM06194.jpg" alt="Ремесленный хлеб" class="h-full w-full object-cover transition-transform duration-[1200ms] ease-out group-hover:scale-105" />
+          </div>
+          <div class="mt-4 flex items-baseline justify-between gap-3">
+            <h3 class="font-serif text-xl text-ink md:text-2xl">Ремесленный хлеб</h3>
+          </div>
+          <p class="mt-1 font-sans text-[12px] uppercase tracking-wide2 text-ink/45">Пекарня</p>
+        </article>
+
+        <article class="reveal group">
+          <div class="aspect-[4/5] overflow-hidden bg-cream">
+            <img src="images/web/SVM06129.jpg" alt="Борщ" class="h-full w-full object-cover transition-transform duration-[1200ms] ease-out group-hover:scale-105" />
+          </div>
+          <div class="mt-4 flex items-baseline justify-between gap-3">
+            <h3 class="font-serif text-xl text-ink md:text-2xl">Борщ</h3>
+          </div>
+          <p class="mt-1 font-sans text-[12px] uppercase tracking-wide2 text-ink/45">Супы</p>
+        </article>
+
+        <article class="reveal group">
+          <div class="aspect-[4/5] overflow-hidden bg-cream">
+            <img src="images/web/SVM06132.jpg" alt="Солянка" class="h-full w-full object-cover transition-transform duration-[1200ms] ease-out group-hover:scale-105" />
+          </div>
+          <div class="mt-4 flex items-baseline justify-between gap-3">
+            <h3 class="font-serif text-xl text-ink md:text-2xl">Солянка</h3>
+          </div>
+          <p class="mt-1 font-sans text-[12px] uppercase tracking-wide2 text-ink/45">Супы</p>
+        </article>
+
+        <article class="reveal group">
+          <div class="aspect-[4/5] overflow-hidden bg-cream">
+            <img src="images/web/SVM06265.jpg" alt="Салат с креветками" class="h-full w-full object-cover transition-transform duration-[1200ms] ease-out group-hover:scale-105" />
+          </div>
+          <div class="mt-4 flex items-baseline justify-between gap-3">
+            <h3 class="font-serif text-xl text-ink md:text-2xl">Салат с креветками</h3>
+          </div>
+          <p class="mt-1 font-sans text-[12px] uppercase tracking-wide2 text-ink/45">Салаты</p>
+        </article>
+
+        <article class="reveal group">
+          <div class="aspect-[4/5] overflow-hidden bg-cream">
+            <img src="images/web/SVM06308.jpg" alt="Греческий салат" class="h-full w-full object-cover transition-transform duration-[1200ms] ease-out group-hover:scale-105" />
+          </div>
+          <div class="mt-4 flex items-baseline justify-between gap-3">
+            <h3 class="font-serif text-xl text-ink md:text-2xl">Греческий салат</h3>
+          </div>
+          <p class="mt-1 font-sans text-[12px] uppercase tracking-wide2 text-ink/45">Салаты</p>
+        </article>
+
+        <article class="reveal group">
+          <div class="aspect-[4/5] overflow-hidden bg-cream">
+            <img src="images/web/SVM06174.jpg" alt="Стейк из лосося" class="h-full w-full object-cover transition-transform duration-[1200ms] ease-out group-hover:scale-105" />
+          </div>
+          <div class="mt-4 flex items-baseline justify-between gap-3">
+            <h3 class="font-serif text-xl text-ink md:text-2xl">Стейк из лосося</h3>
+          </div>
+          <p class="mt-1 font-sans text-[12px] uppercase tracking-wide2 text-ink/45">Горячее</p>
+        </article>
+
+        <article class="reveal group">
+          <div class="aspect-[4/5] overflow-hidden bg-cream">
+            <img src="images/web/SVM06280.jpg" alt="Рагу с картофельным пюре" class="h-full w-full object-cover transition-transform duration-[1200ms] ease-out group-hover:scale-105" />
+          </div>
+          <div class="mt-4 flex items-baseline justify-between gap-3">
+            <h3 class="font-serif text-xl text-ink md:text-2xl">Мясное рагу</h3>
+          </div>
+          <p class="mt-1 font-sans text-[12px] uppercase tracking-wide2 text-ink/45">Горячее</p>
+        </article>
+
+        <article class="reveal group">
+          <div class="aspect-[4/5] overflow-hidden bg-cream">
+            <img src="images/web/SVM06211.jpg" alt="Домашний морс" class="h-full w-full object-cover transition-transform duration-[1200ms] ease-out group-hover:scale-105" />
+          </div>
+          <div class="mt-4 flex items-baseline justify-between gap-3">
+            <h3 class="font-serif text-xl text-ink md:text-2xl">Домашний морс</h3>
+          </div>
+          <p class="mt-1 font-sans text-[12px] uppercase tracking-wide2 text-ink/45">Напитки</p>
+        </article>
+
+        <article class="reveal group">
+          <div class="aspect-[4/5] overflow-hidden bg-cream">
+            <img src="images/web/SVM06205.jpg" alt="Свежевыжатый сок" class="h-full w-full object-cover transition-transform duration-[1200ms] ease-out group-hover:scale-105" />
+          </div>
+          <div class="mt-4 flex items-baseline justify-between gap-3">
+            <h3 class="font-serif text-xl text-ink md:text-2xl">Свежий сок</h3>
+          </div>
+          <p class="mt-1 font-sans text-[12px] uppercase tracking-wide2 text-ink/45">Напитки</p>
+        </article>
+
+        <article class="reveal group">
+          <div class="aspect-[4/5] overflow-hidden bg-cream">
+            <img src="images/web/SVM06106.jpg" alt="Шоколадные трюфели" class="h-full w-full object-cover transition-transform duration-[1200ms] ease-out group-hover:scale-105" />
+          </div>
+          <div class="mt-4 flex items-baseline justify-between gap-3">
+            <h3 class="font-serif text-xl text-ink md:text-2xl">Шоколадные трюфели</h3>
+          </div>
+          <p class="mt-1 font-sans text-[12px] uppercase tracking-wide2 text-ink/45">Десерты</p>
+        </article>
+
+        <article class="reveal group">
+          <div class="aspect-[4/5] overflow-hidden bg-cream">
+            <img src="images/web/SVM06062.jpg" alt="Меренга" class="h-full w-full object-cover transition-transform duration-[1200ms] ease-out group-hover:scale-105" />
+          </div>
+          <div class="mt-4 flex items-baseline justify-between gap-3">
+            <h3 class="font-serif text-xl text-ink md:text-2xl">Меренга</h3>
+          </div>
+          <p class="mt-1 font-sans text-[12px] uppercase tracking-wide2 text-ink/45">Десерты</p>
+        </article>
+
+      </div>
+
+      <p class="reveal mt-14 max-w-xl font-serif text-base italic text-ink/50">
+        Меню меняется по сезону. Полный список блюд и напитков — у нас в кафе.
+      </p>
+    </div>
+  </section>
+
+  <!-- ================= QUOTE STRIP ================= -->
+  <section class="bg-cream px-6 py-24 md:py-32">
+    <div class="mx-auto max-w-4xl text-center">
+      <p class="reveal font-serif text-3xl italic leading-snug text-forest sm:text-4xl md:text-5xl">
+        «Хороший день начинается с чашки кофе,
+        свежей булочки и тихого утреннего света.»
+      </p>
+    </div>
+  </section>
+
+  <!-- ================= GALLERY ================= -->
+  <section id="gallery" class="bg-ink px-6 py-24 text-ivory md:px-10 md:py-36">
+    <div class="mx-auto max-w-[1600px]">
+      <div class="reveal mb-14 flex flex-col items-start justify-between gap-4 md:flex-row md:items-end">
+        <h2 class="font-serif text-4xl leading-none md:text-6xl">Атмосфера вкуса</h2>
+        <p class="font-sans text-[11px] uppercase tracking-ultra text-ivory/50">Галерея</p>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
+        <div class="reveal col-span-2 aspect-[4/3] overflow-hidden md:row-span-2 md:aspect-auto">
+          <img src="images/web/SVM06197.jpg" alt="Блюдо кафе ДЕНИСОВ" class="h-full w-full object-cover transition-transform duration-[1400ms] ease-out hover:scale-105" />
+        </div>
+        <div class="reveal aspect-square overflow-hidden">
+          <img src="images/web/SVM06238.jpg" alt="Салат" class="h-full w-full object-cover transition-transform duration-[1400ms] ease-out hover:scale-105" />
+        </div>
+        <div class="reveal aspect-square overflow-hidden">
+          <img src="images/web/SVM06212.jpg" alt="Домашний морс" class="h-full w-full object-cover transition-transform duration-[1400ms] ease-out hover:scale-105" />
+        </div>
+        <div class="reveal aspect-square overflow-hidden">
+          <img src="images/web/SVM06147.jpg" alt="Горячее блюдо" class="h-full w-full object-cover transition-transform duration-[1400ms] ease-out hover:scale-105" />
+        </div>
+        <div class="reveal aspect-square overflow-hidden">
+          <img src="images/web/SVM06088.jpg" alt="Печенье" class="h-full w-full object-cover transition-transform duration-[1400ms] ease-out hover:scale-105" />
+        </div>
+        <div class="reveal aspect-square overflow-hidden">
+          <img src="images/web/SVM06135.jpg" alt="Салат с говядиной" class="h-full w-full object-cover transition-transform duration-[1400ms] ease-out hover:scale-105" />
+        </div>
+        <div class="reveal aspect-square overflow-hidden">
+          <img src="images/web/SVM06315.jpg" alt="Десерт" class="h-full w-full object-cover transition-transform duration-[1400ms] ease-out hover:scale-105" />
+        </div>
+        <div class="reveal aspect-square overflow-hidden">
+          <img src="images/web/SVM06068.jpg" alt="Ягодный пирог" class="h-full w-full object-cover transition-transform duration-[1400ms] ease-out hover:scale-105" />
+        </div>
+        <div class="reveal aspect-square overflow-hidden">
+          <img src="images/web/SVM06257.jpg" alt="Рыбное блюдо" class="h-full w-full object-cover transition-transform duration-[1400ms] ease-out hover:scale-105" />
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= VISIT / CONTACT ================= -->
+  <section id="visit" class="bg-ivory px-6 py-24 md:px-10 md:py-36">
+    <div class="mx-auto max-w-[1600px]">
+      <div class="grid gap-14 md:grid-cols-2 md:gap-20">
+        <div class="reveal">
+          <p class="font-sans text-[11px] uppercase tracking-ultra text-brass">Как нас найти</p>
+          <h2 class="mt-6 font-serif text-4xl leading-tight text-ink md:text-6xl">
+            Заходите на чашку<br />кофе и что-нибудь тёплое.
+          </h2>
+
+          <div class="mt-12 space-y-8">
+            <div>
+              <p class="font-sans text-[11px] uppercase tracking-wide2 text-ink/45">Адрес</p>
+              <p class="mt-2 font-serif text-2xl text-ink">Санкт-Петербург, Московский пр., 71/3</p>
+            </div>
+            <div>
+              <p class="font-sans text-[11px] uppercase tracking-wide2 text-ink/45">Часы работы</p>
+              <p class="mt-2 font-serif text-2xl text-ink">Ежедневно · 08:00 – 22:00</p>
+            </div>
+            <div>
+              <p class="font-sans text-[11px] uppercase tracking-wide2 text-ink/45">Бронирование</p>
+              <p class="mt-2 font-serif text-2xl text-ink">По телефону и на месте · 34 места</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="reveal aspect-[4/5] overflow-hidden bg-cream md:aspect-auto">
+          <img src="images/web/SVM06255.jpg" alt="Десерт в стакане — кафе ДЕНИСОВ" class="h-full w-full object-cover" />
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= FOOTER ================= -->
+  <footer class="bg-forest px-6 py-16 text-ivory md:px-10">
+    <div class="mx-auto max-w-[1600px]">
+      <div class="flex flex-col items-start justify-between gap-10 md:flex-row md:items-end">
+        <div>
+          <p class="font-serif text-4xl tracking-[0.3em] md:text-5xl">ДЕНИСОВ</p>
+          <p class="mt-4 max-w-xs font-serif text-base italic text-ivory/70">
+            Кафе и пекарня в сердце Санкт-Петербурга.
+          </p>
+        </div>
+        <div class="flex flex-col gap-2 font-sans text-[12px] uppercase tracking-wide2 text-ivory/70 md:items-end">
+          <span>Московский пр., 71/3</span>
+          <span>Ежедневно 08:00 – 22:00</span>
+          <div class="mt-4 flex gap-6">
+            <a href="#" class="link-underline">Instagram</a>
+            <a href="#" class="link-underline">Telegram</a>
+          </div>
+        </div>
+      </div>
+      <div class="mt-14 flex flex-col justify-between gap-2 border-t border-ivory/15 pt-6 font-sans text-[11px] uppercase tracking-wide2 text-ivory/40 md:flex-row">
+        <span>© 2026 Кафе ДЕНИСОВ</span>
+        <span>Санкт-Петербург</span>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    /* ================= HERO SLIDER ================= */
+    (function () {
+      const slider = document.getElementById('hero-slider');
+      const dotsWrap = document.getElementById('hero-dots');
+      const caption = document.getElementById('hero-caption');
+      if (!slider || !dotsWrap) return;
+
+      const slides = Array.from(slider.querySelectorAll('.hero-slide'));
+      const DURATION = 6000;      // time each slide stays, ms
+      let index = slides.findIndex(s => s.classList.contains('is-active'));
+      if (index < 0) index = 0;
+      let timer = null;
+      let paused = false;
+
+      // Build a dot for every slide
+      const dots = slides.map((slide, i) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'hero-dot';
+        btn.setAttribute('aria-label', 'Слайд ' + (i + 1) + (slide.dataset.label ? ' — ' + slide.dataset.label : ''));
+        btn.style.setProperty('--hero-duration', DURATION + 'ms');
+        btn.innerHTML =
+          '<span></span>' +
+          '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle></svg>';
+        btn.addEventListener('click', () => goTo(i, true));
+        dotsWrap.appendChild(btn);
+        return btn;
+      });
+
+      function render() {
+        slides.forEach((s, i) => s.classList.toggle('is-active', i === index));
+        dots.forEach((d, i) => d.classList.toggle('is-active', i === index));
+        if (caption) {
+          const label = slides[index].dataset.label || '';
+          caption.style.opacity = '0';
+          setTimeout(() => { caption.textContent = label; caption.style.opacity = '1'; }, 250);
+        }
+        restartProgress();
+      }
+
+      // Retrigger the CSS progress-ring animation on the active dot
+      function restartProgress() {
+        dots.forEach(d => d.classList.remove('run'));
+        const active = dots[index];
+        if (!active || paused) return;
+        void active.offsetWidth; // force reflow so the transition restarts
+        active.classList.add('run');
+      }
+
+      function schedule() {
+        clearTimeout(timer);
+        if (paused) return;
+        timer = setTimeout(next, DURATION);
+      }
+
+      function goTo(i, fromUser) {
+        index = (i + slides.length) % slides.length;
+        render();
+        schedule();
+        if (fromUser) { /* user interaction just resets the same cycle */ }
+      }
+
+      function next() { goTo(index + 1); }
+
+      function pause() {
+        paused = true;
+        clearTimeout(timer);
+        const active = dots[index];
+        if (active) {
+          // freeze the ring where it currently is
+          const cs = getComputedStyle(active.querySelector('circle'));
+          active.querySelector('circle').style.strokeDashoffset = cs.strokeDashoffset;
+          active.classList.remove('run');
+        }
+      }
+
+      function resume() {
+        if (!paused) return;
+        paused = false;
+        const circle = dots[index] && dots[index].querySelector('circle');
+        if (circle) circle.style.strokeDashoffset = '';
+        restartProgress();
+        schedule();
+      }
+
+      // Pause while hovering / touching the hero, or when tab is hidden
+      const section = document.getElementById('top');
+      section.addEventListener('mouseenter', pause);
+      section.addEventListener('mouseleave', resume);
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden) pause(); else resume();
+      });
+
+      // Keyboard arrows when hero is in view
+      window.addEventListener('keydown', (e) => {
+        if (window.scrollY > window.innerHeight * 0.6) return;
+        if (e.key === 'ArrowRight') goTo(index + 1, true);
+        if (e.key === 'ArrowLeft') goTo(index - 1, true);
+      });
+
+      // Basic swipe support on touch devices
+      let touchX = null;
+      section.addEventListener('touchstart', (e) => { touchX = e.touches[0].clientX; paused = true; clearTimeout(timer); }, { passive: true });
+      section.addEventListener('touchend', (e) => {
+        if (touchX === null) return;
+        const dx = e.changedTouches[0].clientX - touchX;
+        if (Math.abs(dx) > 40) goTo(index + (dx < 0 ? 1 : -1), true);
+        touchX = null;
+        paused = false;
+        schedule();
+        restartProgress();
+      });
+
+      // Kick things off
+      render();
+      schedule();
+    })();
+
+    // Header background on scroll
+    const header = document.getElementById('site-header');
+    const brand = document.getElementById('brand');
+    const nav = document.getElementById('desktop-nav');
+    const menuBtn = document.getElementById('menu-btn');
+    const darkEls = [brand, nav, menuBtn];
+
+    function onScroll() {
+      if (window.scrollY > window.innerHeight - 100) {
+        header.classList.add('bg-ivory/95', 'backdrop-blur', 'shadow-sm', 'py-0');
+        darkEls.forEach(el => { el.classList.remove('text-ivory', 'text-ivory/90'); el.classList.add('text-ink'); });
+      } else {
+        header.classList.remove('bg-ivory/95', 'backdrop-blur', 'shadow-sm', 'py-0');
+        brand.classList.add('text-ivory'); brand.classList.remove('text-ink');
+        nav.classList.add('text-ivory/90'); nav.classList.remove('text-ink');
+        menuBtn.classList.add('text-ivory'); menuBtn.classList.remove('text-ink');
+      }
+    }
+    window.addEventListener('scroll', onScroll);
+    onScroll();
+
+    // Overlay menu
+    const overlay = document.getElementById('overlay');
+    const openMenu = () => overlay.classList.remove('translate-x-full');
+    const closeMenu = () => overlay.classList.add('translate-x-full');
+    menuBtn.addEventListener('click', openMenu);
+    document.getElementById('close-btn').addEventListener('click', closeMenu);
+    document.querySelectorAll('.overlay-link').forEach(a => a.addEventListener('click', closeMenu));
+
+    // Scroll reveal
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } });
+    }, { threshold: 0.15 });
+    document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+  </script>
+</body>
+</html>
