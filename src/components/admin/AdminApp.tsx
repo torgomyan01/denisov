@@ -134,12 +134,12 @@ export default function AdminApp() {
   const [toast, setToast] = useState({ text: "", tone: "success" as "success" | "error" });
   const [toastVisible, setToastVisible] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [collapsedCats, setCollapsedCats] = useState<Record<number, boolean>>({});
+  const [collapsedCats, setCollapsedCats] = useState<Record<string, boolean>>({});
   const [confirm, setConfirm] = useState<ConfirmState>(null);
   const [lightbox, setLightbox] = useState<string | null>(null);
   const [menuFilter, setMenuFilter] = useState("");
+  const [savedAt, setSavedAt] = useState("");
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const savedAtRef = useRef<string>("");
 
   const dirty = useMemo(
     () => (site ? snapshot(site) !== savedSnap : false),
@@ -158,10 +158,12 @@ export default function AdminApp() {
     const snap = snapshot(normalized);
     setSite(normalized);
     setSavedSnap(snap);
-    savedAtRef.current = new Date().toLocaleTimeString("ru-RU", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+    setSavedAt(
+      new Date().toLocaleTimeString("ru-RU", {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+    );
   }, []);
 
   const loadSite = useCallback(async (): Promise<boolean> => {
@@ -174,6 +176,14 @@ export default function AdminApp() {
     return true;
   }, [showToast, applySavedSite]);
 
+  const forceLogoutLocal = useCallback(() => {
+    setAuthenticated(false);
+    setSite(null);
+    setSavedSnap("");
+    setSavedAt("");
+    setPassword("");
+  }, []);
+
   const persistSite = useCallback(
     async (next: SiteData, successMessage: string): Promise<boolean> => {
       setBusy(true);
@@ -182,16 +192,24 @@ export default function AdminApp() {
         const result = await updateSiteAction(payload);
         if (!result.success) {
           showToast(result.error, "error");
+          if (result.error === "Требуется авторизация") {
+            forceLogoutLocal();
+          }
           return false;
         }
         applySavedSite(result.data ?? payload);
         showToast(successMessage);
         return true;
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Ошибка сохранения";
+        showToast(message, "error");
+        return false;
       } finally {
         setBusy(false);
       }
     },
-    [applySavedSite, showToast],
+    [applySavedSite, forceLogoutLocal, showToast],
   );
 
   const addDish = useCallback(async () => {
@@ -320,10 +338,7 @@ export default function AdminApp() {
     } catch {
       /* ignore */
     }
-    setAuthenticated(false);
-    setSite(null);
-    setSavedSnap("");
-    setPassword("");
+    forceLogoutLocal();
     setBusy(false);
   };
 
@@ -351,7 +366,9 @@ export default function AdminApp() {
       fd.append("file", file);
       const result = await uploadFileAction(fd);
       if (!result.success || !result.data) {
-        showToast(result.success ? "Ошибка загрузки" : result.error, "error");
+        const error = result.success ? "Ошибка загрузки" : result.error;
+        showToast(error, "error");
+        if (error === "Требуется авторизация") forceLogoutLocal();
         return;
       }
       applySavedSite(result.data.site);
@@ -476,7 +493,7 @@ export default function AdminApp() {
               </div>
               <div className="admin-actions">
                 <span className={`chip ${dirty ? "dirty" : "ok"}`}>
-                  {dirty ? "Не сохранено" : savedAtRef.current ? `Сохранено ${savedAtRef.current}` : "Актуально"}
+                  {dirty ? "Не сохранено" : savedAt ? `Сохранено ${savedAt}` : "Актуально"}
                 </span>
                 <a href="/menu" target="_blank" rel="noreferrer" className="btn btn-line lg:hidden">
                   Меню
@@ -841,7 +858,8 @@ export default function AdminApp() {
                       ) : null}
 
                       {site.menu.categories.map((cat, ci) => {
-                        const collapsed = Boolean(collapsedCats[ci]);
+                        const categoryId = cat.id;
+                        const collapsed = Boolean(collapsedCats[categoryId]);
                         const items = cat.items
                           .map((item, ii) => ({ item, ii }))
                           .filter(({ item }) => {
@@ -859,7 +877,7 @@ export default function AdminApp() {
 
                         return (
                           <SortableItem
-                            key={cat.id}
+                            key={categoryId}
                             group="menu-categories"
                             index={ci}
                             className="menu-cat"
@@ -878,7 +896,12 @@ export default function AdminApp() {
                                 <button
                                   type="button"
                                   className="btn-sm btn-ghost"
-                                  onClick={() => setCollapsedCats((prev) => ({ ...prev, [ci]: !prev[ci] }))}
+                                  onClick={() =>
+                                    setCollapsedCats((prev) => ({
+                                      ...prev,
+                                      [categoryId]: !prev[categoryId],
+                                    }))
+                                  }
                                 >
                                   {collapsed ? "Развернуть" : "Свернуть"}
                                 </button>
@@ -887,7 +910,8 @@ export default function AdminApp() {
                                   className="btn-sm btn-ghost"
                                   onClick={() =>
                                     patchSite((d) => {
-                                      d.menu.categories[ci]?.items.push({
+                                      const target = d.menu.categories.find((c) => c.id === categoryId);
+                                      target?.items.push({
                                         id: createClientId("item"),
                                         name: "",
                                         description: "",
@@ -903,7 +927,11 @@ export default function AdminApp() {
                                   className="btn-danger"
                                   onClick={() =>
                                     askDelete("Удалить категорию?", "Все позиции внутри тоже исчезнут.", () => {
-                                      patchSite((d) => { d.menu.categories.splice(ci, 1); });
+                                      patchSite((d) => {
+                                        d.menu.categories = d.menu.categories.filter(
+                                          (c) => c.id !== categoryId,
+                                        );
+                                      });
                                     })
                                   }
                                 >
@@ -916,7 +944,12 @@ export default function AdminApp() {
                               label="Название категории"
                               value={cat.name}
                               placeholder="Например: Завтраки"
-                              onChange={(v) => patchSite((d) => { if (d.menu.categories[ci]) d.menu.categories[ci].name = v; })}
+                              onChange={(v) =>
+                                patchSite((d) => {
+                                  const target = d.menu.categories.find((c) => c.id === categoryId);
+                                  if (target) target.name = v;
+                                })
+                              }
                             />
 
                             {!collapsed ? (
@@ -929,15 +962,17 @@ export default function AdminApp() {
                                 {items.map(({ item, ii }) => (
                                   <SortableItem
                                     key={item.id}
-                                    group={`menu-items-${ci}`}
+                                    group={`menu-items-${categoryId}`}
                                     index={ii}
                                     className="menu-item-wrap"
                                     bodyClassName="menu-item-row"
                                     onReorder={(from, to) =>
                                       patchSite((d) => {
-                                        const catItems = d.menu.categories[ci]?.items;
-                                        if (catItems) {
-                                          d.menu.categories[ci].items = moveItem(catItems, from, to);
+                                        const target = d.menu.categories.find(
+                                          (c) => c.id === categoryId,
+                                        );
+                                        if (target) {
+                                          target.items = moveItem(target.items, from, to);
                                         }
                                       })
                                     }
@@ -946,35 +981,55 @@ export default function AdminApp() {
                                       label="Блюдо"
                                       value={item.name}
                                       placeholder="Название"
-                                      onChange={(v) => patchSite((d) => {
-                                        const row = d.menu.categories[ci]?.items[ii];
-                                        if (row) row.name = v;
-                                      })}
+                                      onChange={(v) =>
+                                        patchSite((d) => {
+                                          const target = d.menu.categories.find(
+                                            (c) => c.id === categoryId,
+                                          );
+                                          const row = target?.items[ii];
+                                          if (row) row.name = v;
+                                        })
+                                      }
                                     />
                                     <Field
                                       label="Описание"
                                       value={item.description}
                                       placeholder="Коротко"
-                                      onChange={(v) => patchSite((d) => {
-                                        const row = d.menu.categories[ci]?.items[ii];
-                                        if (row) row.description = v;
-                                      })}
+                                      onChange={(v) =>
+                                        patchSite((d) => {
+                                          const target = d.menu.categories.find(
+                                            (c) => c.id === categoryId,
+                                          );
+                                          const row = target?.items[ii];
+                                          if (row) row.description = v;
+                                        })
+                                      }
                                     />
                                     <Field
                                       label="Цена"
                                       value={item.price}
                                       placeholder="450"
-                                      onChange={(v) => patchSite((d) => {
-                                        const row = d.menu.categories[ci]?.items[ii];
-                                        if (row) row.price = v;
-                                      })}
+                                      onChange={(v) =>
+                                        patchSite((d) => {
+                                          const target = d.menu.categories.find(
+                                            (c) => c.id === categoryId,
+                                          );
+                                          const row = target?.items[ii];
+                                          if (row) row.price = v;
+                                        })
+                                      }
                                     />
                                     <button
                                       type="button"
                                       className="btn-danger self-end pb-2"
                                       onClick={() =>
                                         askDelete("Удалить позицию?", "Блюдо исчезнет из меню на сайте.", () => {
-                                          patchSite((d) => { d.menu.categories[ci]?.items.splice(ii, 1); });
+                                          patchSite((d) => {
+                                            const target = d.menu.categories.find(
+                                              (c) => c.id === categoryId,
+                                            );
+                                            target?.items.splice(ii, 1);
+                                          });
                                         })
                                       }
                                     >

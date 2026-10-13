@@ -36,6 +36,16 @@ export const getSiteAction = async (): Promise<ActionResult<SiteData>> => {
   }
 };
 
+const toActionError = (error: unknown, fallback: string): string => {
+  if (error instanceof Error && error.message === "Unauthorized") {
+    return "Требуется авторизация";
+  }
+  if (error instanceof Error && error.message.trim()) {
+    return error.message;
+  }
+  return fallback;
+};
+
 export const updateSiteAction = async (
   input: unknown,
 ): Promise<ActionResult<SiteData>> => {
@@ -56,13 +66,7 @@ export const updateSiteAction = async (
     revalidatePath("/sitemap.xml");
     return { success: true, data };
   } catch (error) {
-    const message =
-      error instanceof Error && error.message === "Unauthorized"
-        ? "Требуется авторизация"
-        : error instanceof Error
-          ? error.message
-          : "Ошибка сохранения";
-    return { success: false, error: message };
+    return { success: false, error: toActionError(error, "Ошибка сохранения") };
   }
 };
 
@@ -174,13 +178,7 @@ export const uploadFileAction = async (
 
     return { success: true, data: { url: publicPath, site: saved } };
   } catch (error) {
-    const message =
-      error instanceof Error && error.message === "Unauthorized"
-        ? "Требуется авторизация"
-        : error instanceof Error
-          ? error.message
-          : "Ошибка загрузки";
-    return { success: false, error: message };
+    return { success: false, error: toActionError(error, "Ошибка загрузки") };
   }
 };
 
