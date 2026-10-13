@@ -1,0 +1,137 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+/// Singleton CMS settings (menu page title/note + optional PDF).
+model SiteSettings {
+  id        String   @id @default("main")
+  menuTitle String   @default("Меню") @db.VarChar(255)
+  menuNote  String   @default("") @db.VarChar(500)
+  menuPdf   String?  @db.VarChar(500)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model SiteMeta {
+  id          String   @id @default("main")
+  title       String   @db.VarChar(255)
+  description String   @db.Text
+  keywords    String   @db.Text
+  ogImage     String   @default("") @db.VarChar(500)
+  locale      String   @default("ru_RU") @db.VarChar(16)
+  updatedAt   DateTime @updatedAt
+}
+
+model SiteHero {
+  id                   String   @id @default("main")
+  eyebrow              String   @default("") @db.VarChar(255)
+  title                String   @default("") @db.VarChar(255)
+  subtitle             String   @default("") @db.Text
+  metaLine             String   @default("") @db.VarChar(255)
+  menuButtonLabel      String   @default("Меню") @db.VarChar(64)
+  telegramButtonLabel  String   @default("Telegram") @db.VarChar(64)
+  telegramUrl          String   @default("") @db.VarChar(500)
+  featuredImage        String   @default("") @db.VarChar(500)
+  featuredCaption      String   @default("") @db.VarChar(255)
+  featuredBadge        String   @default("") @db.VarChar(64)
+  updatedAt            DateTime @updatedAt
+}
+
+model SiteAbout {
+  id          String   @id @default("main")
+  eyebrow     String   @default("") @db.VarChar(255)
+  title       String   @default("") @db.Text
+  text        String   @default("") @db.Text
+  stat1Value  String   @default("") @db.VarChar(64)
+  stat1Label  String   @default("") @db.VarChar(64)
+  stat2Value  String   @default("") @db.VarChar(64)
+  stat2Label  String   @default("") @db.VarChar(64)
+  stat3Value  String   @default("") @db.VarChar(64)
+  stat3Label  String   @default("") @db.VarChar(64)
+  updatedAt   DateTime @updatedAt
+}
+
+model SiteContacts {
+  id                   String   @id @default("main")
+  eyebrow              String   @default("") @db.VarChar(255)
+  title                String   @default("") @db.VarChar(255)
+  phone                String   @default("") @db.VarChar(64)
+  addressLabel         String   @default("Адрес") @db.VarChar(64)
+  address              String   @default("") @db.VarChar(255)
+  hoursLabel           String   @default("Часы") @db.VarChar(64)
+  hours                String   @default("") @db.VarChar(255)
+  menuButtonLabel      String   @default("Меню") @db.VarChar(64)
+  telegramButtonLabel  String   @default("Telegram") @db.VarChar(64)
+  telegramUrl          String   @default("") @db.VarChar(500)
+  image                String   @default("") @db.VarChar(500)
+  updatedAt            DateTime @updatedAt
+}
+
+model SiteFooter {
+  id         String   @id @default("main")
+  brand      String   @default("") @db.VarChar(255)
+  copyright  String   @default("") @db.VarChar(255)
+  updatedAt  DateTime @updatedAt
+}
+
+model SiteBrand {
+  id        String   @id @default("main")
+  logo      String   @default("") @db.VarChar(500)
+  updatedAt DateTime @updatedAt
+}
+
+model Dish {
+  id        String   @id @default(cuid())
+  sortOrder Int      @default(0)
+  image     String   @default("") @db.VarChar(500)
+  caption   String   @default("") @db.VarChar(255)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([sortOrder])
+  @@index([isActive, sortOrder])
+}
+
+model MenuCategory {
+  id        String     @id @default(cuid())
+  sortOrder Int        @default(0)
+  name      String     @default("") @db.VarChar(255)
+  isActive  Boolean    @default(true)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  items     MenuItem[]
+
+  @@index([sortOrder])
+  @@index([isActive, sortOrder])
+}
+
+model MenuItem {
+  id          String       @id @default(cuid())
+  categoryId  String
+  category    MenuCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  sortOrder   Int          @default(0)
+  name        String       @default("") @db.VarChar(255)
+  description String       @default("") @db.Text
+  price       String       @default("") @db.VarChar(64)
+  isActive    Boolean      @default(true)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@index([categoryId, sortOrder])
+  @@index([isActive])
+}
+
+model AdminSession {
+  id        String   @id @default(cuid())
+  tokenHash String   @unique @db.VarChar(128)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([expiresAt])
+}
