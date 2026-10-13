@@ -18,6 +18,7 @@ npx prisma db push
 npm run db:seed
 npm run dev
 ```
+
 - Сайт: http://localhost:3000
 - Меню: http://localhost:3000/menu
 - Админ: http://localhost:3000/admin
