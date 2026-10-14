@@ -1,5 +1,6 @@
 import { randomBytes } from "crypto";
 import { prisma } from "@/lib/prisma";
+import { normalizeHeaderLogoMode } from "@/lib/format";
 import { isTempId } from "@/lib/ids";
 import { siteDataSchema } from "@/lib/site-schema";
 import type { SiteData } from "@/types/site";
@@ -109,6 +110,7 @@ export const getSite = async (): Promise<SiteData> => {
     },
     brand: {
       logo: brand.logo,
+      headerLogoMode: normalizeHeaderLogoMode(brand.headerLogoMode),
     },
     dishes: dishes.map((dish) => ({
       id: dish.id,
@@ -139,6 +141,15 @@ const resolveId = (id: string): string => (isTempId(id) ? createId() : id);
 
 export const saveSite = async (content: SiteData): Promise<SiteData> => {
   const normalized = normalizeSite(content);
+
+  // Keep brand title + CTA labels immutable from admin saves.
+  const existingHero = await prisma.siteHero.findUnique({ where: { id: "main" } });
+  if (existingHero) {
+    normalized.hero.title = existingHero.title;
+    normalized.hero.menuButtonLabel = existingHero.menuButtonLabel;
+    normalized.hero.telegramButtonLabel = existingHero.telegramButtonLabel;
+  }
+
   if (normalized.hero.telegramUrl) {
     normalized.contacts.telegramUrl = normalized.hero.telegramUrl;
   }
@@ -245,4 +256,12 @@ export const saveSite = async (content: SiteData): Promise<SiteData> => {
   return getSite();
 };
 
-export { brandLabel, formatPrice, phoneToTel } from "@/lib/format";
+export {
+  brandLabel,
+  brandLabelOrDefault,
+  brandLogoSrc,
+  formatPrice,
+  normalizeHeaderLogoMode,
+  phoneToTel,
+  resolveHeaderLogo,
+} from "@/lib/format";

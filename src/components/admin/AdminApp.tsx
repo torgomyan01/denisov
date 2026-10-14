@@ -18,14 +18,14 @@ import {
   updateSiteAction,
   uploadFileAction,
 } from "@/actions/site";
-import { brandLabel } from "@/lib/format";
+import { brandLabelOrDefault } from "@/lib/format";
 import { createClientId } from "@/lib/ids";
 import {
   formatUploadLimitError,
   MAX_UPLOAD_BYTES,
   MAX_UPLOAD_LABEL,
 } from "@/lib/upload-limits";
-import type { SiteData } from "@/types/site";
+import type { HeaderLogoMode, SiteData } from "@/types/site";
 import {
   ConfirmModal,
   EmptyState,
@@ -52,14 +52,12 @@ const TAB_LABELS: Record<TabId, string> = {
 };
 
 const TAB_HINTS: Record<TabId, string> = {
-  hero: "Главный экран, кнопки и большое фото",
+  hero: "Тексты и медиа первого экрана — бренд и кнопки зафиксированы",
   dishes: "Галерея блюд для слайдера на сайте",
   about: "Тексты и три ключевые цифры",
   contacts: "Телефон, адрес, SEO и футер",
   menu: "Категории и позиции страницы меню",
 };
-
-const DEFAULT_LOGO = "/images/logo.png";
 
 const isTabId = (value: string): value is TabId =>
   (TABS as readonly string[]).includes(value);
@@ -94,6 +92,17 @@ const ensureMenu = (site: SiteData): SiteData => {
     image: dish.image ?? "",
     caption: dish.caption ?? "",
   }));
+  if (!next.brand || typeof next.brand !== "object") {
+    next.brand = { logo: "", headerLogoMode: "text" };
+  } else {
+    next.brand.logo = next.brand.logo ?? "";
+    next.brand.headerLogoMode =
+      next.brand.headerLogoMode === "image" ||
+      next.brand.headerLogoMode === "hidden" ||
+      next.brand.headerLogoMode === "text"
+        ? next.brand.headerLogoMode
+        : "text";
+  }
   return next;
 };
 
@@ -440,7 +449,7 @@ export default function AdminApp() {
     );
   }
 
-  const logoSrc = site.brand.logo?.trim() || DEFAULT_LOGO;
+  const logoSrc = site.brand.logo?.trim() || "";
   const dishCount = site.dishes.length;
   const catCount = site.menu.categories.length;
   const itemCount = site.menu.categories.reduce((n, c) => n + c.items.length, 0);
@@ -452,7 +461,7 @@ export default function AdminApp() {
       <div className="admin-shell">
         <aside className="admin-sidebar" aria-label="Разделы">
           <div className="admin-brand">
-            <p className="admin-brand-kicker">{brandLabel(site)}</p>
+            <p className="admin-brand-kicker">{brandLabelOrDefault(site)}</p>
             <p className="admin-brand-title">Панель</p>
           </div>
 
@@ -538,49 +547,211 @@ export default function AdminApp() {
                   <section className="panel">
                     <div className="panel-head">
                       <div>
-                        <h2 className="panel-title">Hero и кнопки</h2>
-                        <p className="panel-hint">Тексты первого экрана, Telegram и фирменные изображения.</p>
+                        <h2 className="panel-title">Главный экран</h2>
+                        <p className="panel-hint">
+                          Редактируйте тексты и фото. Название бренда и подписи кнопок зафиксированы.
+                        </p>
                       </div>
                     </div>
                     <hr className="section-rule" />
 
-                    <div className="fields-grid cols-2">
-                      <Field label="Верхняя строка" value={site.hero.eyebrow} placeholder="Кафе · Пекарня · …" onChange={(v) => patchSite((d) => { d.hero.eyebrow = v; })} />
-                      <Field label="Заголовок" value={site.hero.title} placeholder="Денисов" onChange={(v) => patchSite((d) => { d.hero.title = v; })} />
-                      <div className="span-2">
-                        <Field label="Подзаголовок" multiline value={site.hero.subtitle} placeholder="Короткое описание атмосферы" onChange={(v) => patchSite((d) => { d.hero.subtitle = v; })} />
-                      </div>
-                      <div className="span-2">
-                        <Field label="Строка адреса / часов" value={site.hero.metaLine} onChange={(v) => patchSite((d) => { d.hero.metaLine = v; })} />
-                      </div>
-                      <Field label="Текст кнопки меню" value={site.hero.menuButtonLabel} onChange={(v) => patchSite((d) => { d.hero.menuButtonLabel = v; })} />
-                      <Field label="Текст кнопки Telegram" value={site.hero.telegramButtonLabel} onChange={(v) => patchSite((d) => { d.hero.telegramButtonLabel = v; })} />
-                      <div className="span-2">
+                    <div className="section-block">
+                      <p className="section-label">Бренд</p>
+                      <div className="hero-brand-card">
                         <Field
-                          label="Ссылка Telegram"
-                          type="url"
-                          value={site.hero.telegramUrl}
-                          placeholder="https://t.me/cafe_Denisov"
-                          hint="Эта ссылка подставится во все Telegram-кнопки на сайте."
-                          onChange={(v) => patchSite((d) => { d.hero.telegramUrl = v; })}
+                          label="Название"
+                          value={site.hero.title || "Денисов"}
+                          readOnly
+                          hint="Фирменное имя на первом экране — не меняется из панели."
                         />
+                        <div>
+                          <p className="field-hint" style={{ marginBottom: "0.65rem" }}>
+                            Кнопки навигации
+                          </p>
+                          <div className="hero-cta-locked" aria-label="Фиксированные кнопки">
+                            <span className="hero-cta-chip is-primary">
+                              {site.hero.menuButtonLabel || "Меню"}
+                              <em>фикс.</em>
+                            </span>
+                            <span className="hero-cta-chip">
+                              {site.hero.telegramButtonLabel || "Telegram"}
+                              <em>фикс.</em>
+                            </span>
+                          </div>
+                        </div>
                       </div>
-                      <Field label="Подпись большого фото" value={site.hero.featuredCaption} onChange={(v) => patchSite((d) => { d.hero.featuredCaption = v; })} />
-                      <Field label="Бейдж" value={site.hero.featuredBadge} onChange={(v) => patchSite((d) => { d.hero.featuredBadge = v; })} />
                     </div>
 
                     <div className="section-block">
-                      <p className="section-label">Медиа</p>
-                      <div className="media-row">
-                        <MediaPreview src={logoSrc} logo />
-                        <FileDrop label="Логотип" title="Перетащите или выберите файл" hint={LOGO_HINT} accept="image/*,.svg" disabled={busy} onFile={(file) => void handleUpload("logo", file)} />
+                      <p className="section-label">Тексты</p>
+                      <div className="fields-grid cols-2">
+                        <div className="span-2">
+                          <Field
+                            label="Верхняя строка"
+                            value={site.hero.eyebrow}
+                            placeholder="Кафе · Санкт-Петербург"
+                            onChange={(v) => patchSite((d) => { d.hero.eyebrow = v; })}
+                          />
+                        </div>
+                        <div className="span-2">
+                          <Field
+                            label="Подзаголовок"
+                            multiline
+                            value={site.hero.subtitle}
+                            placeholder="Короткое описание атмосферы"
+                            onChange={(v) => patchSite((d) => { d.hero.subtitle = v; })}
+                          />
+                        </div>
+                        <div className="span-2">
+                          <Field
+                            label="Адрес и часы"
+                            value={site.hero.metaLine}
+                            placeholder="Московский пр., 71/3 · ежедневно 8:00–22:00"
+                            onChange={(v) => patchSite((d) => { d.hero.metaLine = v; })}
+                          />
+                        </div>
                       </div>
-                      <div className="media-row wide-preview mt-4">
+                    </div>
+
+                    <div className="section-block">
+                      <p className="section-label">Telegram</p>
+                      <div className="fields-grid">
+                        <Field
+                          label="Ссылка"
+                          type="url"
+                          value={site.hero.telegramUrl}
+                          placeholder="https://t.me/cafe_Denisov"
+                          hint="Одна ссылка для всех Telegram-кнопок на сайте."
+                          onChange={(v) => patchSite((d) => { d.hero.telegramUrl = v; })}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="section-block">
+                      <p className="section-label">Логотип в шапке</p>
+                      <p className="panel-hint mb-4">
+                        Редактируйте текст или картинку, разместите в шапке или полностью уберите.
+                        Данные не теряются при скрытии.
+                      </p>
+
+                      <div className="logo-mode-row" role="radiogroup" aria-label="Отображение логотипа">
+                        {(
+                          [
+                            { id: "text", label: "Текст", hint: "Показать текстовый знак" },
+                            { id: "image", label: "Картинка", hint: "Показать загруженный файл" },
+                            { id: "hidden", label: "Убрать", hint: "Полностью скрыть из шапки" },
+                          ] as const
+                        ).map((opt) => {
+                          const active =
+                            (site.brand.headerLogoMode || "text") === opt.id;
+                          return (
+                            <button
+                              key={opt.id}
+                              type="button"
+                              role="radio"
+                              aria-checked={active}
+                              className={`logo-mode-btn${active ? " is-active" : ""}`}
+                              disabled={busy}
+                              title={opt.hint}
+                              onClick={() =>
+                                patchSite((d) => {
+                                  d.brand.headerLogoMode = opt.id as HeaderLogoMode;
+                                })
+                              }
+                            >
+                              <strong>{opt.label}</strong>
+                              <span>{opt.hint}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      <div className="fields-grid mt-4">
+                        <Field
+                          label="Текстовый логотип"
+                          value={site.footer.brand}
+                          placeholder="ДЕНИСОВ"
+                          hint="Редактируется всегда. В шапке виден при режиме «Текст» (и как запасной вариант без картинки)."
+                          onChange={(v) =>
+                            patchSite((d) => {
+                              d.footer.brand = v;
+                            })
+                          }
+                        />
+                      </div>
+
+                      <div className="media-row mt-4">
+                        <MediaPreview src={logoSrc} logo />
+                        <div className="flex flex-col gap-3">
+                          <FileDrop
+                            label="Картинка логотипа"
+                            title="Перетащите или выберите файл"
+                            hint={`${LOGO_HINT}. Чтобы показать в шапке — выберите режим «Картинка».`}
+                            accept="image/*,.svg"
+                            disabled={busy}
+                            onFile={(file) => {
+                              patchSite((d) => {
+                                d.brand.headerLogoMode = "image";
+                              });
+                              void handleUpload("logo", file);
+                            }}
+                          />
+                          {logoSrc ? (
+                            <button
+                              type="button"
+                              className="btn-danger self-start"
+                              disabled={busy}
+                              onClick={() =>
+                                askDelete(
+                                  "Удалить картинку?",
+                                  "Файл логотипа будет очищен. Можно снова загрузить новый.",
+                                  () => {
+                                    patchSite((d) => {
+                                      d.brand.logo = "";
+                                      if (d.brand.headerLogoMode === "image") {
+                                        d.brand.headerLogoMode = "text";
+                                      }
+                                    });
+                                  },
+                                )
+                              }
+                            >
+                              Удалить картинку
+                            </button>
+                          ) : null}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="section-block">
+                      <p className="section-label">Большое фото</p>
+                      <div className="media-row wide-preview">
                         <MediaPreview
                           src={site.hero.featuredImage || ""}
                           onOpen={site.hero.featuredImage ? () => setLightbox(site.hero.featuredImage) : undefined}
                         />
-                        <FileDrop label="Большое фото (featured)" title="Перетащите или выберите файл" hint={UPLOAD_HINT} accept="image/*" disabled={busy} onFile={(file) => void handleUpload("featured", file)} />
+                        <FileDrop
+                          label="Featured-изображение"
+                          title="Перетащите или выберите файл"
+                          hint={UPLOAD_HINT}
+                          accept="image/*"
+                          disabled={busy}
+                          onFile={(file) => void handleUpload("featured", file)}
+                        />
+                      </div>
+                      <div className="fields-grid cols-2 mt-4">
+                        <Field
+                          label="Подпись фото"
+                          value={site.hero.featuredCaption}
+                          placeholder="Например: Утренний стол"
+                          onChange={(v) => patchSite((d) => { d.hero.featuredCaption = v; })}
+                        />
+                        <Field
+                          label="Бейдж"
+                          value={site.hero.featuredBadge}
+                          placeholder="Опционально"
+                          onChange={(v) => patchSite((d) => { d.hero.featuredBadge = v; })}
+                        />
                       </div>
                     </div>
                   </section>
@@ -757,8 +928,18 @@ export default function AdminApp() {
                     <div className="section-block">
                       <p className="section-label">Футер</p>
                       <div className="fields-grid cols-2">
-                        <Field label="Footer — название" value={site.footer.brand} hint="Пусто = «ДЕНИСОВ»" onChange={(v) => patchSite((d) => { d.footer.brand = v; })} />
-                        <Field label="Footer — копирайт" value={site.footer.copyright} onChange={(v) => patchSite((d) => { d.footer.copyright = v; })} />
+                        <Field
+                          label="Название в футере"
+                          value={site.footer.brand}
+                          placeholder="ДЕНИСОВ"
+                          hint="То же поле, что текстовый логотип в Hero. Пусто — без названия."
+                          onChange={(v) => patchSite((d) => { d.footer.brand = v; })}
+                        />
+                        <Field
+                          label="Копирайт"
+                          value={site.footer.copyright}
+                          onChange={(v) => patchSite((d) => { d.footer.copyright = v; })}
+                        />
                       </div>
                     </div>
 
@@ -1051,7 +1232,7 @@ export default function AdminApp() {
                 <aside className="live-preview" aria-label="Живой превью">
                   <div className="live-preview-inner">
                     <div className="live-preview-bar">
-                      <span>Превью Hero</span>
+                      <span>Превью</span>
                       <span>{dirty ? "черновик" : "опубликовано"}</span>
                     </div>
                     <div className="live-hero">
@@ -1066,9 +1247,19 @@ export default function AdminApp() {
                       <div className="live-hero-media">
                         {site.hero.featuredImage ? (
                           // eslint-disable-next-line @next/next/no-img-element
-                          <img src={site.hero.featuredImage} alt="" />
+                          <img
+                            src={site.hero.featuredImage}
+                            alt={site.hero.featuredCaption || ""}
+                          />
                         ) : null}
                       </div>
+                      {site.hero.featuredCaption || site.hero.featuredBadge ? (
+                        <p className="meta" style={{ marginTop: "0.75rem" }}>
+                          {[site.hero.featuredCaption, site.hero.featuredBadge]
+                            .filter(Boolean)
+                            .join(" · ")}
+                        </p>
+                      ) : null}
                     </div>
                   </div>
                 </aside>

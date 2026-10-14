@@ -2,6 +2,9 @@
 
 `ssh -L 3306:127.0.0.1:3306 root@81.177.136.171`
 
+tail -f /var/log/denisov-deploy-status.log
+
+
 Сайт кафе + админ-панель на Next.js App Router, Prisma и MySQL.
 
 ## Требования

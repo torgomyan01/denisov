@@ -56,8 +56,12 @@ export interface SiteFooter {
   copyright: string;
 }
 
+export type HeaderLogoMode = "text" | "image" | "hidden";
+
 export interface SiteBrand {
   logo: string;
+  /** How the logo is shown in the site header. */
+  headerLogoMode: HeaderLogoMode;
 }
 
 export interface MenuItem {

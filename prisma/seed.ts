@@ -54,7 +54,7 @@ type SeedSite = {
     image: string;
   };
   footer: { brand: string; copyright: string };
-  brand: { logo: string };
+  brand: { logo: string; headerLogoMode?: string };
   dishes?: SeedDish[];
   menu?: {
     title?: string;
@@ -125,8 +125,21 @@ async function main() {
 
     await tx.siteBrand.upsert({
       where: { id: "main" },
-      create: { id: "main", ...site.brand },
-      update: { ...site.brand },
+      create: {
+        id: "main",
+        logo: site.brand?.logo ?? "",
+        headerLogoMode: site.brand?.headerLogoMode === "image" ||
+          site.brand?.headerLogoMode === "hidden"
+          ? site.brand.headerLogoMode
+          : "text",
+      },
+      update: {
+        logo: site.brand?.logo ?? "",
+        headerLogoMode: site.brand?.headerLogoMode === "image" ||
+          site.brand?.headerLogoMode === "hidden"
+          ? site.brand.headerLogoMode
+          : "text",
+      },
     });
 
     const dishes = Array.isArray(site.dishes) ? site.dishes : [];

@@ -11,7 +11,7 @@ import {
 export type FieldProps = {
   label: string;
   value: string;
-  onChange: (value: string) => void;
+  onChange?: (value: string) => void;
   placeholder?: string;
   multiline?: boolean;
   type?: "text" | "password" | "url" | "tel";
@@ -19,6 +19,7 @@ export type FieldProps = {
   counter?: { current: number; max: number };
   className?: string;
   autoComplete?: string;
+  readOnly?: boolean;
 };
 
 export const Field = ({
@@ -32,6 +33,7 @@ export const Field = ({
   counter,
   className = "",
   autoComplete,
+  readOnly = false,
 }: FieldProps) => {
   const counterClass =
     counter == null
@@ -43,10 +45,11 @@ export const Field = ({
           : "";
 
   return (
-    <div className={`field ${className}`.trim()}>
+    <div className={`field${readOnly ? " is-locked" : ""} ${className}`.trim()}>
       <div className="field-label-row">
         <label>{label}</label>
-        {counter ? (
+        {readOnly ? <span className="field-lock">фиксировано</span> : null}
+        {!readOnly && counter ? (
           <span className={`field-counter ${counterClass}`}>
             {counter.current}/{counter.max}
           </span>
@@ -56,7 +59,9 @@ export const Field = ({
         <textarea
           value={value}
           placeholder={placeholder}
-          onChange={(e) => onChange(e.target.value)}
+          readOnly={readOnly}
+          tabIndex={readOnly ? -1 : undefined}
+          onChange={(e) => onChange?.(e.target.value)}
         />
       ) : (
         <input
@@ -64,7 +69,9 @@ export const Field = ({
           value={value}
           placeholder={placeholder}
           autoComplete={autoComplete}
-          onChange={(e) => onChange(e.target.value)}
+          readOnly={readOnly}
+          tabIndex={readOnly ? -1 : undefined}
+          onChange={(e) => onChange?.(e.target.value)}
         />
       )}
       {hint ? <p className="field-hint">{hint}</p> : null}

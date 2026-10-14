@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import type { SiteData } from "@/types/site";
-import { brandLabel } from "@/lib/format";
+import { brandLabelOrDefault, resolveHeaderLogo } from "@/lib/format";
 
 interface SiteHeaderProps {
   site: SiteData;
@@ -11,7 +11,9 @@ interface SiteHeaderProps {
 
 export const SiteHeader = ({ site }: SiteHeaderProps) => {
   const [open, setOpen] = useState(false);
-  const brand = brandLabel(site);
+  const { logo, text, mode } = resolveHeaderLogo(site);
+  const a11y = brandLabelOrDefault(site);
+  const showBrand = mode !== "hidden" && Boolean(logo || text);
 
   return (
     <header
@@ -21,10 +23,21 @@ export const SiteHeader = ({ site }: SiteHeaderProps) => {
       <div className="mx-auto flex max-w-[1200px] items-center justify-between px-6 py-4 md:px-10">
         <Link
           href="#top"
-          className="site-logo shrink-0 font-serif text-2xl tracking-[0.35em] md:text-3xl"
-          aria-label={`${brand} — на главную`}
+          className="site-logo shrink-0"
+          aria-label={`${a11y} — на главную`}
         >
-          {brand}
+          {showBrand && logo ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={logo} alt={a11y} className="site-logo-img" />
+          ) : showBrand && text ? (
+            <span className="font-serif text-2xl tracking-[0.35em] md:text-3xl">
+              {text}
+            </span>
+          ) : (
+            <span className="font-sans text-[11px] uppercase tracking-[0.26em] text-ink/45">
+              На главную
+            </span>
+          )}
         </Link>
 
         <nav

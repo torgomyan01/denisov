@@ -80,9 +80,11 @@ model SiteFooter {
 }
 
 model SiteBrand {
-  id        String   @id @default("main")
-  logo      String   @default("") @db.VarChar(500)
-  updatedAt DateTime @updatedAt
+  id             String   @id @default("main")
+  logo           String   @default("") @db.VarChar(500)
+  /// text | image | hidden — how the logo appears in the site header
+  headerLogoMode String   @default("text") @db.VarChar(16)
+  updatedAt      DateTime @updatedAt
 }
 
 model Dish {

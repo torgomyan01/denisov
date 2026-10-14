@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { SiteData } from "@/types/site";
-import { brandLabel, phoneToTel } from "@/lib/format";
+import { brandLabel, brandLabelOrDefault, phoneToTel } from "@/lib/format";
 import { SiteHeader } from "@/components/site/SiteHeader";
 import { DishesGallery } from "@/components/site/DishesGallery";
 import { Reveal } from "@/components/site/Reveal";
@@ -11,6 +11,7 @@ interface HomePageProps {
 
 export const HomePage = ({ site }: HomePageProps) => {
   const brand = brandLabel(site);
+  const brandName = brandLabelOrDefault(site);
   const dishes = site.dishes.filter((d) => d.image || d.caption);
 
   return (
@@ -66,7 +67,7 @@ export const HomePage = ({ site }: HomePageProps) => {
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={site.hero.featuredImage}
-                      alt={site.hero.featuredCaption || brand}
+                      alt={site.hero.featuredCaption || brandName}
                       className="h-full w-full object-cover"
                       width={1040}
                       height={1300}
@@ -190,7 +191,7 @@ export const HomePage = ({ site }: HomePageProps) => {
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={site.contacts.image}
-                    alt={`Атмосфера кафе ${brand}`}
+                    alt={`Атмосфера кафе ${brandName}`}
                     className="h-full w-full object-cover"
                     width={800}
                     height={1000}
@@ -208,7 +209,11 @@ export const HomePage = ({ site }: HomePageProps) => {
         className="mx-auto flex max-w-[1200px] flex-col items-start justify-between gap-4 px-6 py-12 md:flex-row md:items-center md:px-10"
         role="contentinfo"
       >
-        <p className="font-serif text-2xl tracking-[0.35em]">{brand}</p>
+        {brand ? (
+          <p className="font-serif text-2xl tracking-[0.35em]">{brand}</p>
+        ) : (
+          <span className="sr-only">{brandName}</span>
+        )}
         <div className="flex flex-wrap items-center gap-6 font-sans text-[11px] uppercase tracking-[0.26em] text-ink/45">
           <a
             href={site.hero.telegramUrl}

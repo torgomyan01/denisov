@@ -72,6 +72,7 @@ export const siteDataSchema = z.object({
   }),
   brand: z.object({
     logo: z.string(),
+    headerLogoMode: z.enum(["text", "image", "hidden"]).default("text"),
   }),
   menu: z.object({
     title: z.string(),

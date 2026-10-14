@@ -88,6 +88,7 @@ const applyUploadToSite = (
   }
   if (field === "logo") {
     next.brand.logo = publicPath;
+    next.brand.headerLogoMode = "image";
     return next;
   }
   if (field === "menu") {

@@ -3,7 +3,12 @@
 import Link from "next/link";
 import { useEffect } from "react";
 import type { SiteData } from "@/types/site";
-import { brandLabel, formatPrice } from "@/lib/format";
+import {
+  brandLabel,
+  brandLabelOrDefault,
+  formatPrice,
+  resolveHeaderLogo,
+} from "@/lib/format";
 
 interface MenuPageProps {
   site: SiteData;
@@ -18,7 +23,9 @@ const slugify = (name: string, i: number): string => {
 };
 
 export const MenuPageView = ({ site }: MenuPageProps) => {
-  const brand = brandLabel(site);
+  const { logo, text } = resolveHeaderLogo(site);
+  const footerBrand = brandLabel(site);
+  const a11y = brandLabelOrDefault(site);
   const menu = site.menu;
   const categories = (menu.categories || []).filter(
     (c) => c && (c.name || (c.items && c.items.length)),
@@ -57,8 +64,13 @@ export const MenuPageView = ({ site }: MenuPageProps) => {
             </svg>
             <span>На главную</span>
           </Link>
-          <Link href="/" className="mp-brand font-serif">
-            {brand}
+          <Link href="/" className="mp-brand font-serif" aria-label={a11y}>
+            {logo ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={logo} alt={a11y} className="mp-brand-logo" />
+            ) : (
+              text || a11y
+            )}
           </Link>
           <span className="mp-top-spacer" aria-hidden="true" />
         </div>
@@ -119,8 +131,8 @@ export const MenuPageView = ({ site }: MenuPageProps) => {
       </main>
 
       <footer className="mp-foot" role="contentinfo">
-        <Link href="/" className="mp-foot-brand font-serif">
-          {brand}
+        <Link href="/" className="mp-foot-brand font-serif" aria-label={a11y}>
+          {footerBrand || a11y}
         </Link>
         <Link
           href="/#visit"
