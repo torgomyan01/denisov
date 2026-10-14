@@ -1,5 +1,5 @@
 import { createHash, randomBytes, timingSafeEqual } from "crypto";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
 
 const COOKIE_NAME = "denisov_admin_session";
@@ -11,16 +11,36 @@ const hashToken = (token: string): string =>
 const getAdminPassword = (): string =>
   process.env.ADMIN_PASSWORD?.trim() || "denisov2026";
 
-const cookieSecure = (): boolean => {
-  if (process.env.NODE_ENV !== "production") return false;
-  const siteUrl = process.env.SITE_URL?.trim() ?? "";
-  return siteUrl.startsWith("https://");
+/**
+ * Secure cookies must match the browser URL scheme.
+ * SITE_URL alone is unreliable (often https before TLS is live).
+ * Prefer COOKIE_SECURE, then X-Forwarded-Proto from Nginx.
+ */
+const cookieSecure = async (): Promise<boolean> => {
+  const forced = process.env.COOKIE_SECURE?.trim().toLowerCase();
+  if (forced === "true" || forced === "1") return true;
+  if (forced === "false" || forced === "0") return false;
+
+  try {
+    const headerStore = await headers();
+    const proto = headerStore
+      .get("x-forwarded-proto")
+      ?.split(",")[0]
+      ?.trim()
+      .toLowerCase();
+    if (proto === "https") return true;
+    if (proto === "http") return false;
+  } catch {
+    /* no request context */
+  }
+
+  return false;
 };
 
-const sessionCookieOptions = (expiresAt: Date) => ({
+const sessionCookieOptions = async (expiresAt: Date) => ({
   httpOnly: true,
   sameSite: "lax" as const,
-  secure: cookieSecure(),
+  secure: await cookieSecure(),
   path: "/",
   expires: expiresAt,
 });
@@ -44,7 +64,7 @@ export const createSession = async (): Promise<string> => {
   });
 
   const cookieStore = await cookies();
-  cookieStore.set(COOKIE_NAME, token, sessionCookieOptions(expiresAt));
+  cookieStore.set(COOKIE_NAME, token, await sessionCookieOptions(expiresAt));
 
   return token;
 };
@@ -57,7 +77,10 @@ export const destroySession = async (): Promise<void> => {
       where: { tokenHash: hashToken(token) },
     });
   }
-  cookieStore.delete(COOKIE_NAME);
+  cookieStore.set(COOKIE_NAME, "", {
+    ...(await sessionCookieOptions(new Date(0))),
+    maxAge: 0,
+  });
 };
 
 const touchSession = async (token: string): Promise<void> => {
@@ -67,7 +90,7 @@ const touchSession = async (token: string): Promise<void> => {
     data: { expiresAt },
   });
   const cookieStore = await cookies();
-  cookieStore.set(COOKIE_NAME, token, sessionCookieOptions(expiresAt));
+  cookieStore.set(COOKIE_NAME, token, await sessionCookieOptions(expiresAt));
 };
 
 export const getSession = async (): Promise<boolean> => {
@@ -83,7 +106,10 @@ export const getSession = async (): Promise<boolean> => {
   if (session.expiresAt.getTime() < Date.now()) {
     await prisma.adminSession.delete({ where: { id: session.id } });
     try {
-      cookieStore.delete(COOKIE_NAME);
+      cookieStore.set(COOKIE_NAME, "", {
+        ...(await sessionCookieOptions(new Date(0))),
+        maxAge: 0,
+      });
     } catch {
       /* ignore — read-only contexts */
     }
@@ -109,7 +135,10 @@ export const requireAuth = async (): Promise<void> => {
       await prisma.adminSession.delete({ where: { id: session.id } }).catch(() => undefined);
     }
     try {
-      cookieStore.delete(COOKIE_NAME);
+      cookieStore.set(COOKIE_NAME, "", {
+        ...(await sessionCookieOptions(new Date(0))),
+        maxAge: 0,
+      });
     } catch {
       /* ignore */
     }
