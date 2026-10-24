@@ -65,11 +65,8 @@ export const HomeMenuSlider = ({
     if (item.showInDelivery === false) return;
     if (
       !isCategoryAvailableNow({
-        id: item.categoryId,
-        name: item.categoryName,
         availableFrom: item.availableFrom,
         availableTo: item.availableTo,
-        items: [],
       })
     ) {
       return;
@@ -122,11 +119,8 @@ export const HomeMenuSlider = ({
               item.inStock !== false &&
               item.showInDelivery !== false &&
               isCategoryAvailableNow({
-                id: item.categoryId,
-                name: item.categoryName,
                 availableFrom: item.availableFrom,
                 availableTo: item.availableTo,
-                items: [],
               });
 
             return (
