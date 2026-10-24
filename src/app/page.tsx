@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { HomePage } from "@/components/site/HomePage";
+import { getCustomer } from "@/lib/customer-auth";
 import { getSite } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
@@ -45,7 +46,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function Page() {
-  const site = await getSite();
+  const [site, customer] = await Promise.all([getSite(), getCustomer()]);
   const siteUrl = process.env.SITE_URL || "http://localhost:3000";
 
   const jsonLd = {
@@ -75,7 +76,7 @@ export default async function Page() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <HomePage site={site} />
+      <HomePage site={site} customer={customer} />
     </>
   );
 }

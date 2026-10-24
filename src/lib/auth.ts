@@ -1,5 +1,6 @@
 import { createHash, randomBytes, timingSafeEqual } from "crypto";
-import { cookies, headers } from "next/headers";
+import { cookies } from "next/headers";
+import { sessionCookieOptions } from "@/lib/cookie-secure";
 import { prisma } from "@/lib/prisma";
 
 const COOKIE_NAME = "denisov_admin_session";
@@ -10,40 +11,6 @@ const hashToken = (token: string): string =>
 
 const getAdminPassword = (): string =>
   process.env.ADMIN_PASSWORD?.trim() || "denisov2026";
-
-/**
- * Secure cookies must match the browser URL scheme.
- * SITE_URL alone is unreliable (often https before TLS is live).
- * Prefer COOKIE_SECURE, then X-Forwarded-Proto from Nginx.
- */
-const cookieSecure = async (): Promise<boolean> => {
-  const forced = process.env.COOKIE_SECURE?.trim().toLowerCase();
-  if (forced === "true" || forced === "1") return true;
-  if (forced === "false" || forced === "0") return false;
-
-  try {
-    const headerStore = await headers();
-    const proto = headerStore
-      .get("x-forwarded-proto")
-      ?.split(",")[0]
-      ?.trim()
-      .toLowerCase();
-    if (proto === "https") return true;
-    if (proto === "http") return false;
-  } catch {
-    /* no request context */
-  }
-
-  return false;
-};
-
-const sessionCookieOptions = async (expiresAt: Date) => ({
-  httpOnly: true,
-  sameSite: "lax" as const,
-  secure: await cookieSecure(),
-  path: "/",
-  expires: expiresAt,
-});
 
 export const verifyPassword = (password: string): boolean => {
   const expected = Buffer.from(getAdminPassword());

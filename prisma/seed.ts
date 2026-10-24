@@ -180,6 +180,46 @@ async function main() {
         },
       });
     }
+
+    const pickupCount = await tx.pickupPoint.count();
+    if (pickupCount === 0) {
+      await tx.pickupPoint.create({
+        data: {
+          id: createId(),
+          name: "Денисов на Московском",
+          phone: site.contacts.phone || "+79819439888",
+          address:
+            site.contacts.address ||
+            "Санкт-Петербург, Московский пр., 71/3",
+          lat: 59.89135,
+          lng: 30.31985,
+          sortOrder: 0,
+          isActive: true,
+        },
+      });
+    }
+
+    await tx.deliverySettings.upsert({
+      where: { id: "main" },
+      create: {
+        id: "main",
+        title: "Доставка из Денисова",
+        subtitle:
+          site.contacts.address
+            ? `${site.contacts.address} · ${site.contacts.hours || "ежедневно 8:00–22:00"}`
+            : "Московский пр., 71/3 · ежедневно 8:00–22:00",
+        ordersEnabled: true,
+        minOrderAmount: 0,
+        deliveryFee: 0,
+        freeDeliveryFrom: 0,
+        zoneMode: "radius",
+        zoneRadiusKm: 5,
+        zoneCenterLat: 59.89135,
+        zoneCenterLng: 30.31985,
+        zonePolygonJson: "[]",
+      },
+      update: {},
+    });
   });
 
   console.log("Seeded relational CMS tables from site.json");

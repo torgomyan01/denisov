@@ -1,46 +1,54 @@
 import Link from "next/link";
+import type { CustomerPublic } from "@/lib/customer-auth";
 import type { SiteData } from "@/types/site";
+import { getHomeFeaturedDishes } from "@/lib/home-menu-featured";
+import { createDefaultDeliverySettings } from "@/lib/delivery-defaults";
 import { brandLabel, brandLabelOrDefault, phoneToTel } from "@/lib/format";
 import { SiteHeader } from "@/components/site/SiteHeader";
-import { DishesGallery } from "@/components/site/DishesGallery";
+import { CompanyRequisites } from "@/components/site/CompanyRequisites";
+import { HomeMenuSlider } from "@/components/site/HomeMenuSlider";
 import { Reveal } from "@/components/site/Reveal";
+import { underlineLink } from "@/components/site/styles";
 
 interface HomePageProps {
   site: SiteData;
+  customer: CustomerPublic | null;
 }
 
-export const HomePage = ({ site }: HomePageProps) => {
+export const HomePage = ({ site, customer }: HomePageProps) => {
   const brand = brandLabel(site);
   const brandName = brandLabelOrDefault(site);
-  const dishes = site.dishes.filter((d) => d.image || d.caption);
+  const featuredDishes = getHomeFeaturedDishes(site.menu);
+  const ordersEnabled =
+    (site.delivery ?? createDefaultDeliverySettings()).ordersEnabled !== false;
 
   return (
     <>
       <a
         href="#main"
-        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[100] focus:bg-ink focus:px-4 focus:py-2 focus:text-paper"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:bg-ink focus:px-4 focus:py-2 focus:text-paper"
       >
         Перейти к содержимому
       </a>
 
-      <SiteHeader site={site} />
+      <SiteHeader site={site} customer={customer} />
 
       <main id="main">
-        <section id="top" className="hero-wash relative overflow-hidden" aria-label="Главный экран">
+        <section id="top" className="relative overflow-hidden bg-[radial-gradient(ellipse_80%_60%_at_70%_20%,rgba(239,231,216,.85)_0%,transparent_60%),radial-gradient(ellipse_50%_40%_at_10%_80%,rgba(156,107,74,.06)_0%,transparent_55%)]" aria-label="Главный экран">
           <div className="mx-auto max-w-[1200px] px-6 pt-16 pb-6 md:px-10 md:pt-24 md:pb-10">
             <div className="grid items-center gap-12 md:grid-cols-12 md:gap-10 lg:gap-16">
               <div className="md:col-span-6 lg:col-span-5">
-                <p className="hero-a d1 font-sans text-[11px] uppercase tracking-[0.42em] text-clay">
+                <p className="animate-hero-fade font-sans text-[11px] uppercase tracking-[0.42em] text-clay [animation-delay:.15s]">
                   {site.hero.eyebrow}
                 </p>
-                <div className="hero-a d1 hairline mt-5 mb-8 max-w-[140px]" aria-hidden="true" />
-                <h1 className="hero-a d2 font-serif text-6xl leading-[0.9] tracking-tight md:text-7xl lg:text-[5.75rem]">
+                <div className="mt-5 mb-8 h-px max-w-[140px] animate-hero-fade bg-[linear-gradient(90deg,transparent,rgba(156,107,74,.55),transparent)] [animation-delay:.15s]" aria-hidden="true" />
+                <h1 className="animate-hero-fade font-serif [animation-delay:.35s] text-6xl leading-[0.9] tracking-tight md:text-7xl lg:text-[5.75rem]">
                   {site.hero.title}
                 </h1>
-                <p className="hero-a d3 mt-7 max-w-md font-serif text-xl italic leading-relaxed text-ink/65 md:text-2xl">
+                <p className="animate-hero-fade [animation-delay:.55s] mt-7 max-w-md font-serif text-xl italic leading-relaxed text-ink/65 md:text-2xl">
                   {site.hero.subtitle}
                 </p>
-                <div className="hero-a d4 mt-9 flex flex-wrap items-center gap-3">
+                <div className="animate-hero-fade [animation-delay:.75s] mt-9 flex flex-wrap items-center gap-3">
                   <Link
                     href="/menu"
                     className="inline-flex items-center gap-2 rounded-full bg-ink px-6 py-3.5 font-sans text-[12px] uppercase tracking-[0.26em] text-paper shadow-sm transition hover:bg-clay"
@@ -56,19 +64,19 @@ export const HomePage = ({ site }: HomePageProps) => {
                     {site.hero.telegramButtonLabel}
                   </a>
                 </div>
-                <p className="hero-a d5 mt-10 font-sans text-[11px] uppercase tracking-[0.26em] text-ink/40">
+                <p className="animate-hero-fade [animation-delay:.95s] mt-10 font-sans text-[11px] uppercase tracking-[0.26em] text-ink/40">
                   {site.hero.metaLine}
                 </p>
               </div>
 
-              <div className="hero-img md:col-span-6 lg:col-span-7">
-                <figure className="dish relative">
+              <div className="animate-hero-soft [animation-delay:.4s] md:col-span-6 lg:col-span-7">
+                <figure className="group relative">
                   <div className="aspect-[4/5] overflow-hidden bg-sand sm:aspect-[5/6] md:aspect-[4/5] lg:ml-auto lg:max-w-[520px]">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={site.hero.featuredImage}
                       alt={site.hero.featuredCaption || brandName}
-                      className="h-full w-full object-cover"
+                      className="h-full w-full object-cover transition-transform duration-[1200ms] ease-[cubic-bezier(.22,1,.36,1)] group-hover:scale-[1.04]"
                       width={1040}
                       height={1300}
                       fetchPriority="high"
@@ -89,7 +97,10 @@ export const HomePage = ({ site }: HomePageProps) => {
               </div>
             </div>
 
-            <DishesGallery dishes={dishes} />
+            <HomeMenuSlider
+              items={featuredDishes}
+              ordersEnabled={ordersEnabled}
+            />
           </div>
         </section>
 
@@ -205,29 +216,29 @@ export const HomePage = ({ site }: HomePageProps) => {
         </section>
       </main>
 
-      <footer
-        className="mx-auto flex max-w-[1200px] flex-col items-start justify-between gap-4 px-6 py-12 md:flex-row md:items-center md:px-10"
-        role="contentinfo"
-      >
-        {brand ? (
-          <p className="font-serif text-2xl tracking-[0.35em]">{brand}</p>
-        ) : (
-          <span className="sr-only">{brandName}</span>
-        )}
-        <div className="flex flex-wrap items-center gap-6 font-sans text-[11px] uppercase tracking-[0.26em] text-ink/45">
-          <a
-            href={site.hero.telegramUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="u hover:text-clay"
-          >
-            {site.hero.telegramButtonLabel}
-          </a>
-          <Link href="/menu" className="u hover:text-clay">
-            Меню
-          </Link>
-          <span>{site.footer.copyright}</span>
+      <footer role="contentinfo">
+        <div className="mx-auto flex max-w-[1200px] flex-col items-start justify-between gap-4 px-6 py-12 md:flex-row md:items-center md:px-10">
+          {brand ? (
+            <p className="font-serif text-2xl tracking-[0.35em]">{brand}</p>
+          ) : (
+            <span className="sr-only">{brandName}</span>
+          )}
+          <div className="flex flex-wrap items-center gap-6 font-sans text-[11px] uppercase tracking-[0.26em] text-ink/45">
+            <a
+              href={site.hero.telegramUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`${underlineLink} hover:text-clay`}
+            >
+              {site.hero.telegramButtonLabel}
+            </a>
+            <Link href="/menu" className={`${underlineLink} hover:text-clay`}>
+              Меню
+            </Link>
+            <span>{site.footer.copyright}</span>
+          </div>
         </div>
+        <CompanyRequisites />
       </footer>
     </>
   );

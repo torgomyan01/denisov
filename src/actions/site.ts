@@ -6,6 +6,10 @@ import { revalidatePath } from "next/cache";
 import { requireAuth } from "@/lib/auth";
 import { createClientId } from "@/lib/ids";
 import { optimizeImageUpload } from "@/lib/image";
+import {
+  createDefaultMenuCategory,
+  createDefaultMenuItem,
+} from "@/lib/delivery-defaults";
 import { getSite, normalizeSite, saveSite } from "@/lib/site";
 import { siteDataSchema, uploadFieldSchema } from "@/lib/site-schema";
 import {
@@ -95,6 +99,14 @@ const applyUploadToSite = (
     next.menuPdf = publicPath;
     return next;
   }
+  if (field === "deliveryBannerDesktop") {
+    next.delivery.bannerDesktop = publicPath;
+    return next;
+  }
+  if (field === "deliveryBannerMobile") {
+    next.delivery.bannerMobile = publicPath;
+    return next;
+  }
 
   const dishMatch = /^dish-(\d+)$/.exec(field);
   if (dishMatch) {
@@ -108,6 +120,30 @@ const applyUploadToSite = (
       image: publicPath,
       caption: current?.caption ?? "",
     };
+    return next;
+  }
+
+  const menuItemMatch = /^menu-item-(\d+)-(\d+)$/.exec(field);
+  if (menuItemMatch) {
+    const catIndex = Number(menuItemMatch[1]);
+    const itemIndex = Number(menuItemMatch[2]);
+    while (next.menu.categories.length <= catIndex) {
+      next.menu.categories.push(
+        createDefaultMenuCategory({ id: createClientId("cat") }),
+      );
+    }
+    const category = next.menu.categories[catIndex];
+    while (category.items.length <= itemIndex) {
+      category.items.push(
+        createDefaultMenuItem({ id: createClientId("item") }),
+      );
+    }
+    const current = category.items[itemIndex];
+    category.items[itemIndex] = createDefaultMenuItem({
+      ...current,
+      id: current?.id ?? createClientId("item"),
+      image: publicPath,
+    });
     return next;
   }
 
@@ -134,8 +170,9 @@ export const uploadFileAction = async (
     }
 
     const dishMatch = /^dish-(\d+)$/.exec(fieldRaw);
+    const menuItemMatch = /^menu-item-(\d+)-(\d+)$/.exec(fieldRaw);
     const known = uploadFieldSchema.safeParse(fieldRaw);
-    if (!known.success && !dishMatch) {
+    if (!known.success && !dishMatch && !menuItemMatch) {
       return { success: false, error: "Неизвестное поле загрузки" };
     }
 
@@ -167,7 +204,6 @@ export const uploadFileAction = async (
     const filename = `${fieldRaw}-${Date.now()}${outExt}`;
     await writeFile(join(uploadsDir, filename), bytes);
     const publicPath = `/uploads/${filename}`;
-
 
     const current = await getSite();
     const updated = applyUploadToSite(current, fieldRaw, publicPath);

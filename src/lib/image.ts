@@ -1,9 +1,10 @@
 import sharp, { type Sharp } from "sharp";
 
-const MAX_EDGE = 1600;
+/** Match client product preset — no oversized photos on the site. */
+const MAX_EDGE = 1000;
 const JPEG_QUALITY = 72;
 const WEBP_QUALITY = 70;
-const TARGET_MAX_BYTES = 450_000;
+const TARGET_MAX_BYTES = 400_000;
 
 export type OptimizedImage = {
   buffer: Uint8Array;

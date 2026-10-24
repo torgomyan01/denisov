@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { MenuPageView } from "@/components/site/MenuPage";
+import { getCustomer } from "@/lib/customer-auth";
 import { getSite } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
@@ -19,6 +20,6 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function MenuPage() {
-  const site = await getSite();
-  return <MenuPageView site={site} />;
+  const [site, customer] = await Promise.all([getSite(), getCustomer()]);
+  return <MenuPageView site={site} customer={customer} />;
 }

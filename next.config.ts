@@ -1,6 +1,14 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Multipart uploads: client compresses first; keep a small headroom over 1 MB.
+  experimental: {
+    agentUpgrade: "security",
+    serverActions: {
+      bodySizeLimit: "2mb",
+    },
+  },
+  serverExternalPackages: ["sharp"],
   turbopack: {
     rules: {
       "*.css": {

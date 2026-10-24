@@ -1,5 +1,7 @@
 "use client";
 
+import { GripVertical } from "lucide-react";
+import { cx } from "@/components/admin/styles";
 import {
   createContext,
   useCallback,
@@ -117,7 +119,13 @@ export const SortableItem = ({
 
   return (
     <div
-      className={`sortable-item ${className}${isDragging ? " is-dragging" : ""}${isOver ? " is-drop-target" : ""}`}
+      className={cx(
+        "relative flex items-stretch gap-[6px]",
+        className,
+        isDragging && "opacity-40",
+        isOver &&
+          "shadow-[0_0_0_2px_rgba(156,107,74,0.55)] before:pointer-events-none before:absolute before:top-[-3px] before:right-0 before:left-[34px] before:h-[3px] before:rounded-full before:bg-clay before:content-['']",
+      )}
       onDragOver={onDragOver}
       onDrop={onDrop}
       onDragEnd={onDragEnd}
@@ -125,23 +133,16 @@ export const SortableItem = ({
       <button
         ref={handleRef}
         type="button"
-        className="drag-handle"
+        className="grid min-h-9 w-7 shrink-0 cursor-grab place-items-center self-stretch rounded-[10px] border border-ink/12 bg-white/70 p-0 text-ink/48 transition duration-150 hover:border-clay/40 hover:bg-white hover:text-clay active:cursor-grabbing"
         draggable
         aria-label="Перетащить"
         title="Перетащить"
         onDragStart={onDragStart}
         onDragEnd={onDragEnd}
       >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-          <circle cx="9" cy="6" r="1.5" />
-          <circle cx="15" cy="6" r="1.5" />
-          <circle cx="9" cy="12" r="1.5" />
-          <circle cx="15" cy="12" r="1.5" />
-          <circle cx="9" cy="18" r="1.5" />
-          <circle cx="15" cy="18" r="1.5" />
-        </svg>
+        <GripVertical size={14} strokeWidth={2} aria-hidden="true" />
       </button>
-      <div className={`sortable-body ${bodyClassName}`.trim()}>{children}</div>
+      <div className={cx("min-w-0 flex-1", bodyClassName)}>{children}</div>
     </div>
   );
 };

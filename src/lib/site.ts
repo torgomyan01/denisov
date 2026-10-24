@@ -1,12 +1,95 @@
 import { randomBytes } from "crypto";
+import {
+  createDefaultDeliverySettings,
+  createDefaultMenuCategory,
+  createDefaultMenuItem,
+  normalizeZoneMode,
+  parseNonNegInt,
+  parseOptionalFloat,
+  parseZonePolygon,
+} from "@/lib/delivery-defaults";
 import { prisma } from "@/lib/prisma";
 import { normalizeHeaderLogoMode } from "@/lib/format";
 import { isTempId } from "@/lib/ids";
 import { siteDataSchema } from "@/lib/site-schema";
-import type { SiteData } from "@/types/site";
+import type { DeliverySettings, MenuItem, SiteData } from "@/types/site";
 
 const createId = (): string => `c${randomBytes(12).toString("hex")}`;
 
+const mapMenuItem = (item: {
+  id: string;
+  name?: string | null;
+  description?: string | null;
+  price?: string | null;
+  image?: string | null;
+  weight?: string | null;
+  kcal?: number | null;
+  protein?: number | null;
+  fat?: number | null;
+  carbs?: number | null;
+  showInDelivery?: boolean | null;
+  inStock?: boolean | null;
+  showInUpsell?: boolean | null;
+  upsellSortOrder?: number | null;
+}): MenuItem =>
+  createDefaultMenuItem({
+    id: item.id,
+    name: item.name ?? "",
+    description: item.description ?? "",
+    price: item.price ?? "",
+    image: item.image ?? "",
+    weight: item.weight ?? "",
+    kcal: parseOptionalFloat(item.kcal),
+    protein: parseOptionalFloat(item.protein),
+    fat: parseOptionalFloat(item.fat),
+    carbs: parseOptionalFloat(item.carbs),
+    showInDelivery: item.showInDelivery !== false,
+    inStock: item.inStock !== false,
+    showInUpsell: Boolean(item.showInUpsell),
+    upsellSortOrder: parseNonNegInt(item.upsellSortOrder, 0),
+  });
+
+const mapDeliveryRow = (row: {
+  bannerDesktop: string;
+  bannerMobile: string;
+  title: string;
+  subtitle: string;
+  ordersEnabled: boolean;
+  minOrderAmount: number;
+  deliveryFee: number;
+  freeDeliveryFrom: number;
+  zoneMode: string;
+  zoneRadiusKm: number;
+  zoneCenterLat: number | null;
+  zoneCenterLng: number | null;
+  zonePolygonJson: string;
+} | null): DeliverySettings => {
+  if (!row) return createDefaultDeliverySettings();
+  let polygon: Array<[number, number]> = [];
+  try {
+    polygon = parseZonePolygon(JSON.parse(row.zonePolygonJson || "[]"));
+  } catch {
+    polygon = [];
+  }
+  return {
+    bannerDesktop: row.bannerDesktop ?? "",
+    bannerMobile: row.bannerMobile ?? "",
+    title: row.title || createDefaultDeliverySettings().title,
+    subtitle: row.subtitle ?? "",
+    ordersEnabled: row.ordersEnabled !== false,
+    minOrderAmount: parseNonNegInt(row.minOrderAmount, 0),
+    deliveryFee: parseNonNegInt(row.deliveryFee, 0),
+    freeDeliveryFrom: parseNonNegInt(row.freeDeliveryFrom, 0),
+    zoneMode: normalizeZoneMode(row.zoneMode),
+    zoneRadiusKm:
+      Number.isFinite(row.zoneRadiusKm) && row.zoneRadiusKm >= 0
+        ? row.zoneRadiusKm
+        : 5,
+    zoneCenterLat: parseOptionalFloat(row.zoneCenterLat),
+    zoneCenterLng: parseOptionalFloat(row.zoneCenterLng),
+    zonePolygon: polygon,
+  };
+};
 
 export const normalizeSite = (raw: unknown): SiteData => {
   const parsed = siteDataSchema.parse(raw);
@@ -15,46 +98,67 @@ export const normalizeSite = (raw: unknown): SiteData => {
     parsed.menu = { title: "Меню", note: "", categories: [] };
   }
   if (!Array.isArray(parsed.menu.categories)) parsed.menu.categories = [];
-  parsed.menu.categories = parsed.menu.categories.map((category) => ({
-    id: category.id,
-    name: category.name ?? "",
-    items: Array.isArray(category.items)
-      ? category.items.map((item) => ({
-          id: item.id,
-          name: item.name ?? "",
-          description: item.description ?? "",
-          price: item.price ?? "",
-        }))
-      : [],
-  }));
+  parsed.menu.categories = parsed.menu.categories.map((category) =>
+    createDefaultMenuCategory({
+      id: category.id,
+      name: category.name ?? "",
+      availableFrom: category.availableFrom ?? "",
+      availableTo: category.availableTo ?? "",
+      items: Array.isArray(category.items)
+        ? category.items.map((item) => mapMenuItem(item))
+        : [],
+    }),
+  );
+  parsed.delivery = {
+    ...createDefaultDeliverySettings(),
+    ...parsed.delivery,
+    zoneMode: normalizeZoneMode(parsed.delivery?.zoneMode),
+    zonePolygon: parseZonePolygon(parsed.delivery?.zonePolygon ?? []),
+    zoneCenterLat: parseOptionalFloat(parsed.delivery?.zoneCenterLat),
+    zoneCenterLng: parseOptionalFloat(parsed.delivery?.zoneCenterLng),
+    minOrderAmount: parseNonNegInt(parsed.delivery?.minOrderAmount, 0),
+    deliveryFee: parseNonNegInt(parsed.delivery?.deliveryFee, 0),
+    freeDeliveryFrom: parseNonNegInt(parsed.delivery?.freeDeliveryFrom, 0),
+  };
   return parsed;
 };
 
 export const getSite = async (): Promise<SiteData> => {
-  const [settings, meta, hero, about, contacts, footer, brand, dishes, categories] =
-    await Promise.all([
-      prisma.siteSettings.findUnique({ where: { id: "main" } }),
-      prisma.siteMeta.findUnique({ where: { id: "main" } }),
-      prisma.siteHero.findUnique({ where: { id: "main" } }),
-      prisma.siteAbout.findUnique({ where: { id: "main" } }),
-      prisma.siteContacts.findUnique({ where: { id: "main" } }),
-      prisma.siteFooter.findUnique({ where: { id: "main" } }),
-      prisma.siteBrand.findUnique({ where: { id: "main" } }),
-      prisma.dish.findMany({
-        where: { isActive: true },
-        orderBy: { sortOrder: "asc" },
-      }),
-      prisma.menuCategory.findMany({
-        where: { isActive: true },
-        orderBy: { sortOrder: "asc" },
-        include: {
-          items: {
-            where: { isActive: true },
-            orderBy: { sortOrder: "asc" },
-          },
+  const [
+    settings,
+    meta,
+    hero,
+    about,
+    contacts,
+    footer,
+    brand,
+    dishes,
+    categories,
+    deliveryRow,
+  ] = await Promise.all([
+    prisma.siteSettings.findUnique({ where: { id: "main" } }),
+    prisma.siteMeta.findUnique({ where: { id: "main" } }),
+    prisma.siteHero.findUnique({ where: { id: "main" } }),
+    prisma.siteAbout.findUnique({ where: { id: "main" } }),
+    prisma.siteContacts.findUnique({ where: { id: "main" } }),
+    prisma.siteFooter.findUnique({ where: { id: "main" } }),
+    prisma.siteBrand.findUnique({ where: { id: "main" } }),
+    prisma.dish.findMany({
+      where: { isActive: true },
+      orderBy: { sortOrder: "asc" },
+    }),
+    prisma.menuCategory.findMany({
+      where: { isActive: true },
+      orderBy: { sortOrder: "asc" },
+      include: {
+        items: {
+          where: { isActive: true },
+          orderBy: { sortOrder: "asc" },
         },
-      }),
-    ]);
+      },
+    }),
+    prisma.deliverySettings.findUnique({ where: { id: "main" } }),
+  ]);
 
   if (!meta || !hero || !about || !contacts || !footer || !brand || !settings) {
     throw new Error("Site content is not seeded. Run: npm run db:seed");
@@ -120,17 +224,17 @@ export const getSite = async (): Promise<SiteData> => {
     menu: {
       title: settings.menuTitle,
       note: settings.menuNote,
-      categories: categories.map((category) => ({
-        id: category.id,
-        name: category.name,
-        items: category.items.map((item) => ({
-          id: item.id,
-          name: item.name,
-          description: item.description,
-          price: item.price,
-        })),
-      })),
+      categories: categories.map((category) =>
+        createDefaultMenuCategory({
+          id: category.id,
+          name: category.name,
+          availableFrom: category.availableFrom ?? "",
+          availableTo: category.availableTo ?? "",
+          items: category.items.map((item) => mapMenuItem(item)),
+        }),
+      ),
     },
+    delivery: mapDeliveryRow(deliveryRow),
     menuPdf: settings.menuPdf ?? undefined,
   };
 
@@ -168,6 +272,8 @@ export const saveSite = async (content: SiteData): Promise<SiteData> => {
       id: categoryId,
       sortOrder: index,
       name: category.name,
+      availableFrom: category.availableFrom?.trim() || "",
+      availableTo: category.availableTo?.trim() || "",
       isActive: true,
       items: category.items.map((item, itemIndex) => ({
         id: resolveId(item.id),
@@ -176,12 +282,25 @@ export const saveSite = async (content: SiteData): Promise<SiteData> => {
         name: item.name,
         description: item.description,
         price: item.price,
+        image: item.image ?? "",
+        weight: item.weight ?? "",
+        kcal: parseOptionalFloat(item.kcal),
+        protein: parseOptionalFloat(item.protein),
+        fat: parseOptionalFloat(item.fat),
+        carbs: parseOptionalFloat(item.carbs),
+        showInDelivery: item.showInDelivery !== false,
+        inStock: item.inStock !== false,
+        showInUpsell: Boolean(item.showInUpsell),
+        upsellSortOrder: parseNonNegInt(item.upsellSortOrder, 0),
         isActive: true,
       })),
     };
   });
 
-  await prisma.$transaction(async (tx) => {
+  const delivery = normalized.delivery;
+
+  await prisma.$transaction(
+    async (tx) => {
     await tx.siteSettings.upsert({
       where: { id: "main" },
       create: {
@@ -233,6 +352,41 @@ export const saveSite = async (content: SiteData): Promise<SiteData> => {
       update: { ...normalized.brand },
     });
 
+    await tx.deliverySettings.upsert({
+      where: { id: "main" },
+      create: {
+        id: "main",
+        bannerDesktop: delivery.bannerDesktop,
+        bannerMobile: delivery.bannerMobile,
+        title: delivery.title,
+        subtitle: delivery.subtitle,
+        ordersEnabled: delivery.ordersEnabled,
+        minOrderAmount: delivery.minOrderAmount,
+        deliveryFee: delivery.deliveryFee,
+        freeDeliveryFrom: delivery.freeDeliveryFrom,
+        zoneMode: delivery.zoneMode,
+        zoneRadiusKm: delivery.zoneRadiusKm,
+        zoneCenterLat: delivery.zoneCenterLat,
+        zoneCenterLng: delivery.zoneCenterLng,
+        zonePolygonJson: JSON.stringify(delivery.zonePolygon ?? []),
+      },
+      update: {
+        bannerDesktop: delivery.bannerDesktop,
+        bannerMobile: delivery.bannerMobile,
+        title: delivery.title,
+        subtitle: delivery.subtitle,
+        ordersEnabled: delivery.ordersEnabled,
+        minOrderAmount: delivery.minOrderAmount,
+        deliveryFee: delivery.deliveryFee,
+        freeDeliveryFrom: delivery.freeDeliveryFrom,
+        zoneMode: delivery.zoneMode,
+        zoneRadiusKm: delivery.zoneRadiusKm,
+        zoneCenterLat: delivery.zoneCenterLat,
+        zoneCenterLng: delivery.zoneCenterLng,
+        zonePolygonJson: JSON.stringify(delivery.zonePolygon ?? []),
+      },
+    });
+
     // Replace dishes with current ordered set.
     await tx.dish.deleteMany({});
     if (dishRows.length) {
@@ -251,7 +405,9 @@ export const saveSite = async (content: SiteData): Promise<SiteData> => {
         await tx.menuItem.createMany({ data: itemRows });
       }
     }
-  });
+  },
+    { timeout: 30_000 },
+  );
 
   return getSite();
 };

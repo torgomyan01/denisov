@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, type ElementType, type ReactNode } from "react";
+import { revealHome } from "@/components/site/styles";
 
 interface RevealProps {
   children: ReactNode;
@@ -23,7 +24,7 @@ export const Reveal = ({
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
-            entry.target.classList.add("in");
+            entry.target.setAttribute("data-in", "");
             io.unobserve(entry.target);
           }
         });
@@ -36,7 +37,7 @@ export const Reveal = ({
   }, []);
 
   return (
-    <Tag ref={ref} className={`reveal ${className}`.trim()}>
+    <Tag ref={ref} className={`${revealHome} ${className}`.trim()}>
       {children}
     </Tag>
   );

@@ -101,32 +101,72 @@ model Dish {
 }
 
 model MenuCategory {
-  id        String     @id @default(cuid())
-  sortOrder Int        @default(0)
-  name      String     @default("") @db.VarChar(255)
-  isActive  Boolean    @default(true)
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
-  items     MenuItem[]
+  id            String     @id @default(cuid())
+  sortOrder     Int        @default(0)
+  name          String     @default("") @db.VarChar(255)
+  /// HH:MM — empty means always available for delivery cart
+  availableFrom String     @default("") @db.VarChar(8)
+  availableTo   String     @default("") @db.VarChar(8)
+  isActive      Boolean    @default(true)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  items         MenuItem[]
 
   @@index([sortOrder])
   @@index([isActive, sortOrder])
 }
 
 model MenuItem {
-  id          String       @id @default(cuid())
-  categoryId  String
-  category    MenuCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  sortOrder   Int          @default(0)
-  name        String       @default("") @db.VarChar(255)
-  description String       @default("") @db.Text
-  price       String       @default("") @db.VarChar(64)
-  isActive    Boolean      @default(true)
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  id              String       @id @default(cuid())
+  categoryId      String
+  category        MenuCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  sortOrder       Int          @default(0)
+  name            String       @default("") @db.VarChar(255)
+  description     String       @default("") @db.Text
+  price           String       @default("") @db.VarChar(64)
+  image           String       @default("") @db.VarChar(500)
+  weight          String       @default("") @db.VarChar(64)
+  /// КБЖУ на 100 г
+  kcal            Float?
+  protein         Float?
+  fat             Float?
+  carbs           Float?
+  showInDelivery  Boolean      @default(true)
+  inStock         Boolean      @default(true)
+  showInUpsell    Boolean      @default(false)
+  upsellSortOrder Int          @default(0)
+  isActive        Boolean      @default(true)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
 
   @@index([categoryId, sortOrder])
   @@index([isActive])
+  @@index([showInDelivery, inStock])
+  @@index([showInUpsell, upsellSortOrder])
+}
+
+/// Singleton delivery section settings (banner, fees, zone, orders toggle).
+model DeliverySettings {
+  id               String   @id @default("main")
+  bannerDesktop    String   @default("") @db.VarChar(500)
+  bannerMobile     String   @default("") @db.VarChar(500)
+  title            String   @default("Доставка из Денисова") @db.VarChar(255)
+  subtitle         String   @default("") @db.VarChar(500)
+  ordersEnabled    Boolean  @default(true)
+  /// Min cart total for delivery orders (₽). 0 = no minimum.
+  minOrderAmount   Int      @default(0)
+  deliveryFee      Int      @default(0)
+  /// Free delivery from this cart total (₽). 0 = threshold disabled.
+  freeDeliveryFrom Int      @default(0)
+  /// radius | polygon
+  zoneMode         String   @default("radius") @db.VarChar(16)
+  zoneRadiusKm     Float    @default(5)
+  zoneCenterLat    Float?
+  zoneCenterLng    Float?
+  /// JSON array of [lat, lng] rings for polygon mode
+  zonePolygonJson  String   @default("[]") @db.Text
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 }
 
 model AdminSession {
@@ -136,4 +176,218 @@ model AdminSession {
   createdAt DateTime @default(now())
 
   @@index([expiresAt])
+}
+
+enum FulfillmentMode {
+  pickup
+  delivery
+}
+
+enum CustomerRole {
+  customer
+  courier
+}
+
+/// Site guest / delivery customer (phone register or Yandex ID).
+model Customer {
+  id               String            @id @default(cuid())
+  /// First name
+  name             String            @default("") @db.VarChar(255)
+  surname          String            @default("") @db.VarChar(255)
+  phone            String?           @unique @db.VarChar(32)
+  email            String?           @unique @db.VarChar(255)
+  birthday         DateTime?
+  yandexId         String?           @unique @db.VarChar(64)
+  /// scrypt salt:hash — null for Yandex-only accounts
+  passwordHash     String?           @db.VarChar(255)
+  /// customer = site guest; courier = can scan & hand over orders
+  role             CustomerRole      @default(customer)
+  /// Default address for delivery orders
+  deliveryAddress  String?           @db.VarChar(500)
+  /// Saved door details — reused on next delivery checkout
+  deliveryApartment String?          @db.VarChar(64)
+  deliveryEntrance  String?          @db.VarChar(64)
+  deliveryFloor     String?          @db.VarChar(32)
+  deliveryIntercom  String?          @db.VarChar(64)
+  /// Last courier note (prefill only; each order stores its own copy)
+  deliveryCourierComment String?     @db.VarChar(500)
+  /// Saved delivery point on the map (WGS84)
+  deliveryLat      Float?
+  deliveryLng      Float?
+  /// Preferred pickup point (active PickupPoint id)
+  pickupPointId    String?           @db.VarChar(64)
+  /// How the guest prefers to receive orders
+  fulfillmentMode  FulfillmentMode   @default(pickup)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  sessions         CustomerSession[]
+  cart             CustomerCart?
+  orders           Order[]
+
+  @@index([phone])
+  @@index([email])
+  @@index([role])
+}
+
+enum OrderStatus {
+  new
+  confirmed
+  preparing
+  ready
+  delivering
+  completed
+  cancelled
+}
+
+enum PaymentStatus {
+  pending
+  paid
+  failed
+}
+
+/// Placed customer order (pickup or delivery).
+model Order {
+  id                  String          @id @default(cuid())
+  /// Human-readable code, e.g. D-A1B2C3
+  number              String          @unique @db.VarChar(32)
+  customerId          String?
+  customer            Customer?       @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  customerName        String          @default("") @db.VarChar(255)
+  customerPhone       String          @default("") @db.VarChar(32)
+  customerEmail       String          @default("") @db.VarChar(255)
+  fulfillmentMode     FulfillmentMode @default(pickup)
+  status              OrderStatus     @default(new)
+  paymentStatus       PaymentStatus   @default(pending)
+  /// card_test for now; real gateway later
+  paymentMethod       String          @default("card_test") @db.VarChar(32)
+  /// Total in rubles (integer) — items + delivery fee
+  totalRub            Int             @default(0)
+  /// Delivery fee portion of total (0 for pickup)
+  deliveryFeeRub      Int             @default(0)
+  utensils            Int             @default(0)
+  comment             String          @default("") @db.VarChar(500)
+  pickupPointId       String?         @db.VarChar(64)
+  pickupPointName     String          @default("") @db.VarChar(255)
+  pickupPointAddress  String          @default("") @db.VarChar(500)
+  deliveryAddress     String          @default("") @db.VarChar(500)
+  deliveryApartment   String          @default("") @db.VarChar(64)
+  deliveryEntrance    String          @default("") @db.VarChar(64)
+  deliveryFloor       String          @default("") @db.VarChar(32)
+  deliveryIntercom    String          @default("") @db.VarChar(64)
+  /// Comment for the courier (this order only)
+  deliveryCourierComment String       @default("") @db.VarChar(500)
+  deliveryLat         Float?
+  deliveryLng         Float?
+  /// asap | scheduled
+  timeMode            String          @default("asap") @db.VarChar(16)
+  scheduledAt         DateTime?
+  paidAt              DateTime?
+  /// Unique code encoded in customer QR for pickup / courier handover
+  fulfillmentToken    String          @unique @db.VarChar(32)
+  fulfilledAt         DateTime?
+  statusUpdatedAt     DateTime        @default(now())
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+  items               OrderItem[]
+  statusLogs          OrderStatusLog[]
+
+  @@index([status, createdAt])
+  @@index([customerId, createdAt])
+  @@index([createdAt])
+  @@index([fulfillmentToken])
+}
+
+model OrderItem {
+  id           String @id @default(cuid())
+  orderId      String
+  order        Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId    String @db.VarChar(64)
+  name         String @db.VarChar(255)
+  price        String @default("") @db.VarChar(64)
+  image        String @default("") @db.VarChar(500)
+  categoryId   String @default("") @db.VarChar(64)
+  categoryName String @default("") @db.VarChar(255)
+  qty          Int    @default(1)
+  /// Line total in rubles
+  lineTotalRub Int    @default(0)
+
+  @@index([orderId])
+}
+
+model OrderStatusLog {
+  id        String      @id @default(cuid())
+  orderId   String
+  order     Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  status    OrderStatus
+  note      String      @default("") @db.VarChar(255)
+  createdAt DateTime    @default(now())
+
+  @@index([orderId, createdAt])
+}
+
+/// Persistent shopping cart for a logged-in customer.
+model CustomerCart {
+  id              String             @id @default(cuid())
+  customerId      String             @unique
+  customer        Customer           @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  utensils        Int                @default(0)
+  comment         String             @default("") @db.VarChar(500)
+  fulfillmentMode FulfillmentMode    @default(pickup)
+  pickupPointId   String?            @db.VarChar(64)
+  deliveryAddress String             @default("") @db.VarChar(500)
+  deliveryLat     Float?
+  deliveryLng     Float?
+  /// asap | scheduled
+  timeMode        String             @default("asap") @db.VarChar(16)
+  scheduledAt     DateTime?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  items           CustomerCartItem[]
+}
+
+model CustomerCartItem {
+  id           String       @id @default(cuid())
+  cartId       String
+  cart         CustomerCart @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  productId    String       @db.VarChar(64)
+  name         String       @db.VarChar(255)
+  price        String       @default("") @db.VarChar(64)
+  image        String       @default("") @db.VarChar(500)
+  categoryId   String       @default("") @db.VarChar(64)
+  categoryName String       @default("") @db.VarChar(255)
+  qty          Int          @default(1)
+
+  @@unique([cartId, productId])
+  @@index([cartId])
+}
+
+model CustomerSession {
+  id         String   @id @default(cuid())
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  tokenHash  String   @unique @db.VarChar(128)
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+
+  @@index([customerId])
+  @@index([expiresAt])
+}
+
+/// Cafe / pickup location for self-pickup orders.
+model PickupPoint {
+  id        String   @id @default(cuid())
+  name      String   @db.VarChar(255)
+  phone     String   @default("") @db.VarChar(32)
+  address   String   @db.VarChar(500)
+  /// WGS84 latitude
+  lat       Float
+  /// WGS84 longitude
+  lng       Float
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive, sortOrder])
+  @@index([sortOrder])
 }

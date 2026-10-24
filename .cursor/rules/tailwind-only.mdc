@@ -1,0 +1,13 @@
+---
+description: Tailwind CSS only — no new custom CSS sheets or semantic class files
+alwaysApply: true
+---
+
+# Tailwind CSS only
+
+- Style UI with **Tailwind utility classes** in `className` (and rare `style` for dynamic values).
+- **Do not** add or extend `site.css`, `cart.css`, `admin.css`, `profile.css`, `auth.css`, or new semantic CSS files.
+- Brand tokens from `@theme` in `globals.css`: `paper`, `sand`, `ink`, `clay`, `olive`, `font-serif`, `font-sans`.
+- Allowed CSS in [`src/app/globals.css`](src/app/globals.css) only: `@import "tailwindcss"`, `@theme`, base `html`/`body`, and **keyframes / map quirks** that utilities cannot express.
+- No Shadcn, Radix, or other component libraries unless the user explicitly asks.
+- When touching a legacy class-based component, convert that surface to Tailwind and drop the unused CSS.
