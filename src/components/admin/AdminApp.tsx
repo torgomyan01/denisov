@@ -71,7 +71,6 @@ import { DndProvider, SortableItem } from "@/components/admin/dnd";
 import { OrderDetailPanel } from "@/components/admin/OrderDetailPage";
 import { OrdersPanel } from "@/components/admin/OrdersPanel";
 import { OrderScanPanel } from "@/components/admin/OrderScanPage";
-import { DeliverySettingsPanel } from "@/components/admin/DeliverySettingsPanel";
 import { PickupPointsPanel } from "@/components/admin/PickupPointsPanel";
 import { UsersPanel } from "@/components/admin/UsersPanel";
 import {
@@ -90,7 +89,6 @@ const TABS = [
   "about",
   "contacts",
   "menu",
-  "delivery",
   "pickup",
   "orders",
   "fulfillment",
@@ -103,7 +101,6 @@ const TAB_LABELS: Record<TabId, string> = {
   about: "О кафе",
   contacts: "Контакты",
   menu: "Меню",
-  delivery: "Доставка",
   pickup: "Самовывоз",
   orders: "Заказы",
   fulfillment: "Выдача по QR",
@@ -115,7 +112,6 @@ const TAB_HINTS: Record<TabId, string> = {
   about: "Тексты и три ключевые цифры",
   contacts: "Телефон, адрес, SEO и футер",
   menu: "Категории, позиции, доставка и допродажа",
-  delivery: "Баннер, стоимость, зона и приём заказов",
   pickup: "Точки самовывоза: название, телефон, адрес и карта",
   orders: "Заказы клиентов: статусы от кухни до выдачи",
   fulfillment: "Сканер QR клиента — проверка и подтверждение выдачи",
@@ -142,7 +138,7 @@ const NAV_GROUPS: readonly NavGroup[] = [
     id: "catalog",
     label: "Каталог",
     icon: "sections",
-    items: ["menu", "delivery"],
+    items: ["menu"],
   },
 ];
 
@@ -1649,22 +1645,6 @@ export default function AdminApp() {
                       })}
                     </div>
                   </section>
-                ) : null}
-
-                {tab === "delivery" ? (
-                  <DeliverySettingsPanel
-                    site={site}
-                    busy={busy}
-                    patchDelivery={(fn) =>
-                      patchSite((d) => {
-                        if (!d.delivery) {
-                          d.delivery = createDefaultDeliverySettings();
-                        }
-                        fn(d.delivery);
-                      })
-                    }
-                    onUpload={(field, file) => void handleUpload(field, file)}
-                  />
                 ) : null}
 
                 {tab === "pickup" ? (
