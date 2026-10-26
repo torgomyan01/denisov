@@ -1,6 +1,6 @@
 import { randomBytes } from "crypto";
 import { cookies } from "next/headers";
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { cookieSecure } from "@/lib/cookie-secure";
 import {
   buildYandexAuthorizeUrl,
@@ -9,12 +9,15 @@ import {
 
 export const dynamic = "force-dynamic";
 
-export async function GET(request: NextRequest) {
-  const origin = request.nextUrl.origin;
+const siteOrigin = (): string =>
+  (process.env.SITE_URL?.trim() || "http://localhost:3000").replace(/\/$/, "");
+
+export async function GET() {
+  const base = siteOrigin();
 
   if (!yandexConfigured()) {
     return NextResponse.redirect(
-      new URL("/auth?error=yandex_not_configured", origin),
+      new URL("/auth?error=yandex_not_configured", base),
     );
   }
 

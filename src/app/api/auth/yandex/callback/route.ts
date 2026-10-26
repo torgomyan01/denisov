@@ -14,7 +14,8 @@ const origin = (): string =>
   (process.env.SITE_URL?.trim() || "http://localhost:3000").replace(/\/$/, "");
 
 export async function GET(request: NextRequest) {
-  const base = request.nextUrl.origin || origin();
+  // Prefer SITE_URL: behind nginx, request.nextUrl.origin is often http://127.0.0.1:3000
+  const base = origin();
 
   if (!yandexConfigured()) {
     return NextResponse.redirect(`${base}/auth?error=yandex_not_configured`);
