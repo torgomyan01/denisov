@@ -20,6 +20,10 @@ import {
   cartStepItem,
   cartStepsList,
 } from "@/components/cart/cart-styles";
+import {
+  cartNutritionTotals,
+  formatCartNutritionLine,
+} from "@/lib/cart-nutrition";
 import { formatPrice } from "@/lib/format";
 import { formatPhoneDisplay } from "@/lib/phone";
 import type { OrderPublic } from "@/lib/orders";
@@ -32,9 +36,11 @@ import {
 } from "@/store/cartSlice";
 import type { RootState } from "@/store";
 import { useAppSelector } from "@/store/hooks";
+import type { SiteMenu } from "@/types/site";
 
 type CheckoutStepProps = {
   customer: CustomerPublic;
+  menu: SiteMenu;
   onBack: () => void;
   onSuccess: (order: OrderPublic) => void;
 };
@@ -71,6 +77,7 @@ const maskPreviewNumber = (formatted: string): string => {
 
 export const CheckoutStep = ({
   customer,
+  menu,
   onBack,
   onSuccess,
 }: CheckoutStepProps) => {
@@ -78,6 +85,11 @@ export const CheckoutStep = ({
   const items = cartState.items as CartLine[];
   const total = cartSubtotal(items);
   const isDelivery = cartState.fulfillmentMode === "delivery";
+  const nutrition = useMemo(
+    () => cartNutritionTotals(items, menu),
+    [items, menu],
+  );
+  const nutritionLine = formatCartNutritionLine(nutrition);
 
   const [name, setName] = useState(
     [customer.name, customer.surname].filter(Boolean).join(" ").trim() ||
@@ -364,6 +376,16 @@ export const CheckoutStep = ({
             </li>
           ))}
         </ul>
+        {nutrition.hasAny && nutritionLine ? (
+          <div className="rounded-[12px] border border-ink/8 bg-ink/[0.03] px-3 py-2">
+            <p className="m-0 text-[10px] font-bold tracking-[0.14em] text-ink/42 uppercase">
+              КБЖУ заказа
+            </p>
+            <p className="mt-[0.25rem] m-0 text-[0.9rem] leading-[1.35] font-[650] text-ink/78">
+              {nutritionLine}
+            </p>
+          </div>
+        ) : null}
         <div className="mt-1 flex items-baseline justify-between border-t border-dashed border-ink/14 pt-[0.65rem] text-[0.92rem]">
           <span>Итого к оплате</span>
           <strong className="font-serif text-[1.35rem] font-semibold text-ink">

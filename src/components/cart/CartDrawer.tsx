@@ -42,6 +42,10 @@ import type { CustomerPublic } from "@/lib/customer-auth";
 import { formatPrice } from "@/lib/format";
 import type { OrderPublic } from "@/lib/orders";
 import { getSuggestedProducts } from "@/lib/cart-suggestions";
+import {
+  cartNutritionTotals,
+  formatCartNutritionLine,
+} from "@/lib/cart-nutrition";
 import { createDefaultDeliverySettings } from "@/lib/delivery-defaults";
 import {
   calcDeliveryTotals,
@@ -135,6 +139,11 @@ export const CartDrawer = ({
     [menu, items],
   );
   const suggestedProducts = suggestions.products;
+  const nutrition = useMemo(
+    () => cartNutritionTotals(items, menu),
+    [items, menu],
+  );
+  const nutritionLine = formatCartNutritionLine(nutrition);
 
   const timeSlots = useMemo(
     () => buildPickupTimeSlots(cafeHours),
@@ -412,6 +421,7 @@ export const CartDrawer = ({
             {step === "checkout" && customer ? (
               <CheckoutStep
                 customer={customer}
+                menu={menu}
                 onBack={() => setStep("cart")}
                 onSuccess={onOrderSuccess}
               />
@@ -895,6 +905,16 @@ export const CartDrawer = ({
                       ? formatPrice(String(totals.deliveryFeeRub))
                       : "0 ₽"}
                   </span>
+                </div>
+              ) : null}
+              {nutrition.hasAny && nutritionLine ? (
+                <div className="mb-2 rounded-[12px] border border-ink/8 bg-ink/[0.03] px-3 py-2">
+                  <p className="m-0 text-[10px] font-bold tracking-[0.14em] text-ink/42 uppercase">
+                    КБЖУ заказа
+                  </p>
+                  <p className="mt-[0.25rem] m-0 text-[0.9rem] leading-[1.35] font-[650] text-ink/78">
+                    {nutritionLine}
+                  </p>
                 </div>
               ) : null}
               <div className="mb-3 flex items-baseline justify-between text-[0.95rem] text-ink/55">
