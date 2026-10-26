@@ -2,6 +2,8 @@
 
 Сайт кафе + админ-панель на Next.js App Router, Prisma и MySQL.
 
+**Для клиента (как пользоваться админкой):** [docs/rukovodstvo-admina.md](docs/rukovodstvo-admina.md)
+
 ## Требования
 
 - Node.js 20+
