@@ -17,7 +17,9 @@ import {
   brandLabelOrDefault,
   formatPrice,
 } from "@/lib/format";
+import { isBlyudaCategory } from "@/lib/home-menu-featured";
 import { menuItemSlug } from "@/lib/menu-slug";
+import { SiteLegalLinks } from "@/components/site/SiteLegalLinks";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
   addToCartQuiet,
@@ -70,7 +72,10 @@ export const MenuPageView = ({ site, customer }: MenuPageProps) => {
   const categories = useMemo(
     () =>
       (menu.categories || []).filter(
-        (c) => c && (c.name || (c.items && c.items.length)),
+        (c) =>
+          c &&
+          (c.name || (c.items && c.items.length)) &&
+          !isBlyudaCategory(c.name || ""),
       ),
     [menu.categories],
   );
@@ -496,12 +501,15 @@ export const MenuPageView = ({ site, customer }: MenuPageProps) => {
           >
             {footerBrand || a11y}
           </Link>
-          <Link
-            href="/#visit"
-            className="text-[11px] tracking-[0.26em] text-ink/45 uppercase no-underline transition-colors duration-200 hover:text-clay"
-          >
-            Контакты
-          </Link>
+          <div className="flex flex-wrap items-center justify-end gap-x-4 gap-y-2 text-[11px] tracking-[0.08em] text-ink/45">
+            <Link
+              href="/#visit"
+              className="uppercase tracking-[0.26em] no-underline transition-colors duration-200 hover:text-clay"
+            >
+              Контакты
+            </Link>
+            <SiteLegalLinks className="normal-case tracking-normal" />
+          </div>
         </div>
         <CompanyRequisites />
       </footer>

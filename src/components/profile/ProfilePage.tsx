@@ -7,6 +7,7 @@ import { updateProfileAction } from "@/actions/customer-profile";
 import { AddressSuggestField } from "@/components/cart/AddressSuggestField";
 import { DeliveryMapModal } from "@/components/cart/DeliveryMapModal";
 import { PickupPointPickerModal } from "@/components/cart/PickupPointPickerModal";
+import { PushOptIn } from "@/components/profile/PushOptIn";
 import {
   profileBadge,
   profileBlockTitle,
@@ -630,6 +631,8 @@ export const ProfilePage = ({
               />
             </div>
           </section>
+
+          <PushOptIn />
 
           <section>
             <div className={blockHeadClass}>

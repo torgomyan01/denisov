@@ -34,6 +34,7 @@ import {
 import { createDefaultDeliverySettings } from "@/lib/delivery-defaults";
 import { prisma } from "@/lib/prisma";
 import { getSite } from "@/lib/site";
+import { notifyCustomerOrderStatus } from "@/lib/web-push";
 import type { ActionResult } from "@/types/site";
 
 const orderInclude = {
@@ -447,6 +448,14 @@ export const updateOrderStatusAction = async (
     revalidatePath(`/admin/orders/${existing.id}`);
     revalidatePath("/profile/orders");
     revalidatePath(`/profile/orders/${existing.id}`);
+
+    notifyCustomerOrderStatus({
+      customerId: updated.customerId,
+      status: next,
+      orderId: updated.id,
+      orderNumber: updated.number,
+    });
+
     return { success: true, data: toOrderPublic(updated) };
   } catch {
     return { success: false, error: "Не удалось обновить статус" };
@@ -584,6 +593,14 @@ export const verifyOrderFulfillmentAction = async (
     revalidatePath("/profile/courier");
     revalidatePath("/profile/orders");
     revalidatePath(`/profile/orders/${existing.id}`);
+
+    notifyCustomerOrderStatus({
+      customerId: updated.customerId,
+      status: "completed",
+      orderId: updated.id,
+      orderNumber: updated.number,
+    });
+
     return { success: true, data: toOrderPublic(updated) };
   } catch (error) {
     if (error instanceof Error && error.message === "Unauthorized") {

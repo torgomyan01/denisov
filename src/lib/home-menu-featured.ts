@@ -9,7 +9,8 @@ export type HomeFeaturedDish = MenuItem & {
 
 const PER_OTHER_CATEGORY = 2;
 
-const isBlyuda = (name: string): boolean =>
+/** Homepage-only category — hidden on /menu, still used in the home slider. */
+export const isBlyudaCategory = (name: string): boolean =>
   name.trim().toLowerCase() === "блюда";
 
 const eligibleItems = (
@@ -53,7 +54,7 @@ export const getHomeFeaturedDishes = (
     return true;
   };
 
-  const blyuda = categories.find((c) => isBlyuda(c.name || ""));
+  const blyuda = categories.find((c) => isBlyudaCategory(c.name || ""));
   if (blyuda) {
     for (const item of eligibleItems(blyuda.items, usedIds)) {
       pushItem(item, blyuda);
@@ -61,7 +62,7 @@ export const getHomeFeaturedDishes = (
   }
 
   for (const category of categories) {
-    if (isBlyuda(category.name || "")) continue;
+    if (isBlyudaCategory(category.name || "")) continue;
     const pool = eligibleItems(category.items, usedIds);
     for (const item of pool.slice(0, PER_OTHER_CATEGORY)) {
       pushItem(item, category);

@@ -1017,7 +1017,7 @@ const SuggestedCard = ({
         <img
           src={product.image}
           alt=""
-          className="block size-full object-cover"
+          className="block size-full object-cover h-[150px]"
         />
       ) : (
         <span>Нет фото</span>

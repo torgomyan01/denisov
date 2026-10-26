@@ -32,6 +32,9 @@ export const registerCustomerSchema = z
     phone: phoneField,
     password: passwordField,
     passwordConfirm: z.string().min(1, "Повторите пароль"),
+    acceptTerms: z.literal(true, {
+      error: "Нужно согласие с условиями и политикой конфиденциальности",
+    }),
   })
   .refine((data) => data.password === data.passwordConfirm, {
     message: "Пароли не совпадают",

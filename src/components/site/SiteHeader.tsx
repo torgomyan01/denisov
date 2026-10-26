@@ -7,6 +7,7 @@ import type { CustomerPublic } from "@/lib/customer-auth";
 import type { SiteData } from "@/types/site";
 import { brandLabelOrDefault, resolveHeaderLogo } from "@/lib/format";
 import { AccountNav } from "@/components/site/AccountNav";
+import { PushPromptBanner } from "@/components/site/PushPromptBanner";
 import { SiteMobileMenu } from "@/components/site/SiteMobileMenu";
 import { underlineLink } from "@/components/site/styles";
 
@@ -142,6 +143,8 @@ export const SiteHeader = ({
         brand={a11y}
         panelId={panelId}
       />
+
+      <PushPromptBanner enabled={Boolean(customer)} />
     </header>
   );
 };

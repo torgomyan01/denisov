@@ -62,7 +62,10 @@ export const OrderPrintLabel = ({ order }: OrderPrintLabelProps) => {
   const destination =
     order.fulfillmentMode === "pickup"
       ? order.pickupPointName || "Самовывоз"
-      : [order.deliveryAddress.trim() || "Адрес на карте", ...doorBits]
+      : [
+          (order.deliveryAddress || "").trim() || "Адрес на карте",
+          ...doorBits,
+        ]
           .filter(Boolean)
           .join(", ");
 
@@ -224,29 +227,92 @@ export const OrderPrintLabel = ({ order }: OrderPrintLabelProps) => {
   const printLabel = async () => {
     setBusy(true);
     setError("");
+    let iframe: HTMLIFrameElement | null = null;
+    let objectUrl = "";
     try {
       const canvas = await withFreshCanvas();
-      const dataUrl = canvas.toDataURL("image/png");
-      const win = window.open(
-        "",
-        "_blank",
-        "noopener,noreferrer,width=400,height=560",
+      const blob = await new Promise<Blob | null>((resolve) =>
+        canvas.toBlob(resolve, "image/png"),
       );
-      if (!win) throw new Error("Разрешите всплывающие окна для печати");
-      win.document.write(`<!doctype html><html><head><title>Этикетка ${order.number}</title>
-<style>
-  @page { margin: 6mm; size: auto; }
-  html, body { margin: 0; background: #fff; }
-  img { display: block; width: 100%; max-width: 320px; margin: 0 auto; }
-</style></head><body>
-<img src="${dataUrl}" alt="Этикетка ${order.number}" />
-<script>window.onload=()=>{window.focus();window.print();};</script>
-</body></html>`);
-      win.document.close();
+      if (!blob) throw new Error("Не удалось создать файл этикетки");
+      objectUrl = URL.createObjectURL(blob);
+      const title = `Этикетка ${order.number}`;
+
+      iframe = document.createElement("iframe");
+      iframe.setAttribute("aria-hidden", "true");
+      iframe.setAttribute("title", title);
+      iframe.style.cssText =
+        "position:fixed;right:0;bottom:0;width:0;height:0;border:0;opacity:0;pointer-events:none;";
+      document.body.appendChild(iframe);
+
+      await new Promise<void>((resolve, reject) => {
+        const frame = iframe!;
+        const timeout = window.setTimeout(() => {
+          reject(new Error("Таймаут подготовки печати"));
+        }, 12000);
+
+        const fail = (message: string) => {
+          window.clearTimeout(timeout);
+          reject(new Error(message));
+        };
+
+        const run = () => {
+          const doc = frame.contentDocument;
+          const frameWin = frame.contentWindow;
+          if (!doc || !frameWin) {
+            fail("Не удалось открыть окно печати");
+            return;
+          }
+
+          doc.title = title;
+          doc.body.style.margin = "0";
+          doc.body.style.background = "#fff";
+
+          // Build DOM in the iframe realm — do not use parent
+          // `instanceof HTMLImageElement` (cross-window always fails).
+          const img = doc.createElement("img");
+          img.alt = title;
+          img.style.display = "block";
+          img.style.width = "100%";
+          img.style.maxWidth = "320px";
+          img.style.margin = "0 auto";
+          img.onload = () => {
+            try {
+              frameWin.focus();
+              frameWin.print();
+              window.clearTimeout(timeout);
+              resolve();
+            } catch (err) {
+              fail(
+                err instanceof Error ? err.message : "Ошибка диалога печати",
+              );
+            }
+          };
+          img.onerror = () =>
+            fail("Не удалось загрузить изображение этикетки");
+          doc.body.replaceChildren(img);
+          img.src = objectUrl;
+        };
+
+        frame.addEventListener("load", run, { once: true });
+        frame.src = "about:blank";
+      });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Ошибка печати");
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+      objectUrl = "";
+      iframe?.remove();
+      iframe = null;
     } finally {
       setBusy(false);
+      if (iframe && objectUrl) {
+        const frame = iframe;
+        const url = objectUrl;
+        window.setTimeout(() => {
+          URL.revokeObjectURL(url);
+          frame.remove();
+        }, 2000);
+      }
     }
   };
 

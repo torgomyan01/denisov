@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { SiteCart } from "@/components/cart/SiteCart";
 import { StoreProvider } from "@/components/cart/StoreProvider";
+import { CookieConsentBanner } from "@/components/site/CookieConsentBanner";
 import "./globals.css";
+
 export const metadata: Metadata = {
   title: "ДЕНИСОВ — Кафе и пекарня",
   description:
@@ -23,6 +25,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <StoreProvider>
           {children}
           <SiteCart />
+          <CookieConsentBanner />
         </StoreProvider>
       </body>
     </html>

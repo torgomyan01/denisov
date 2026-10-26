@@ -102,6 +102,29 @@ DADATA_API_KEY="ваш_токен"
 
 3. Перезапусти `npm run dev`. В корзине и профиле при доставке появится ввод улицы/дома с подсказками (СПб и ЛО).
 
+### Web Push (уведомления о статусе заказа)
+
+Клиент в профиле включает уведомления. При статусах **готов / в пути / выдан** браузер получает push (сайт может быть закрыт). Нужен HTTPS.
+
+1. Сгенерируй VAPID-ключи:
+
+```bash
+node -e "console.log(require('web-push').generateVAPIDKeys())"
+```
+
+2. В `.env`:
+
+```env
+VAPID_PUBLIC_KEY="…"
+VAPID_PRIVATE_KEY="…"
+NEXT_PUBLIC_VAPID_PUBLIC_KEY="…"   # тот же public key
+VAPID_SUBJECT="mailto:hello@cafedenisov.ru"
+```
+
+3. `npx prisma db push` (таблица `PushSubscription`) и перезапуск `npm run dev`.
+
+4. Гость: `/profile` → «Включить уведомления». На iPhone — Safari + «На экран Домой».
+
 При входе через Яндекс сохраняем: имя, email, дату рождения (если пользователь разрешил).
 
 ## База данных (реляционная CMS)
@@ -119,6 +142,7 @@ DADATA_API_KEY="ваш_токен"
 | `Dish` | Галерея блюд (сортировка) |
 | `MenuCategory` / `MenuItem` | Меню |
 | `PickupPoint` | Точки самовывоза (кафе) |
+| `PushSubscription` | Web Push подписки клиентов |
 | `AdminSession` | Сессии админа |
 
 `prisma/seed-data/site.json` используется **только** для первичного seed (`npm run db:seed`).

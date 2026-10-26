@@ -5,6 +5,7 @@ import { ChevronLeft, Minus, Plus } from "lucide-react";
 import { useMemo, useState } from "react";
 import { SiteHeader } from "@/components/site/SiteHeader";
 import { CompanyRequisites } from "@/components/site/CompanyRequisites";
+import { SiteLegalLinks } from "@/components/site/SiteLegalLinks";
 import {
   categoryAvailableFromLabel,
   isCategoryAvailableNow,
@@ -420,12 +421,15 @@ export const MenuProductPage = ({
           >
             {footerBrand || a11y}
           </Link>
-          <Link
-            href="/menu"
-            className="text-[11px] tracking-[0.26em] text-ink/45 uppercase no-underline hover:text-clay"
-          >
-            Меню
-          </Link>
+          <div className="flex flex-wrap items-center justify-end gap-x-4 gap-y-2 text-[11px] text-ink/45">
+            <Link
+              href="/menu"
+              className="tracking-[0.26em] uppercase no-underline hover:text-clay"
+            >
+              Меню
+            </Link>
+            <SiteLegalLinks className="normal-case tracking-normal" />
+          </div>
         </div>
         <CompanyRequisites />
       </footer>

@@ -220,13 +220,30 @@ model Customer {
   fulfillmentMode  FulfillmentMode   @default(pickup)
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
-  sessions         CustomerSession[]
-  cart             CustomerCart?
-  orders           Order[]
+  sessions           CustomerSession[]
+  cart               CustomerCart?
+  orders             Order[]
+  pushSubscriptions  PushSubscription[]
 
   @@index([phone])
   @@index([email])
   @@index([role])
+}
+
+/// Browser Web Push subscription (one row per device / browser).
+model PushSubscription {
+  id         String   @id @default(cuid())
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  /// Push service endpoint URL
+  endpoint   String   @unique @db.VarChar(2048)
+  p256dh     String   @db.VarChar(255)
+  auth       String   @db.VarChar(255)
+  userAgent  String   @default("") @db.VarChar(500)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([customerId])
 }
 
 enum OrderStatus {

@@ -8,6 +8,7 @@ import { SiteHeader } from "@/components/site/SiteHeader";
 import { CompanyRequisites } from "@/components/site/CompanyRequisites";
 import { HomeMenuSlider } from "@/components/site/HomeMenuSlider";
 import { Reveal } from "@/components/site/Reveal";
+import { SiteLegalLinks } from "@/components/site/SiteLegalLinks";
 import { underlineLink } from "@/components/site/styles";
 
 interface HomePageProps {
@@ -235,6 +236,7 @@ export const HomePage = ({ site, customer }: HomePageProps) => {
             <Link href="/menu" className={`${underlineLink} hover:text-clay`}>
               Меню
             </Link>
+            <SiteLegalLinks className="normal-case tracking-normal" />
             <span>{site.footer.copyright}</span>
           </div>
         </div>

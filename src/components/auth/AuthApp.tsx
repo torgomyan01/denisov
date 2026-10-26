@@ -14,6 +14,7 @@ import {
   authPageClass,
   authSpinnerClass,
 } from "@/components/auth/auth-styles";
+import { SiteLegalLinks } from "@/components/site/SiteLegalLinks";
 import { PhoneInput } from "@/components/ui/PhoneInput";
 import { applyCartAfterAuth } from "@/lib/cart-auth-sync";
 import { useAppDispatch, useAppStore } from "@/store/hooks";
@@ -68,6 +69,7 @@ export const AuthApp = ({ yandexEnabled }: AuthAppProps) => {
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [acceptTerms, setAcceptTerms] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [booting, setBooting] = useState(true);
@@ -93,6 +95,13 @@ export const AuthApp = ({ yandexEnabled }: AuthAppProps) => {
     setBusy(true);
     setError("");
     try {
+      if (mode === "register" && !acceptTerms) {
+        setError(
+          "Отметьте согласие с пользовательским соглашением и политикой конфиденциальности",
+        );
+        return;
+      }
+
       const result =
         mode === "register"
           ? await registerCustomerAction({
@@ -100,6 +109,7 @@ export const AuthApp = ({ yandexEnabled }: AuthAppProps) => {
               phone,
               password,
               passwordConfirm,
+              acceptTerms: true as const,
             })
           : await loginCustomerAction({ phone, password });
 
@@ -121,6 +131,7 @@ export const AuthApp = ({ yandexEnabled }: AuthAppProps) => {
     setPassword("");
     setPasswordConfirm("");
     setShowPassword(false);
+    setAcceptTerms(false);
   };
 
   const tabClass = (active: boolean): string =>
@@ -294,6 +305,38 @@ export const AuthApp = ({ yandexEnabled }: AuthAppProps) => {
                   </div>
                 ) : null}
 
+                {mode === "register" ? (
+                  <label className="flex cursor-pointer items-start gap-3 rounded-[14px] border border-ink/8 bg-sand/40 px-3.5 py-3 text-[0.88rem] leading-[1.4] text-ink/72">
+                    <input
+                      type="checkbox"
+                      className="mt-[0.2rem] size-4 shrink-0 cursor-pointer accent-clay"
+                      checked={acceptTerms}
+                      onChange={(e) => setAcceptTerms(e.target.checked)}
+                      required
+                    />
+                    <span>
+                      Я соглашаюсь с{" "}
+                      <a
+                        href="/terms"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-[650] text-clay underline-offset-2 hover:underline"
+                      >
+                        пользовательским соглашением
+                      </a>{" "}
+                      и{" "}
+                      <a
+                        href="/privacy"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-[650] text-clay underline-offset-2 hover:underline"
+                      >
+                        политикой конфиденциальности
+                      </a>
+                    </span>
+                  </label>
+                ) : null}
+
                 {error ? (
                   <p className="animate-auth-shake rounded-[14px] border border-[#b42318]/15 bg-[#b42318]/8 px-4 py-[0.85rem] text-[0.9rem] text-[#8f1d16] motion-reduce:animate-none">
                     {error}
@@ -320,13 +363,29 @@ export const AuthApp = ({ yandexEnabled }: AuthAppProps) => {
               </div>
 
               {yandexEnabled ? (
-                <a
-                  href="/api/auth/yandex"
-                  className="flex w-full items-center justify-center gap-[0.65rem] rounded-full bg-[#fc3f1d] px-5 py-4 text-[12px] font-semibold tracking-[0.18em] text-white uppercase no-underline transition-[translate,box-shadow,filter] duration-250 hover:-translate-y-0.5 hover:shadow-[0_14px_30px_rgba(252,63,29,0.28)] hover:brightness-[1.04] motion-reduce:transition-none"
-                >
-                  <YandexIcon />
-                  Войти с Яндекс ID
-                </a>
+                <>
+                  <a
+                    href="/api/auth/yandex"
+                    className="flex w-full items-center justify-center gap-[0.65rem] rounded-full bg-[#fc3f1d] px-5 py-4 text-[12px] font-semibold tracking-[0.18em] text-white uppercase no-underline transition-[translate,box-shadow,filter] duration-250 hover:-translate-y-0.5 hover:shadow-[0_14px_30px_rgba(252,63,29,0.28)] hover:brightness-[1.04] motion-reduce:transition-none"
+                    onClick={(e) => {
+                      if (mode === "register" && !acceptTerms) {
+                        e.preventDefault();
+                        setError(
+                          "Отметьте согласие с условиями, чтобы войти через Яндекс",
+                        );
+                      }
+                    }}
+                  >
+                    <YandexIcon />
+                    Войти с Яндекс ID
+                  </a>
+                  <p className="mt-3 text-center text-[0.78rem] leading-[1.4] text-ink/45">
+                    Нажимая кнопку Яндекс ID
+                    {mode === "register" ? " при регистрации" : ""}, вы
+                    принимаете условия сервиса.{" "}
+                    <SiteLegalLinks />
+                  </p>
+                </>
               ) : (
                 <p className="rounded-2xl border border-dashed border-ink/14 px-4 py-[0.95rem] text-[0.9rem] leading-[1.45] text-ink/50">
                   Яндекс ID появится после добавления ключей в `.env`
