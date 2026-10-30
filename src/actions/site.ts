@@ -1,5 +1,6 @@
 "use server";
 
+import { randomBytes } from "crypto";
 import { mkdir, writeFile } from "fs/promises";
 import { join, extname } from "path";
 import { revalidatePath } from "next/cache";
@@ -18,8 +19,6 @@ import {
 } from "@/lib/upload-limits";
 import type { ActionResult, SiteData } from "@/types/site";
 
-
-
 const ALLOWED_EXT = new Set([
   ".jpg",
   ".jpeg",
@@ -28,6 +27,18 @@ const ALLOWED_EXT = new Set([
   ".gif",
   ".svg",
   ".pdf",
+  ".heic",
+  ".heif",
+]);
+
+const IMAGE_EXT = new Set([
+  ".jpg",
+  ".jpeg",
+  ".png",
+  ".webp",
+  ".gif",
+  ".heic",
+  ".heif",
 ]);
 
 export const getSiteAction = async (): Promise<ActionResult<SiteData>> => {
@@ -74,43 +85,83 @@ export const updateSiteAction = async (
   }
 };
 
+type UploadTarget =
+  | { kind: "field"; field: string }
+  | { kind: "menuItem"; categoryId: string; itemId: string }
+  | { kind: "menuItemIndex"; catIndex: number; itemIndex: number }
+  | { kind: "dishIndex"; index: number };
+
+const parseUploadTarget = (formData: FormData): UploadTarget | null => {
+  const fieldRaw = String(formData.get("field") ?? "").trim();
+  const categoryId = String(formData.get("categoryId") ?? "").trim();
+  const itemId = String(formData.get("itemId") ?? "").trim();
+
+  if (fieldRaw === "menuItem" && categoryId && itemId) {
+    return { kind: "menuItem", categoryId, itemId };
+  }
+
+  const known = uploadFieldSchema.safeParse(fieldRaw);
+  if (known.success) {
+    return { kind: "field", field: known.data };
+  }
+
+  const menuItemMatch = /^menu-item-(\d+)-(\d+)$/.exec(fieldRaw);
+  if (menuItemMatch) {
+    return {
+      kind: "menuItemIndex",
+      catIndex: Number(menuItemMatch[1]),
+      itemIndex: Number(menuItemMatch[2]),
+    };
+  }
+
+  const dishMatch = /^dish-(\d+)$/.exec(fieldRaw);
+  if (dishMatch) {
+    return { kind: "dishIndex", index: Number(dishMatch[1]) };
+  }
+
+  return null;
+};
+
 const applyUploadToSite = (
   site: SiteData,
-  field: string,
+  target: UploadTarget,
   publicPath: string,
 ): SiteData => {
   const next = normalizeSite(site);
 
-  if (field === "featured") {
-    next.hero.featuredImage = publicPath;
-    next.meta.ogImage = publicPath;
-    return next;
-  }
-  if (field === "contacts") {
-    next.contacts.image = publicPath;
-    return next;
-  }
-  if (field === "logo") {
-    next.brand.logo = publicPath;
-    next.brand.headerLogoMode = "image";
-    return next;
-  }
-  if (field === "menu") {
-    next.menuPdf = publicPath;
-    return next;
-  }
-  if (field === "deliveryBannerDesktop") {
-    next.delivery.bannerDesktop = publicPath;
-    return next;
-  }
-  if (field === "deliveryBannerMobile") {
-    next.delivery.bannerMobile = publicPath;
-    return next;
+  if (target.kind === "field") {
+    const field = target.field;
+    if (field === "featured") {
+      next.hero.featuredImage = publicPath;
+      next.meta.ogImage = publicPath;
+      return next;
+    }
+    if (field === "contacts") {
+      next.contacts.image = publicPath;
+      return next;
+    }
+    if (field === "logo") {
+      next.brand.logo = publicPath;
+      next.brand.headerLogoMode = "image";
+      return next;
+    }
+    if (field === "menu") {
+      next.menuPdf = publicPath;
+      return next;
+    }
+    if (field === "deliveryBannerDesktop") {
+      next.delivery.bannerDesktop = publicPath;
+      return next;
+    }
+    if (field === "deliveryBannerMobile") {
+      next.delivery.bannerMobile = publicPath;
+      return next;
+    }
+    throw new Error("Неизвестное поле загрузки");
   }
 
-  const dishMatch = /^dish-(\d+)$/.exec(field);
-  if (dishMatch) {
-    const index = Number(dishMatch[1]);
+  if (target.kind === "dishIndex") {
+    const index = target.index;
     while (next.dishes.length <= index) {
       next.dishes.push({ id: createClientId("dish"), image: "", caption: "" });
     }
@@ -123,31 +174,42 @@ const applyUploadToSite = (
     return next;
   }
 
-  const menuItemMatch = /^menu-item-(\d+)-(\d+)$/.exec(field);
-  if (menuItemMatch) {
-    const catIndex = Number(menuItemMatch[1]);
-    const itemIndex = Number(menuItemMatch[2]);
-    while (next.menu.categories.length <= catIndex) {
-      next.menu.categories.push(
-        createDefaultMenuCategory({ id: createClientId("cat") }),
-      );
+  if (target.kind === "menuItem") {
+    const category = next.menu.categories.find((c) => c.id === target.categoryId);
+    if (!category) {
+      throw new Error("Категория не найдена — сохраните меню и попробуйте снова");
     }
-    const category = next.menu.categories[catIndex];
-    while (category.items.length <= itemIndex) {
-      category.items.push(
-        createDefaultMenuItem({ id: createClientId("item") }),
-      );
+    const itemIndex = category.items.findIndex((item) => item.id === target.itemId);
+    if (itemIndex < 0) {
+      throw new Error("Позиция не найдена — сохраните меню и попробуйте снова");
     }
     const current = category.items[itemIndex];
     category.items[itemIndex] = createDefaultMenuItem({
       ...current,
-      id: current?.id ?? createClientId("item"),
+      id: current?.id ?? target.itemId,
       image: publicPath,
     });
     return next;
   }
 
-  throw new Error("Неизвестное поле загрузки");
+  // Legacy index-based menu item (kept for older clients)
+  const { catIndex, itemIndex } = target;
+  while (next.menu.categories.length <= catIndex) {
+    next.menu.categories.push(
+      createDefaultMenuCategory({ id: createClientId("cat") }),
+    );
+  }
+  const category = next.menu.categories[catIndex];
+  while (category.items.length <= itemIndex) {
+    category.items.push(createDefaultMenuItem({ id: createClientId("item") }));
+  }
+  const current = category.items[itemIndex];
+  category.items[itemIndex] = createDefaultMenuItem({
+    ...current,
+    id: current?.id ?? createClientId("item"),
+    image: publicPath,
+  });
+  return next;
 };
 
 export const uploadFileAction = async (
@@ -156,8 +218,8 @@ export const uploadFileAction = async (
   try {
     await requireAuth();
 
-    const fieldRaw = String(formData.get("field") ?? "");
     const file = formData.get("file");
+    const target = parseUploadTarget(formData);
 
     if (!(file instanceof File)) {
       return { success: false, error: "Файл не найден" };
@@ -168,17 +230,18 @@ export const uploadFileAction = async (
     if (file.size > MAX_UPLOAD_BYTES) {
       return { success: false, error: formatUploadLimitError() };
     }
-
-    const dishMatch = /^dish-(\d+)$/.exec(fieldRaw);
-    const menuItemMatch = /^menu-item-(\d+)-(\d+)$/.exec(fieldRaw);
-    const known = uploadFieldSchema.safeParse(fieldRaw);
-    if (!known.success && !dishMatch && !menuItemMatch) {
+    if (!target) {
       return { success: false, error: "Неизвестное поле загрузки" };
     }
 
+    const fieldRaw = String(formData.get("field") ?? "").trim();
     const ext = extname(file.name).toLowerCase() || guessExt(file.type);
     if (!ALLOWED_EXT.has(ext)) {
-      return { success: false, error: "Допустимы изображения и PDF" };
+      return {
+        success: false,
+        error:
+          "Допустимы JPG, PNG, WebP, GIF, SVG или PDF. HEIC с iPhone лучше сохранить как JPG.",
+      };
     }
 
     if (fieldRaw === "menu" && ext !== ".pdf") {
@@ -196,17 +259,31 @@ export const uploadFileAction = async (
     let bytes: Uint8Array = rawBytes;
 
     if (ext !== ".pdf" && ext !== ".svg") {
-      const optimized = await optimizeImageUpload(rawBytes, ext);
-      bytes = optimized.buffer;
-      outExt = optimized.ext;
+      try {
+        const optimized = await optimizeImageUpload(rawBytes, ext);
+        bytes = optimized.buffer;
+        outExt = optimized.ext;
+      } catch {
+        if (ext === ".heic" || ext === ".heif") {
+          return {
+            success: false,
+            error:
+              "Не удалось обработать HEIC. Откройте фото и сохраните как JPG, затем загрузите снова.",
+          };
+        }
+        if (!IMAGE_EXT.has(ext)) {
+          return { success: false, error: "Не удалось обработать изображение" };
+        }
+        // Keep original bytes for rare formats sharp cannot rewrite.
+      }
     }
 
-    const filename = `${fieldRaw}-${Date.now()}${outExt}`;
+    const filename = `upload-${Date.now()}-${randomBytes(4).toString("hex")}${outExt}`;
     await writeFile(join(uploadsDir, filename), bytes);
     const publicPath = `/uploads/${filename}`;
 
     const current = await getSite();
-    const updated = applyUploadToSite(current, fieldRaw, publicPath);
+    const updated = applyUploadToSite(current, target, publicPath);
     const saved = await saveSite(updated);
 
     revalidatePath("/");
@@ -225,6 +302,8 @@ const guessExt = (mime: string): string => {
   if (mime === "image/webp") return ".webp";
   if (mime === "image/gif") return ".gif";
   if (mime === "image/svg+xml") return ".svg";
+  if (mime === "image/heic") return ".heic";
+  if (mime === "image/heif") return ".heif";
   if (mime === "application/pdf") return ".pdf";
   return "";
 };

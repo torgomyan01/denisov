@@ -126,13 +126,18 @@ const buildFrame = (source: SourceImage, maxEdge: number): Frame => {
  * Resize (keep aspect ratio) + compress raster images in the browser.
  * Does not crop. SVG / PDF are returned unchanged.
  */
+const isRasterImageFile = (file: File): boolean => {
+  if (SKIP_TYPES.has(file.type)) return false;
+  if (file.type.startsWith("image/")) return true;
+  return /\.(jpe?g|png|webp|gif|heic|heif)$/i.test(file.name);
+};
+
 export const compressImageForUpload = async (
   file: File,
   options: CompressImageOptions = {},
 ): Promise<File> => {
   if (typeof window === "undefined") return file;
-  if (SKIP_TYPES.has(file.type)) return file;
-  if (!file.type.startsWith("image/")) return file;
+  if (!isRasterImageFile(file)) return file;
 
   const maxEdge = options.maxEdge ?? DEFAULT_MAX_EDGE;
   const targetMaxBytes = options.targetMaxBytes ?? TARGET_MAX_BYTES;

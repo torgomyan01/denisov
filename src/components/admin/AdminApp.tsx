@@ -79,9 +79,9 @@ import {
   createDefaultMenuItem,
 } from "@/lib/delivery-defaults";
 
-const UPLOAD_HINT = `JPG, PNG или WebP · до ${MAX_UPLOAD_LABEL} · уменьшение ≤1000px + сжатие`;
+const UPLOAD_HINT = `JPG, PNG или WebP · до ${MAX_UPLOAD_LABEL} · с iPhone лучше JPG (не HEIC)`;
 const LOGO_HINT = `SVG, PNG или WebP · до ${MAX_UPLOAD_LABEL} · сжатие авто`;
-const PRODUCT_UPLOAD_HINT = `Фото продукта · пропорции сохранены · длинная сторона ≤1000px · сжатие`;
+const PRODUCT_UPLOAD_HINT = `JPG / PNG / WebP · до ${MAX_UPLOAD_LABEL} · ≤1000px · с iPhone сохраните как JPG`;
 
 
 const TABS = [
@@ -592,21 +592,11 @@ export default function AdminApp() {
     });
   };
 
-  const rematchMenuItemEdit = useCallback(
-    (data: SiteData, field: string) => {
-      const match = /^menu-item-(\d+)-(\d+)$/.exec(field);
-      if (!match) return;
-      const catIndex = Number(match[1]);
-      const itemIndex = Number(match[2]);
-      const category = data.menu.categories[catIndex];
-      const item = category?.items[itemIndex];
-      if (!category || !item) return;
-      setMenuItemEdit({ categoryId: category.id, itemId: item.id });
-    },
-    [],
-  );
-
-  const handleUpload = async (field: string, file: File) => {
+  const handleUpload = async (
+    field: string,
+    file: File,
+    menuTarget?: { categoryId: string; itemId: string },
+  ) => {
     if (file.size > MAX_UPLOAD_BYTES) {
       showToast(formatUploadLimitError(), "error");
       return;
@@ -616,14 +606,34 @@ export default function AdminApp() {
       return;
     }
 
+    const looksLikeImage =
+      file.type.startsWith("image/") ||
+      /\.(jpe?g|png|webp|gif|heic|heif)$/i.test(file.name);
+    const isSvg =
+      file.type === "image/svg+xml" || /\.svg$/i.test(file.name);
+    const isProduct =
+      Boolean(menuTarget) ||
+      /^dish-\d+$/.test(field) ||
+      /^menu-item-\d+-\d+$/.test(field) ||
+      field === "menuItem";
+
     setBusy(true);
     try {
-      // Persist draft first so dish/menu indices match the DB before upload.
-      if (
-        site &&
-        dirty &&
-        (/^dish-\d+$/.test(field) || /^menu-item-\d+-\d+$/.test(field))
-      ) {
+      let categoryId = menuTarget?.categoryId ?? "";
+      let itemId = menuTarget?.itemId ?? "";
+
+      // Persist draft first so new/temp ids and order match the DB before upload.
+      if (site && dirty && (isProduct || menuTarget)) {
+        const beforeCatIndex = categoryId
+          ? site.menu.categories.findIndex((c) => c.id === categoryId)
+          : -1;
+        const beforeItemIndex =
+          beforeCatIndex >= 0
+            ? site.menu.categories[beforeCatIndex]?.items.findIndex(
+                (item) => item.id === itemId,
+              ) ?? -1
+            : -1;
+
         const payload = prepareForSave(site);
         const saveResult = await updateSiteAction(payload);
         if (!saveResult.success) {
@@ -633,26 +643,48 @@ export default function AdminApp() {
         }
         const saved = saveResult.data ?? payload;
         applySavedSite(saved);
-        rematchMenuItemEdit(saved, field);
+
+        if (beforeCatIndex >= 0 && beforeItemIndex >= 0) {
+          const cat = saved.menu.categories[beforeCatIndex];
+          const item = cat?.items[beforeItemIndex];
+          if (cat && item) {
+            categoryId = cat.id;
+            itemId = item.id;
+            setMenuItemEdit({ categoryId, itemId });
+          }
+        }
       }
 
       let uploadFile = file;
-      if (file.type.startsWith("image/") && file.type !== "image/svg+xml") {
+      if (looksLikeImage && !isSvg) {
         try {
-          const isProduct =
-            /^dish-\d+$/.test(field) || /^menu-item-\d+-\d+$/.test(field);
           uploadFile = isProduct
             ? await compressProductImageForUpload(file)
             : await compressImageForUpload(file, { maxEdge: 1000 });
         } catch {
-          showToast("Не удалось обрезать / сжать изображение", "error");
-          return;
+          // Do not abort — original file; server-side sharp still optimizes.
+          uploadFile = file;
         }
       }
 
+      if (uploadFile.size > MAX_UPLOAD_BYTES) {
+        showToast(
+          `После обработки файл всё ещё больше ${MAX_UPLOAD_LABEL}. Выберите другое фото.`,
+          "error",
+        );
+        return;
+      }
+
       const fd = new FormData();
-      fd.append("field", field);
+      if (categoryId && itemId) {
+        fd.append("field", "menuItem");
+        fd.append("categoryId", categoryId);
+        fd.append("itemId", itemId);
+      } else {
+        fd.append("field", field);
+      }
       fd.append("file", uploadFile);
+
       const result = await uploadFileAction(fd);
       if (!result.success || !result.data) {
         const error = result.success ? "Ошибка загрузки" : result.error;
@@ -661,7 +693,15 @@ export default function AdminApp() {
         return;
       }
       applySavedSite(result.data.site);
-      rematchMenuItemEdit(result.data.site, field);
+      if (categoryId && itemId) {
+        const cat = result.data.site.menu.categories.find(
+          (c) => c.id === categoryId,
+        );
+        const item = cat?.items.find((row) => row.id === itemId);
+        if (cat && item) {
+          setMenuItemEdit({ categoryId: cat.id, itemId: item.id });
+        }
+      }
       const shrunk = uploadFile.size < file.size;
       showToast(shrunk ? "Загружено и сжато" : "Загружено");
     } finally {
@@ -1819,12 +1859,11 @@ export default function AdminApp() {
                       onChange={(e) => {
                         const file = e.target.files?.[0];
                         e.target.value = "";
-                        if (file) {
-                          void handleUpload(
-                            `menu-item-${editingMenuItem.catIndex}-${editingMenuItem.itemIndex}`,
-                            file,
-                          );
-                        }
+                        if (!file || !menuItemEdit) return;
+                        void handleUpload("menuItem", file, {
+                          categoryId: menuItemEdit.categoryId,
+                          itemId: menuItemEdit.itemId,
+                        });
                       }}
                     />
                   </label>
