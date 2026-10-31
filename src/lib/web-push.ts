@@ -1,56 +1,17 @@
 import webpush from "web-push";
+import {
+  isOrderNotifyStatus,
+  orderStatusNotifyPayload,
+  type OrderNotifyPayload,
+} from "@/lib/order-notify";
 import { prisma } from "@/lib/prisma";
 import type { OrderStatus } from "@/lib/orders";
+import { notifyCustomerOrderStatusTelegram } from "@/lib/telegram";
 
-export type PushPayload = {
-  title: string;
-  body: string;
-  url: string;
-  tag?: string;
-};
+export type PushPayload = OrderNotifyPayload;
 
-const NOTIFY_STATUSES = new Set<OrderStatus>([
-  "ready",
-  "delivering",
-  "completed",
-]);
-
-export const isPushNotifyStatus = (status: OrderStatus): boolean =>
-  NOTIFY_STATUSES.has(status);
-
-export const orderStatusPushPayload = (input: {
-  status: OrderStatus;
-  orderId: string;
-  orderNumber: string;
-}): PushPayload | null => {
-  const { status, orderId, orderNumber } = input;
-  const url = `/profile/orders/${orderId}`;
-  switch (status) {
-    case "ready":
-      return {
-        title: "Денисов",
-        body: `Ваш заказ ${orderNumber} готов`,
-        url,
-        tag: `order-${orderId}-ready`,
-      };
-    case "delivering":
-      return {
-        title: "Денисов",
-        body: `Ваш заказ ${orderNumber} в пути`,
-        url,
-        tag: `order-${orderId}-delivering`,
-      };
-    case "completed":
-      return {
-        title: "Денисов",
-        body: `Ваш заказ ${orderNumber} выдан`,
-        url,
-        tag: `order-${orderId}-completed`,
-      };
-    default:
-      return null;
-  }
-};
+export const isPushNotifyStatus = isOrderNotifyStatus;
+export const orderStatusPushPayload = orderStatusNotifyPayload;
 
 let vapidConfigured = false;
 
@@ -119,7 +80,7 @@ export const sendPushToCustomer = async (
   }
 };
 
-/** Fire-and-forget helper after order status changes. */
+/** Fire-and-forget helper after order status changes (Web Push + Telegram). */
 export const notifyCustomerOrderStatus = (input: {
   customerId: string | null | undefined;
   status: OrderStatus;
@@ -131,4 +92,10 @@ export const notifyCustomerOrderStatus = (input: {
   const payload = orderStatusPushPayload({ status, orderId, orderNumber });
   if (!payload) return;
   void sendPushToCustomer(customerId, payload);
+  notifyCustomerOrderStatusTelegram({
+    customerId,
+    status,
+    orderId,
+    orderNumber,
+  });
 };

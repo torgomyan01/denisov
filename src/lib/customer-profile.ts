@@ -36,6 +36,7 @@ const toProfile = (customer: {
   fulfillmentMode: FulfillmentMode;
   role?: CustomerPublic["role"] | null;
   yandexId: string | null;
+  telegramChatId?: string | null;
   createdAt: Date;
   updatedAt: Date;
 }): CustomerProfile => ({

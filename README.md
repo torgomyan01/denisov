@@ -125,6 +125,37 @@ VAPID_SUBJECT="mailto:hello@cafedenisov.ru"
 
 4. Гость: `/profile` → «Включить уведомления». На iPhone — Safari + «На экран Домой».
 
+### Telegram (уведомления о статусе заказа)
+
+Гость в профиле подключает бота. При статусах **готов / в пути / выдан** приходит сообщение в Telegram. С RU-сервера исходящие вызовы идут через маленький gateway на Vercel (`telegram-gateway/`), webhook бота тоже на Vercel.
+
+1. Создай бота у [@BotFather](https://t.me/BotFather), сохрани token и username.
+2. Задеплой папку `telegram-gateway` на Vercel (Root Directory = `telegram-gateway`). Env:
+
+```env
+TELEGRAM_BOT_TOKEN="…"
+GATEWAY_SECRET="длинный-секрет"
+DENISOV_BIND_URL="https://cafedenisov.ru/api/telegram/bind"
+DENISOV_BIND_SECRET="тот-же-или-отдельный-секрет"
+```
+
+3. Укажи webhook бота на Vercel:
+
+```bash
+curl "https://api.telegram.org/bot<TOKEN>/setWebhook?url=https://<твой-vercel-домен>/api/telegram/webhook"
+```
+
+4. В `.env` основного сайта:
+
+```env
+NEXT_PUBLIC_TELEGRAM_BOT_USERNAME="DenisovCafeBot"
+TELEGRAM_GATEWAY_URL="https://<твой-vercel-домен>"
+TELEGRAM_GATEWAY_SECRET="тот-же-что-GATEWAY_SECRET"
+TELEGRAM_BIND_SECRET="тот-же-что-DENISOV_BIND_SECRET"
+```
+
+5. `npx prisma db push` и перезапуск. В `/profile` → «Подключить Telegram».
+
 При входе через Яндекс сохраняем: имя, email, дату рождения (если пользователь разрешил).
 
 ## База данных (реляционная CMS)
@@ -143,6 +174,7 @@ VAPID_SUBJECT="mailto:hello@cafedenisov.ru"
 | `MenuCategory` / `MenuItem` | Меню |
 | `PickupPoint` | Точки самовывоза (кафе) |
 | `PushSubscription` | Web Push подписки клиентов |
+| `TelegramLinkToken` | One-time deep-link для привязки Telegram |
 | `AdminSession` | Сессии админа |
 
 `prisma/seed-data/site.json` используется **только** для первичного seed (`npm run db:seed`).

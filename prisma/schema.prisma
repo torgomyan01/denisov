@@ -218,16 +218,33 @@ model Customer {
   pickupPointId    String?           @db.VarChar(64)
   /// How the guest prefers to receive orders
   fulfillmentMode  FulfillmentMode   @default(pickup)
+  /// Telegram chat id after bot link (order status notifications)
+  telegramChatId     String?           @unique @db.VarChar(64)
+  telegramUsername   String?           @db.VarChar(64)
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
   sessions           CustomerSession[]
   cart               CustomerCart?
   orders             Order[]
   pushSubscriptions  PushSubscription[]
+  telegramLinkTokens TelegramLinkToken[]
 
   @@index([phone])
   @@index([email])
   @@index([role])
+}
+
+/// One-time deep-link token: t.me/Bot?start=TOKEN → bind chat to customer
+model TelegramLinkToken {
+  id         String   @id @default(cuid())
+  token      String   @unique @db.VarChar(64)
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+
+  @@index([customerId])
+  @@index([expiresAt])
 }
 
 /// Browser Web Push subscription (one row per device / browser).
