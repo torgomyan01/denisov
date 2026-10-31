@@ -2,7 +2,8 @@ import { readdir, stat, writeFile, rename, unlink } from "fs/promises";
 import { join, extname, basename } from "path";
 import sharp from "sharp";
 
-const UPLOADS = join(process.cwd(), "public", "uploads");
+const UPLOADS = join(process.cwd(), "storage", "uploads");
+const LEGACY_UPLOADS = join(process.cwd(), "public", "uploads");
 const MAX_EDGE = 1600;
 const JPEG_QUALITY = 78;
 const WEBP_QUALITY = 76;
@@ -82,14 +83,20 @@ async function compressFile(filePath) {
   return { file: basename(filePath), before, after: buffer.length };
 }
 
-async function main() {
-  const files = await readdir(UPLOADS);
+async function compressDir(dir) {
+  let files = [];
+  try {
+    files = await readdir(dir);
+  } catch {
+    return { changed: 0, totalBefore: 0, totalAfter: 0 };
+  }
+
   let totalBefore = 0;
   let totalAfter = 0;
   let changed = 0;
 
   for (const name of files) {
-    const full = join(UPLOADS, name);
+    const full = join(dir, name);
     const info = await stat(full);
     if (!info.isFile()) continue;
 
@@ -111,6 +118,16 @@ async function main() {
       console.error(`✗ ${name}:`, err instanceof Error ? err.message : err);
     }
   }
+
+  return { changed, totalBefore, totalAfter };
+}
+
+async function main() {
+  const a = await compressDir(UPLOADS);
+  const b = await compressDir(LEGACY_UPLOADS);
+  const changed = a.changed + b.changed;
+  const totalBefore = a.totalBefore + b.totalBefore;
+  const totalAfter = a.totalAfter + b.totalAfter;
 
   console.log("\nDone.");
   console.log(

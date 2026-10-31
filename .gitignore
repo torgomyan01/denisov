@@ -24,6 +24,10 @@
 .DS_Store
 *.pem
 
+# Runtime uploads (served via /uploads/[...path] route)
+/storage/uploads/*
+!/storage/uploads/.gitkeep
+
 # debug
 npm-debug.log*
 yarn-debug.log*

@@ -10,7 +10,7 @@ const assetsDir = join(
   "c-Users-User-Desktop-denisov",
   "assets",
 );
-const uploadsDir = join(process.cwd(), "public", "uploads");
+const uploadsDir = join(process.cwd(), "storage", "uploads");
 mkdirSync(uploadsDir, { recursive: true });
 
 const assetFiles = readdirSync(assetsDir).filter((f) =>

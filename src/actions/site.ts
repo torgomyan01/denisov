@@ -1,8 +1,7 @@
 "use server";
 
 import { randomBytes } from "crypto";
-import { mkdir, writeFile } from "fs/promises";
-import { join, extname } from "path";
+import { extname } from "path";
 import { revalidatePath } from "next/cache";
 import { requireAuth } from "@/lib/auth";
 import { createClientId } from "@/lib/ids";
@@ -17,6 +16,7 @@ import {
   formatUploadLimitError,
   MAX_UPLOAD_BYTES,
 } from "@/lib/upload-limits";
+import { saveUploadBytes } from "@/lib/uploads";
 import type { ActionResult, SiteData } from "@/types/site";
 
 const ALLOWED_EXT = new Set([
@@ -252,8 +252,6 @@ export const uploadFileAction = async (
     }
 
     const rawBytes = Buffer.from(await file.arrayBuffer());
-    const uploadsDir = join(process.cwd(), "public", "uploads");
-    await mkdir(uploadsDir, { recursive: true });
 
     let outExt = ext;
     let bytes: Uint8Array = rawBytes;
@@ -278,9 +276,13 @@ export const uploadFileAction = async (
       }
     }
 
+    if (bytes.byteLength <= 0) {
+      return { success: false, error: "Файл пустой после обработки" };
+    }
+
     const filename = `upload-${Date.now()}-${randomBytes(4).toString("hex")}${outExt}`;
-    await writeFile(join(uploadsDir, filename), bytes);
-    const publicPath = `/uploads/${filename}`;
+    const savedFile = await saveUploadBytes(filename, bytes);
+    const publicPath = savedFile.publicPath;
 
     const current = await getSite();
     const updated = applyUploadToSite(current, target, publicPath);
