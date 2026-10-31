@@ -12,7 +12,6 @@ type LegalDocumentProps = {
   updatedAt: string;
   children: ReactNode;
 };
-
 export const LegalDocument = ({
   site,
   customer,
