@@ -278,7 +278,7 @@ export const MenuPageView = ({ site, customer }: MenuPageProps) => {
         <div className="mx-auto max-w-[1120px] px-5 pt-8 pb-4 md:px-8 md:pt-11">
           <section className="mb-7 animate-mp-hero text-center motion-reduce:animate-none">
             <p className="text-[10px] tracking-[0.34em] text-clay uppercase">
-              Кафе · Пекарня · Санкт-Петербург
+              Кафе · Санкт-Петербург
             </p>
             <p className="mt-[0.85rem] font-serif text-[clamp(2.4rem,7vw,3.6rem)] leading-[0.95] tracking-[0.28em] text-ink">
               {a11y}
