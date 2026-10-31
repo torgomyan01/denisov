@@ -8,7 +8,7 @@ const nextConfig: NextConfig = {
       bodySizeLimit: "6mb",
     },
   },
-  serverExternalPackages: ["sharp", "web-push"],
+  serverExternalPackages: ["@prisma/client", "prisma", "sharp", "web-push"],
   turbopack: {
     rules: {
       "*.css": {
