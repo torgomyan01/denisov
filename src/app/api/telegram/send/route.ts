@@ -11,6 +11,13 @@ type SendBody = {
 };
 
 export const POST = async (request: Request): Promise<Response> => {
+  const configured = Boolean(process.env.GATEWAY_SECRET?.trim());
+  if (!configured) {
+    return NextResponse.json(
+      { ok: false, error: "GATEWAY_SECRET not configured on Vercel" },
+      { status: 503 },
+    );
+  }
   if (!assertGatewaySecret(request)) {
     return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
   }
