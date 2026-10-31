@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { SiteCart } from "@/components/cart/SiteCart";
 import { StoreProvider } from "@/components/cart/StoreProvider";
 import { CookieConsentBanner } from "@/components/site/CookieConsentBanner";
@@ -9,7 +9,6 @@ export const metadata: Metadata = {
   description:
     "ДЕНИСОВ — кафе и пекарня на Московском проспекте в Санкт-Петербурге.",
   manifest: "/site.webmanifest",
-  themeColor: "#1F1E1A",
   icons: {
     icon: [
       { url: "/favicon.ico", sizes: "48x48" },
@@ -17,6 +16,10 @@ export const metadata: Metadata = {
     ],
     apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
   },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#1F1E1A",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
