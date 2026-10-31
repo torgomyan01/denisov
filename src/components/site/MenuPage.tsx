@@ -7,7 +7,7 @@ import { SiteHeader } from "@/components/site/SiteHeader";
 import { CompanyRequisites } from "@/components/site/CompanyRequisites";
 import { menuCardDelay, revealMenu } from "@/components/site/styles";
 import {
-  categoryAvailableFromLabel,
+  categoryUnavailableMessage,
   isCategoryAvailableNow,
 } from "@/lib/delivery-availability";
 import { createDefaultDeliverySettings } from "@/lib/delivery-defaults";
@@ -312,7 +312,6 @@ export const MenuPageView = ({ site, customer }: MenuPageProps) => {
                 );
                 const sectionId = slugify(category.name, i);
                 const available = isCategoryAvailableNow(category);
-                const fromLabel = categoryAvailableFromLabel(category);
                 return (
                   <section
                     key={sectionId}
@@ -431,9 +430,7 @@ export const MenuPageView = ({ site, customer }: MenuPageProps) => {
                                   </p>
                                 ) : !canAdd && !available ? (
                                   <p className="mt-auto pt-2 text-center text-[11px] text-ink/50">
-                                    {fromLabel
-                                      ? `Доступно с ${fromLabel}`
-                                      : "Сейчас недоступно"}
+                                    {categoryUnavailableMessage(category)}
                                   </p>
                                 ) : qty > 0 ? (
                                   <div className="mt-auto inline-flex w-full items-center justify-between rounded-full border border-ink/10 bg-paper/80 p-[0.15rem]">

@@ -7,7 +7,8 @@ import { SiteHeader } from "@/components/site/SiteHeader";
 import { CompanyRequisites } from "@/components/site/CompanyRequisites";
 import { SiteLegalLinks } from "@/components/site/SiteLegalLinks";
 import {
-  categoryAvailableFromLabel,
+  categoryUnavailableMessage,
+  getCategorySchedulePhase,
   isCategoryAvailableNow,
 } from "@/lib/delivery-availability";
 import { createDefaultDeliverySettings } from "@/lib/delivery-defaults";
@@ -67,7 +68,7 @@ export const MenuProductPage = ({
   const ordersEnabled =
     (site.delivery ?? createDefaultDeliverySettings()).ordersEnabled !== false;
   const available = isCategoryAvailableNow(category);
-  const fromLabel = categoryAvailableFromLabel(category);
+  const schedulePhase = getCategorySchedulePhase(category);
   const soldOut = item.inStock === false;
   const notDeliverable = item.showInDelivery === false;
   const canOrder =
@@ -134,9 +135,7 @@ export const MenuProductPage = ({
       : notDeliverable
         ? "Это блюдо только в кафе — в заказ не добавляется"
         : !available
-          ? fromLabel
-            ? `Доступно с ${fromLabel}`
-            : "Сейчас недоступно"
+          ? categoryUnavailableMessage(category)
           : null;
 
   return (
@@ -212,8 +211,12 @@ export const MenuProductPage = ({
                     {[category.availableFrom, category.availableTo]
                       .filter(Boolean)
                       .join(" – ") || "Без ограничений"}
-                    {!available && fromLabel
-                      ? ` · доступно с ${fromLabel}`
+                    {!available
+                      ? schedulePhase === "after"
+                        ? " · время уже закончилось"
+                        : schedulePhase === "before" && category.availableFrom
+                          ? ` · доступно с ${category.availableFrom}`
+                          : " · сейчас недоступно"
                       : ""}
                   </dd>
                 </div>
