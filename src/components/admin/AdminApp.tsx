@@ -72,6 +72,7 @@ import { OrderDetailPanel } from "@/components/admin/OrderDetailPage";
 import { OrdersPanel } from "@/components/admin/OrdersPanel";
 import { OrderScanPanel } from "@/components/admin/OrderScanPage";
 import { PickupPointsPanel } from "@/components/admin/PickupPointsPanel";
+import { AdminDocsPanel } from "@/components/admin/AdminDocsPanel";
 import { UsersPanel } from "@/components/admin/UsersPanel";
 import {
   createDefaultDeliverySettings,
@@ -93,6 +94,7 @@ const TABS = [
   "orders",
   "fulfillment",
   "users",
+  "docs",
 ] as const;
 type TabId = (typeof TABS)[number];
 
@@ -105,6 +107,7 @@ const TAB_LABELS: Record<TabId, string> = {
   orders: "Заказы",
   fulfillment: "Выдача по QR",
   users: "Пользователи",
+  docs: "Инструкции",
 };
 
 const TAB_HINTS: Record<TabId, string> = {
@@ -116,6 +119,7 @@ const TAB_HINTS: Record<TabId, string> = {
   orders: "Заказы клиентов: статусы от кухни до выдачи",
   fulfillment: "Сканер QR клиента — проверка и подтверждение выдачи",
   users: "Клиенты сайта: список, создание и редактирование",
+  docs: "Руководство по сайту, заказам, QR и Telegram",
 };
 
 /** Top-level collapsible groups — add new sections here as the admin grows. */
@@ -148,6 +152,7 @@ const NAV_STANDALONE: readonly TabId[] = [
   "pickup",
   "orders",
   "users",
+  "docs",
 ];
 
 const isTabId = (value: string): value is TabId =>
@@ -1727,6 +1732,8 @@ export default function AdminApp() {
                     showToast={showToast}
                   />
                 ) : null}
+
+                {tab === "docs" ? <AdminDocsPanel /> : null}
               </div>
 
               {tab === "hero" ? (

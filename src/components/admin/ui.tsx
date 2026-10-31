@@ -8,6 +8,7 @@ import {
   inputClass,
 } from "@/components/admin/styles";
 import {
+  BookOpen,
   Info,
   LayoutTemplate,
   List,
@@ -337,6 +338,8 @@ export const IconNav = ({ name }: { name: string }) => {
       return <QrCode {...props} />;
     case "users":
       return <Users {...props} />;
+    case "docs":
+      return <BookOpen {...props} />;
     case "sections":
       return <List {...props} />;
     default:
