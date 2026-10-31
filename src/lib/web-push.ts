@@ -1,17 +1,36 @@
 import webpush from "web-push";
+import type { FulfillmentMode } from "@/lib/customer-auth";
 import {
   isOrderNotifyStatus,
   orderStatusNotifyPayload,
   type OrderNotifyPayload,
 } from "@/lib/order-notify";
-import { prisma } from "@/lib/prisma";
 import type { OrderStatus } from "@/lib/orders";
+import { prisma } from "@/lib/prisma";
 import { notifyCustomerOrderStatusTelegram } from "@/lib/telegram";
 
-export type PushPayload = OrderNotifyPayload;
+export type PushPayload = Pick<
+  OrderNotifyPayload,
+  "title" | "body" | "url" | "tag"
+>;
 
 export const isPushNotifyStatus = isOrderNotifyStatus;
-export const orderStatusPushPayload = orderStatusNotifyPayload;
+
+export const orderStatusPushPayload = (input: {
+  status: OrderStatus;
+  orderId: string;
+  orderNumber: string;
+  fulfillmentMode?: FulfillmentMode | null;
+}): PushPayload | null => {
+  const full = orderStatusNotifyPayload(input);
+  if (!full) return null;
+  return {
+    title: full.title,
+    body: full.body,
+    url: full.url,
+    tag: full.tag,
+  };
+};
 
 let vapidConfigured = false;
 
@@ -86,10 +105,16 @@ export const notifyCustomerOrderStatus = (input: {
   status: OrderStatus;
   orderId: string;
   orderNumber: string;
+  fulfillmentMode?: FulfillmentMode | null;
 }): void => {
-  const { customerId, status, orderId, orderNumber } = input;
+  const { customerId, status, orderId, orderNumber, fulfillmentMode } = input;
   if (!customerId || !isPushNotifyStatus(status)) return;
-  const payload = orderStatusPushPayload({ status, orderId, orderNumber });
+  const payload = orderStatusPushPayload({
+    status,
+    orderId,
+    orderNumber,
+    fulfillmentMode,
+  });
   if (!payload) return;
   void sendPushToCustomer(customerId, payload);
   notifyCustomerOrderStatusTelegram({
@@ -97,5 +122,6 @@ export const notifyCustomerOrderStatus = (input: {
     status,
     orderId,
     orderNumber,
+    fulfillmentMode,
   });
 };

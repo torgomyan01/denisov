@@ -55,9 +55,7 @@ export const PushOptIn = () => {
       return;
     }
     setSubscribed(true);
-    setHint(
-      "Готово. Сообщения придут, когда заказ будет готов, в пути или выдан.",
-    );
+    setHint("Готово. При каждом статусе заказа придёт push-уведомление.");
   };
 
   const disable = async () => {
@@ -81,8 +79,8 @@ export const PushOptIn = () => {
       <p className={profileBadge}>Уведомления</p>
       <h3 className={`${profileBlockTitle} mt-2`}>Статус заказа</h3>
       <p className={`${profileLead} mt-2`}>
-        Push на телефон или компьютер: заказ готов, в пути или выдан — даже
-        если сайт закрыт. На iPhone нужен Safari и «На экран Домой».
+        Push на телефон или компьютер при каждом изменении статуса заказа —
+        даже если сайт закрыт. На iPhone нужен Safari и «На экран Домой».
       </p>
 
       {!supported ? (

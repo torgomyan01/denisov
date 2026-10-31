@@ -454,6 +454,7 @@ export const updateOrderStatusAction = async (
       status: next,
       orderId: updated.id,
       orderNumber: updated.number,
+      fulfillmentMode: updated.fulfillmentMode,
     });
 
     return { success: true, data: toOrderPublic(updated) };
@@ -599,6 +600,7 @@ export const verifyOrderFulfillmentAction = async (
       status: "completed",
       orderId: updated.id,
       orderNumber: updated.number,
+      fulfillmentMode: updated.fulfillmentMode,
     });
 
     return { success: true, data: toOrderPublic(updated) };

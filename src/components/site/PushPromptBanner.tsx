@@ -84,11 +84,9 @@ export const PushPromptBanner = ({ enabled }: PushPromptBannerProps) => {
           <Bell size={16} strokeWidth={2} aria-hidden="true" />
         </span>
         <p className="min-w-0 flex-1 text-[0.92rem] leading-[1.35] text-ink/78">
-          Включите уведомления, чтобы знать, когда заказ{" "}
-          <span className="font-[650] text-ink">готов</span>,{" "}
-          <span className="font-[650] text-ink">в пути</span> или{" "}
-          <span className="font-[650] text-ink">выдан</span> — даже если сайт
-          закрыт.
+          Включите уведомления о{" "}
+          <span className="font-[650] text-ink">каждом статусе</span> заказа —
+          даже если сайт закрыт.
         </p>
         <div className="flex w-full shrink-0 items-center gap-2 sm:w-auto">
           <button

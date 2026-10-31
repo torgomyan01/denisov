@@ -1,4 +1,5 @@
 import { randomBytes } from "crypto";
+import type { FulfillmentMode } from "@/lib/customer-auth";
 import {
   isOrderNotifyStatus,
   orderStatusNotifyPayload,
@@ -161,11 +162,16 @@ export const notifyCustomerOrderStatusTelegram = (input: {
   status: OrderStatus;
   orderId: string;
   orderNumber: string;
+  fulfillmentMode?: FulfillmentMode | null;
 }): void => {
-  const { customerId, status, orderId, orderNumber } = input;
+  const { customerId, status, orderId, orderNumber, fulfillmentMode } = input;
   if (!customerId || !isOrderNotifyStatus(status)) return;
-  const payload = orderStatusNotifyPayload({ status, orderId, orderNumber });
+  const payload = orderStatusNotifyPayload({
+    status,
+    orderId,
+    orderNumber,
+    fulfillmentMode,
+  });
   if (!payload) return;
-  const text = `${payload.title}\n${payload.body}`;
-  void sendTelegramToCustomer(customerId, text);
+  void sendTelegramToCustomer(customerId, payload.telegramText);
 };

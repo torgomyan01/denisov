@@ -75,8 +75,8 @@ export const TelegramOptIn = () => {
       <p className={profileBadge}>Telegram</p>
       <h3 className={`${profileBlockTitle} mt-2`}>Уведомления в боте</h3>
       <p className={`${profileLead} mt-2`}>
-        Подключите бота — пришлём сообщение, когда заказ готов, в пути или
-        выдан.
+        Подключите бота — при каждом изменении статуса заказа придёт подробное
+        сообщение в Telegram.
       </p>
 
       {!configured ? (
