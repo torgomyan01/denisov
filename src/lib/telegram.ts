@@ -4,7 +4,11 @@ import {
   isOrderNotifyStatus,
   orderStatusNotifyPayload,
 } from "@/lib/order-notify";
-import type { OrderStatus } from "@/lib/orders";
+import {
+  ORDER_STATUS_LABELS,
+  type OrderPublic,
+  type OrderStatus,
+} from "@/lib/orders";
 import { prisma } from "@/lib/prisma";
 
 const LINK_TTL_MS = 15 * 60 * 1000;
@@ -119,14 +123,66 @@ const gatewayConfig = (): { url: string; secret: string } | null => {
   return { url: `${base}/api/telegram/send`, secret };
 };
 
+const siteOrigin = (): string => {
+  const raw = process.env.SITE_URL?.trim() || "https://cafedenisov.ru";
+  return raw.replace(/\/$/, "");
+};
+
+/** Comma/space-separated chat ids for staff alerts (admin, manager, …). */
+export const getAdminTelegramChatIds = (): string[] => {
+  const raw = process.env.TELEGRAM_ADMIN_CHAT_IDS?.trim() ?? "";
+  if (!raw) return [];
+  const seen = new Set<string>();
+  const ids: string[] = [];
+  for (const part of raw.split(/[,;\s]+/)) {
+    const id = part.trim();
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    ids.push(id);
+  }
+  return ids;
+};
+
+type TelegramSendResult = {
+  ok: boolean;
+  blocked?: boolean;
+};
+
+/** Send via Vercel gateway to any chat. Never throws. */
+export const sendTelegramToChat = async (
+  chatId: string,
+  text: string,
+): Promise<TelegramSendResult> => {
+  try {
+    const gateway = gatewayConfig();
+    const id = chatId.trim();
+    const body = text.trim();
+    if (!gateway || !id || !body) return { ok: false };
+
+    const res = await fetch(gateway.url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${gateway.secret}`,
+      },
+      body: JSON.stringify({ chatId: id, text: body.slice(0, 4000) }),
+    });
+
+    if (res.status === 403) return { ok: false, blocked: true };
+    if (!res.ok) return { ok: false };
+    return { ok: true };
+  } catch {
+    return { ok: false };
+  }
+};
+
 /** Send via Vercel gateway. Never throws. Clears chat_id if bot blocked. */
 export const sendTelegramToCustomer = async (
   customerId: string,
   text: string,
 ): Promise<void> => {
   try {
-    const gateway = gatewayConfig();
-    if (!gateway || !customerId || !text.trim()) return;
+    if (!customerId || !text.trim()) return;
 
     const customer = await prisma.customer.findUnique({
       where: { id: customerId },
@@ -135,16 +191,8 @@ export const sendTelegramToCustomer = async (
     const chatId = customer?.telegramChatId?.trim();
     if (!chatId) return;
 
-    const res = await fetch(gateway.url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${gateway.secret}`,
-      },
-      body: JSON.stringify({ chatId, text: text.trim() }),
-    });
-
-    if (res.status === 403) {
+    const result = await sendTelegramToChat(chatId, text);
+    if (result.blocked) {
       await prisma.customer
         .update({
           where: { id: customerId },
@@ -174,4 +222,90 @@ export const notifyCustomerOrderStatusTelegram = (input: {
   });
   if (!payload) return;
   void sendTelegramToCustomer(customerId, payload.telegramText);
+};
+
+const formatMoneyRub = (rub: number): string =>
+  `${Math.max(0, Math.round(rub)).toLocaleString("ru-RU")} ₽`;
+
+const formatOrderWhen = (order: OrderPublic): string => {
+  if (order.timeMode === "scheduled" && order.scheduledAt) {
+    try {
+      return new Date(order.scheduledAt).toLocaleString("ru-RU", {
+        day: "numeric",
+        month: "short",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    } catch {
+      return order.scheduledAt;
+    }
+  }
+  return "Как можно скорее";
+};
+
+/** Full new-order alert for staff Telegram chats. */
+export const formatAdminNewOrderTelegramText = (order: OrderPublic): string => {
+  const adminUrl = `${siteOrigin()}/admin#order/${order.id}`;
+  const mode =
+    order.fulfillmentMode === "delivery" ? "Доставка" : "Самовывоз";
+  const lines: string[] = [
+    "🆕 Новый заказ · Денисов",
+    `№ ${order.number}`,
+    `Статус: ${ORDER_STATUS_LABELS[order.status]}`,
+    "",
+    `Клиент: ${order.customerName || "—"}`,
+    `Телефон: ${order.customerPhone || "—"}`,
+  ];
+  if (order.customerEmail) {
+    lines.push(`Email: ${order.customerEmail}`);
+  }
+  lines.push("", `Получение: ${mode}`, `Время: ${formatOrderWhen(order)}`);
+
+  if (order.fulfillmentMode === "pickup") {
+    lines.push(`Точка: ${order.pickupPointName || "—"}`);
+    if (order.pickupPointAddress) {
+      lines.push(`Адрес точки: ${order.pickupPointAddress}`);
+    }
+  } else {
+    lines.push(`Адрес: ${order.deliveryAddress || "—"}`);
+    if (order.deliveryApartment) lines.push(`Кв./офис: ${order.deliveryApartment}`);
+    if (order.deliveryEntrance) lines.push(`Подъезд: ${order.deliveryEntrance}`);
+    if (order.deliveryFloor) lines.push(`Этаж: ${order.deliveryFloor}`);
+    if (order.deliveryIntercom) lines.push(`Домофон: ${order.deliveryIntercom}`);
+    if (order.deliveryCourierComment) {
+      lines.push(`Комментарий курьеру: ${order.deliveryCourierComment}`);
+    }
+  }
+
+  lines.push("", "Состав:");
+  for (const item of order.items) {
+    lines.push(
+      `• ${item.name} × ${item.qty} — ${formatMoneyRub(item.lineTotalRub)}`,
+    );
+  }
+
+  if (order.deliveryFeeRub > 0) {
+    lines.push(`Доставка: ${formatMoneyRub(order.deliveryFeeRub)}`);
+  }
+  lines.push(`Итого: ${formatMoneyRub(order.totalRub)}`);
+
+  if (order.utensils > 0) {
+    lines.push(`Приборы: ${order.utensils}`);
+  }
+  if (order.comment.trim()) {
+    lines.push(`Комментарий гостя: ${order.comment.trim()}`);
+  }
+
+  lines.push("", `Открыть в админке: ${adminUrl}`);
+  return lines.join("\n");
+};
+
+/** Fire-and-forget: notify all configured staff chat ids about a new order. */
+export const notifyAdminsNewOrder = (order: OrderPublic): void => {
+  const chatIds = getAdminTelegramChatIds();
+  if (!chatIds.length) return;
+  const text = formatAdminNewOrderTelegramText(order);
+  void Promise.all(
+    chatIds.map((chatId) => sendTelegramToChat(chatId, text)),
+  );
 };

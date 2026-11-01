@@ -34,6 +34,7 @@ import {
 import { createDefaultDeliverySettings } from "@/lib/delivery-defaults";
 import { prisma } from "@/lib/prisma";
 import { getSite } from "@/lib/site";
+import { notifyAdminsNewOrder } from "@/lib/telegram";
 import { notifyCustomerOrderStatus } from "@/lib/web-push";
 import type { ActionResult } from "@/types/site";
 
@@ -282,12 +283,15 @@ export const placeOrderAction = async (
       clearCartItemsKeepingFulfillment(cart),
     );
 
+    const orderPublic = toOrderPublic(order);
+    notifyAdminsNewOrder(orderPublic);
+
     revalidatePath("/");
     revalidatePath("/admin");
     revalidatePath("/profile");
     revalidatePath("/profile/orders");
 
-    return { success: true, data: { order: toOrderPublic(order) } };
+    return { success: true, data: { order: orderPublic } };
   } catch {
     return {
       success: false,

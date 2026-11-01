@@ -427,6 +427,25 @@ export const ADMIN_DOC_CATEGORIES: AdminDocCategory[] = [
         ],
       },
       {
+        id: "tg-admin",
+        title: "Telegram для админов (новые заказы)",
+        summary: "Несколько chat id в настройках сервера",
+        blocks: [
+          {
+            type: "p",
+            text: "Новый заказ уходит в Telegram всем сотрудникам из списка TELEGRAM_ADMIN_CHAT_IDS (тот же бот @cafe_denisov_bot). В сообщении — полные данные заказа и ссылка в админку.",
+          },
+          {
+            type: "ol",
+            items: [
+              "Сотрудник пишет боту /start (хотя бы раз).",
+              "Узнать свой chat id (например @userinfobot).",
+              "Добавить id в TELEGRAM_ADMIN_CHAT_IDS через запятую на сервере и перезапустить сайт.",
+            ],
+          },
+        ],
+      },
+      {
         id: "tg-faq",
         title: "Telegram: если не работает",
         summary: "Типичные сбои у гостя",
