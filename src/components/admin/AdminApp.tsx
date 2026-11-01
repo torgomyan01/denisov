@@ -73,6 +73,7 @@ import { OrdersPanel } from "@/components/admin/OrdersPanel";
 import { OrderScanPanel } from "@/components/admin/OrderScanPage";
 import { PickupPointsPanel } from "@/components/admin/PickupPointsPanel";
 import { AdminDocsPanel } from "@/components/admin/AdminDocsPanel";
+import { StaffTelegramPanel } from "@/components/admin/StaffTelegramPanel";
 import { UsersPanel } from "@/components/admin/UsersPanel";
 import {
   createDefaultDeliverySettings,
@@ -94,6 +95,7 @@ const TABS = [
   "orders",
   "fulfillment",
   "users",
+  "telegram",
   "docs",
 ] as const;
 type TabId = (typeof TABS)[number];
@@ -107,6 +109,7 @@ const TAB_LABELS: Record<TabId, string> = {
   orders: "Заказы",
   fulfillment: "Выдача по QR",
   users: "Пользователи",
+  telegram: "Telegram",
   docs: "Инструкции",
 };
 
@@ -119,6 +122,7 @@ const TAB_HINTS: Record<TabId, string> = {
   orders: "Заказы клиентов: статусы от кухни до выдачи",
   fulfillment: "Сканер QR клиента — проверка и подтверждение выдачи",
   users: "Клиенты сайта: список, создание и редактирование",
+  telegram: "Сотрудники для алертов о новых заказах: имя, должность, chat id",
   docs: "Руководство по сайту, заказам, QR и Telegram",
 };
 
@@ -152,6 +156,7 @@ const NAV_STANDALONE: readonly TabId[] = [
   "pickup",
   "orders",
   "users",
+  "telegram",
   "docs",
 ];
 
@@ -1727,6 +1732,14 @@ export default function AdminApp() {
 
                 {tab === "users" ? (
                   <UsersPanel
+                    busy={busy}
+                    setBusy={setBusy}
+                    showToast={showToast}
+                  />
+                ) : null}
+
+                {tab === "telegram" ? (
+                  <StaffTelegramPanel
                     busy={busy}
                     setBusy={setBusy}
                     showToast={showToast}

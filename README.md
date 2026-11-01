@@ -156,13 +156,9 @@ TELEGRAM_BIND_SECRET="тот-же-что-DENISOV_BIND_SECRET"
 
 5. `npx prisma db push` и перезапуск. В `/profile` → «Подключить Telegram».
 
-6. Уведомления админам о **новых** заказах (тот же бот). В `.env` сайта:
+6. Уведомления админам о **новых** заказах (тот же бот): в админке раздел **Telegram** — добавить сотрудников (имя, должность, chat id). Список хранится в БД (`StaffTelegramRecipient`), не в `.env`.
 
-```env
-TELEGRAM_ADMIN_CHAT_IDS="123456789,987654321"
-```
-
-Chat id — личный (или группы). Узнать: написать боту `/start`, затем через @userinfobot / @getidsbot. Можно несколько id через запятую.
+Chat id — личный (или группы). Узнать: написать боту `/start`, затем через @userinfobot / @getidsbot.
 
 При входе через Яндекс сохраняем: имя, email, дату рождения (если пользователь разрешил).
 
@@ -183,6 +179,7 @@ Chat id — личный (или группы). Узнать: написать �
 | `PickupPoint` | Точки самовывоза (кафе) |
 | `PushSubscription` | Web Push подписки клиентов |
 | `TelegramLinkToken` | One-time deep-link для привязки Telegram |
+| `StaffTelegramRecipient` | Сотрудники для алертов о новых заказах |
 | `AdminSession` | Сессии админа |
 
 `prisma/seed-data/site.json` используется **только** для первичного seed (`npm run db:seed`).

@@ -247,6 +247,22 @@ model TelegramLinkToken {
   @@index([expiresAt])
 }
 
+/// Staff Telegram chats that receive NEW order alerts (same cafe bot).
+model StaffTelegramRecipient {
+  id        String   @id @default(cuid())
+  /// Telegram chat id (user or group), e.g. 809580214 or -100…
+  chatId    String   @unique @db.VarChar(64)
+  /// Display name, e.g. Иван
+  name      String   @db.VarChar(120)
+  /// Role / position, e.g. Админ, Менеджер
+  title     String   @default("") @db.VarChar(120)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive])
+}
+
 /// Browser Web Push subscription (one row per device / browser).
 model PushSubscription {
   id         String   @id @default(cuid())

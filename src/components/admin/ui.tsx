@@ -15,6 +15,7 @@ import {
   Mail,
   MapPin,
   Menu,
+  MessageCircle,
   PanelTop,
   QrCode,
   ShoppingBag,
@@ -338,6 +339,8 @@ export const IconNav = ({ name }: { name: string }) => {
       return <QrCode {...props} />;
     case "users":
       return <Users {...props} />;
+    case "telegram":
+      return <MessageCircle {...props} />;
     case "docs":
       return <BookOpen {...props} />;
     case "sections":

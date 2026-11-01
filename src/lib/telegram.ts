@@ -128,19 +128,29 @@ const siteOrigin = (): string => {
   return raw.replace(/\/$/, "");
 };
 
-/** Comma/space-separated chat ids for staff alerts (admin, manager, …). */
-export const getAdminTelegramChatIds = (): string[] => {
-  const raw = process.env.TELEGRAM_ADMIN_CHAT_IDS?.trim() ?? "";
-  if (!raw) return [];
-  const seen = new Set<string>();
-  const ids: string[] = [];
-  for (const part of raw.split(/[,;\s]+/)) {
-    const id = part.trim();
-    if (!id || seen.has(id)) continue;
-    seen.add(id);
-    ids.push(id);
+/** Active staff Telegram recipients from DB (admin UI). */
+export const getStaffTelegramRecipients = async (): Promise<
+  Array<{ chatId: string; name: string; title: string }>
+> => {
+  try {
+    const rows = await prisma.staffTelegramRecipient.findMany({
+      where: { isActive: true },
+      select: { chatId: true, name: true, title: true },
+      orderBy: { name: "asc" },
+    });
+    return rows
+      .map((row) => ({
+        chatId: row.chatId.trim(),
+        name: row.name.trim(),
+        title: row.title.trim(),
+      }))
+      .filter((row) => row.chatId);
+  } catch (error) {
+    console.info("[tg-admin-recipients]", {
+      error: error instanceof Error ? error.message.slice(0, 120) : "unknown",
+    });
+    return [];
   }
-  return ids;
 };
 
 type TelegramSendResult = {
@@ -319,17 +329,19 @@ export const formatAdminNewOrderTelegramText = (order: OrderPublic): string => {
 export const notifyAdminsNewOrder = async (
   order: OrderPublic,
 ): Promise<void> => {
-  const chatIds = getAdminTelegramChatIds();
-  if (!chatIds.length) {
+  const recipients = await getStaffTelegramRecipients();
+  if (!recipients.length) {
     console.info("[tg-admin]", { count: 0, orderNumber: order.number });
     return;
   }
   const text = formatAdminNewOrderTelegramText(order);
   const results = await Promise.all(
-    chatIds.map(async (chatId) => {
-      const result = await sendTelegramToChat(chatId, text);
+    recipients.map(async (recipient) => {
+      const result = await sendTelegramToChat(recipient.chatId, text);
       console.info("[tg-admin-send]", {
-        chatId,
+        chatId: recipient.chatId,
+        name: recipient.name,
+        title: recipient.title || undefined,
         ok: result.ok,
         blocked: Boolean(result.blocked),
       });
@@ -337,7 +349,7 @@ export const notifyAdminsNewOrder = async (
     }),
   );
   console.info("[tg-admin]", {
-    count: chatIds.length,
+    count: recipients.length,
     ok: results.filter((r) => r.ok).length,
     orderNumber: order.number,
   });
