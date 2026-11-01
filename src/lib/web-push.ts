@@ -99,14 +99,17 @@ export const sendPushToCustomer = async (
   }
 };
 
-/** Fire-and-forget helper after order status changes (Web Push + Telegram). */
-export const notifyCustomerOrderStatus = (input: {
+/**
+ * Web Push + Telegram after a status change.
+ * Await from `after()` in Server Actions — bare void gets aborted under `next start`.
+ */
+export const notifyCustomerOrderStatus = async (input: {
   customerId: string | null | undefined;
   status: OrderStatus;
   orderId: string;
   orderNumber: string;
   fulfillmentMode?: FulfillmentMode | null;
-}): void => {
+}): Promise<void> => {
   const { customerId, status, orderId, orderNumber, fulfillmentMode } = input;
   if (!customerId || !isPushNotifyStatus(status)) return;
   const payload = orderStatusPushPayload({
@@ -116,12 +119,14 @@ export const notifyCustomerOrderStatus = (input: {
     fulfillmentMode,
   });
   if (!payload) return;
-  void sendPushToCustomer(customerId, payload);
-  notifyCustomerOrderStatusTelegram({
-    customerId,
-    status,
-    orderId,
-    orderNumber,
-    fulfillmentMode,
-  });
+  await Promise.all([
+    sendPushToCustomer(customerId, payload),
+    notifyCustomerOrderStatusTelegram({
+      customerId,
+      status,
+      orderId,
+      orderNumber,
+      fulfillmentMode,
+    }),
+  ]);
 };

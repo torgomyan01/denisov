@@ -210,9 +210,18 @@ export const sendTelegramToCustomer = async (
       select: { telegramChatId: true },
     });
     const chatId = customer?.telegramChatId?.trim();
-    if (!chatId) return;
+    if (!chatId) {
+      console.info("[tg-customer]", { customerId, linked: false });
+      return;
+    }
 
     const result = await sendTelegramToChat(chatId, text);
+    console.info("[tg-customer-send]", {
+      customerId,
+      chatId,
+      ok: result.ok,
+      blocked: Boolean(result.blocked),
+    });
     if (result.blocked) {
       await prisma.customer
         .update({
@@ -221,18 +230,26 @@ export const sendTelegramToCustomer = async (
         })
         .catch(() => undefined);
     }
-  } catch {
-    /* never block order flow */
+  } catch (error) {
+    console.info("[tg-customer-error]", {
+      customerId,
+      name: error instanceof Error ? error.name : "unknown",
+      message: error instanceof Error ? error.message.slice(0, 120) : "unknown",
+    });
   }
 };
 
-export const notifyCustomerOrderStatusTelegram = (input: {
+/**
+ * Customer status Telegram. Await from `after()` — fire-and-forget is aborted
+ * under `next start` when the Server Action response finishes.
+ */
+export const notifyCustomerOrderStatusTelegram = async (input: {
   customerId: string | null | undefined;
   status: OrderStatus;
   orderId: string;
   orderNumber: string;
   fulfillmentMode?: FulfillmentMode | null;
-}): void => {
+}): Promise<void> => {
   const { customerId, status, orderId, orderNumber, fulfillmentMode } = input;
   if (!customerId || !isOrderNotifyStatus(status)) return;
   const payload = orderStatusNotifyPayload({
@@ -242,7 +259,7 @@ export const notifyCustomerOrderStatusTelegram = (input: {
     fulfillmentMode,
   });
   if (!payload) return;
-  void sendTelegramToCustomer(customerId, payload.telegramText);
+  await sendTelegramToCustomer(customerId, payload.telegramText);
 };
 
 const formatMoneyRub = (rub: number): string =>

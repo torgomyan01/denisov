@@ -43,6 +43,25 @@ const orderInclude = {
   statusLogs: { orderBy: { createdAt: "asc" as const } },
 } as const;
 
+/** Keep customer push/Telegram alive after the Server Action response (prod). */
+const scheduleCustomerOrderStatusNotify = (input: {
+  customerId: string | null | undefined;
+  status: OrderStatus;
+  orderId: string;
+  orderNumber: string;
+  fulfillmentMode: OrderPublic["fulfillmentMode"];
+}): void => {
+  void import("next/server")
+    .then(({ after }) => {
+      after(async () => {
+        await notifyCustomerOrderStatus(input);
+      });
+    })
+    .catch(async () => {
+      await notifyCustomerOrderStatus(input);
+    });
+};
+
 export const placeOrderAction = async (
   input: unknown,
 ): Promise<ActionResult<{ order: OrderPublic }>> => {
@@ -462,7 +481,7 @@ export const updateOrderStatusAction = async (
     revalidatePath("/profile/orders");
     revalidatePath(`/profile/orders/${existing.id}`);
 
-    notifyCustomerOrderStatus({
+    scheduleCustomerOrderStatusNotify({
       customerId: updated.customerId,
       status: next,
       orderId: updated.id,
@@ -608,7 +627,7 @@ export const verifyOrderFulfillmentAction = async (
     revalidatePath("/profile/orders");
     revalidatePath(`/profile/orders/${existing.id}`);
 
-    notifyCustomerOrderStatus({
+    scheduleCustomerOrderStatusNotify({
       customerId: updated.customerId,
       status: "completed",
       orderId: updated.id,
