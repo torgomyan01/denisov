@@ -1,5 +1,5 @@
-# Backup drain when Vercel cron is unavailable / delayed.
-# Runs from GitHub (can reach both cafedenisov.ru and Vercel + Telegram).
+# Drain Telegram outbox from GitHub (VPS cannot reach Telegram/Vercel TLS).
+# Uses existing gateway /send — no BotFather token in GitHub secrets.
 name: Telegram outbox drain
 
 on:
@@ -11,16 +11,18 @@ jobs:
   drain:
     runs-on: ubuntu-latest
     steps:
-      - name: Drain via Vercel gateway
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Drain outbox via gateway /send
         env:
-          DRAIN_URL: ${{ secrets.TELEGRAM_DRAIN_URL }}
-          DRAIN_SECRET: ${{ secrets.TELEGRAM_DRAIN_SECRET }}
+          SITE_URL: https://cafedenisov.ru
+          TELEGRAM_GATEWAY_URL: ${{ secrets.TELEGRAM_GATEWAY_URL }}
+          TELEGRAM_GATEWAY_SECRET: ${{ secrets.TELEGRAM_GATEWAY_SECRET }}
         run: |
-          if [ -z "$DRAIN_URL" ] || [ -z "$DRAIN_SECRET" ]; then
-            echo "Missing TELEGRAM_DRAIN_URL or TELEGRAM_DRAIN_SECRET"
+          if [ -z "$TELEGRAM_GATEWAY_URL" ] || [ -z "$TELEGRAM_GATEWAY_SECRET" ]; then
+            echo "Set repo secrets TELEGRAM_GATEWAY_URL and TELEGRAM_GATEWAY_SECRET"
             exit 0
           fi
-          curl -fsS -X POST "$DRAIN_URL" \
-            -H "Authorization: Bearer $DRAIN_SECRET" \
-            -H "Content-Type: application/json" \
-            -d '{}'
+          node scripts/drain-telegram-outbox.mjs
