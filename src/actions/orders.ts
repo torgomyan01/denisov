@@ -284,10 +284,15 @@ export const placeOrderAction = async (
     );
 
     const orderPublic = toOrderPublic(order);
+    // Do not await Telegram here: VPS→gateway can hang and slow checkout.
+    // after() keeps work alive after the response without blocking the client.
     try {
-      await notifyAdminsNewOrder(orderPublic);
+      const { after } = await import("next/server");
+      after(() => {
+        void notifyAdminsNewOrder(orderPublic);
+      });
     } catch {
-      /* Telegram must never fail checkout */
+      void notifyAdminsNewOrder(orderPublic);
     }
 
     revalidatePath("/");

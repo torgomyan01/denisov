@@ -167,7 +167,8 @@ export const sendTelegramToChat = async (
       },
       body: JSON.stringify({ chatId: id, text: body.slice(0, 4000) }),
       cache: "no-store",
-      signal: AbortSignal.timeout(20_000),
+      // Fail fast: Jino VPS often cannot complete TLS to Vercel / reach Telegram.
+      signal: AbortSignal.timeout(4_000),
     });
 
     if (res.status === 403) return { ok: false, blocked: true };
@@ -180,6 +181,7 @@ export const sendTelegramToChat = async (
     console.info("[tg-send-error]", {
       chatId,
       name: error instanceof Error ? error.name : "unknown",
+      message: error instanceof Error ? error.message.slice(0, 120) : "unknown",
     });
     return { ok: false };
   }
