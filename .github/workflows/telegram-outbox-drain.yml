@@ -1,0 +1,26 @@
+# Backup drain when Vercel cron is unavailable / delayed.
+# Runs from GitHub (can reach both cafedenisov.ru and Vercel + Telegram).
+name: Telegram outbox drain
+
+on:
+  schedule:
+    - cron: "* * * * *"
+  workflow_dispatch:
+
+jobs:
+  drain:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Drain via Vercel gateway
+        env:
+          DRAIN_URL: ${{ secrets.TELEGRAM_DRAIN_URL }}
+          DRAIN_SECRET: ${{ secrets.TELEGRAM_DRAIN_SECRET }}
+        run: |
+          if [ -z "$DRAIN_URL" ] || [ -z "$DRAIN_SECRET" ]; then
+            echo "Missing TELEGRAM_DRAIN_URL or TELEGRAM_DRAIN_SECRET"
+            exit 0
+          fi
+          curl -fsS -X POST "$DRAIN_URL" \
+            -H "Authorization: Bearer $DRAIN_SECRET" \
+            -H "Content-Type: application/json" \
+            -d '{}'

@@ -146,45 +146,74 @@ export const getAdminTelegramChatIds = (): string[] => {
 type TelegramSendResult = {
   ok: boolean;
   blocked?: boolean;
+  queued?: boolean;
 };
 
-/** Send via Vercel gateway to any chat. Never throws. */
+/** Enqueue Telegram message for Vercel drain (VPS cannot reach Telegram/Vercel TLS). */
+export const enqueueTelegramMessage = async (input: {
+  chatId: string;
+  text: string;
+  customerId?: string | null;
+}): Promise<boolean> => {
+  const chatId = input.chatId.trim();
+  const text = input.text.trim().slice(0, 4000);
+  if (!chatId || !text) return false;
+  try {
+    await prisma.telegramOutbox.create({
+      data: {
+        chatId,
+        text,
+        customerId: input.customerId?.trim() || null,
+        status: "pending",
+      },
+    });
+    return true;
+  } catch (error) {
+    console.info("[tg-outbox-enqueue-fail]", {
+      name: error instanceof Error ? error.name : "unknown",
+    });
+    return false;
+  }
+};
+
+/**
+ * Deliver a Telegram message.
+ * On this host we only enqueue to DB; Vercel gateway drains the outbox.
+ * Never throws.
+ */
 export const sendTelegramToChat = async (
   chatId: string,
   text: string,
+  opts?: { customerId?: string | null },
 ): Promise<TelegramSendResult> => {
-  try {
-    const gateway = gatewayConfig();
-    const id = chatId.trim();
-    const body = text.trim();
-    if (!gateway || !id || !body) return { ok: false };
+  const id = chatId.trim();
+  const body = text.trim();
+  if (!id || !body) return { ok: false };
 
-    const res = await fetch(gateway.url, {
+  const queued = await enqueueTelegramMessage({
+    chatId: id,
+    text: body,
+    customerId: opts?.customerId,
+  });
+  if (!queued) return { ok: false };
+
+  // Best-effort ping to Vercel drain (usually fails on Jino TLS — safe to ignore).
+  const gateway = gatewayConfig();
+  if (gateway) {
+    const drainUrl = gateway.url.replace(/\/send\/?$/, "/drain");
+    void fetch(drainUrl, {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
         Authorization: `Bearer ${gateway.secret}`,
+        "Content-Type": "application/json",
       },
-      body: JSON.stringify({ chatId: id, text: body.slice(0, 4000) }),
+      body: "{}",
       cache: "no-store",
-      // Fail fast: Jino VPS often cannot complete TLS to Vercel / reach Telegram.
-      signal: AbortSignal.timeout(4_000),
-    });
-
-    if (res.status === 403) return { ok: false, blocked: true };
-    if (!res.ok) {
-      console.info("[tg-send-fail]", { chatId: id, status: res.status });
-      return { ok: false };
-    }
-    return { ok: true };
-  } catch (error) {
-    console.info("[tg-send-error]", {
-      chatId,
-      name: error instanceof Error ? error.name : "unknown",
-      message: error instanceof Error ? error.message.slice(0, 120) : "unknown",
-    });
-    return { ok: false };
+      signal: AbortSignal.timeout(1500),
+    }).catch(() => undefined);
   }
+
+  return { ok: true, queued: true };
 };
 
 /** Send via Vercel gateway. Never throws. Clears chat_id if bot blocked. */
@@ -202,15 +231,7 @@ export const sendTelegramToCustomer = async (
     const chatId = customer?.telegramChatId?.trim();
     if (!chatId) return;
 
-    const result = await sendTelegramToChat(chatId, text);
-    if (result.blocked) {
-      await prisma.customer
-        .update({
-          where: { id: customerId },
-          data: { telegramChatId: null, telegramUsername: null },
-        })
-        .catch(() => undefined);
-    }
+    await sendTelegramToChat(chatId, text, { customerId });
   } catch {
     /* never block order flow */
   }
@@ -311,11 +332,7 @@ export const formatAdminNewOrderTelegramText = (order: OrderPublic): string => {
   return lines.join("\n");
 };
 
-/**
- * Notify staff chats about a new order.
- * Must be awaited from Server Actions — fire-and-forget gets aborted when the
- * action response finishes (works in `next dev`, fails under `next start`).
- */
+/** Queue new-order alerts for all staff chat ids (drained by Vercel gateway). */
 export const notifyAdminsNewOrder = async (
   order: OrderPublic,
 ): Promise<void> => {
@@ -326,19 +343,101 @@ export const notifyAdminsNewOrder = async (
   }
   const text = formatAdminNewOrderTelegramText(order);
   const results = await Promise.all(
-    chatIds.map(async (chatId) => {
-      const result = await sendTelegramToChat(chatId, text);
-      console.info("[tg-admin-send]", {
-        chatId,
-        ok: result.ok,
-        blocked: Boolean(result.blocked),
-      });
-      return result;
-    }),
+    chatIds.map((chatId) => sendTelegramToChat(chatId, text)),
   );
   console.info("[tg-admin]", {
     count: chatIds.length,
-    ok: results.filter((r) => r.ok).length,
+    queued: results.filter((r) => r.ok).length,
     orderNumber: order.number,
   });
+};
+
+export type TelegramOutboxRow = {
+  id: string;
+  chatId: string;
+  text: string;
+  customerId: string | null;
+};
+
+export const pullTelegramOutbox = async (
+  limit = 20,
+): Promise<TelegramOutboxRow[]> => {
+  const take = Math.min(50, Math.max(1, limit));
+  const staleBefore = new Date(Date.now() - 90_000);
+  // Reclaim claims that never got an ack (drain crash / timeout).
+  await prisma.telegramOutbox.updateMany({
+    where: {
+      status: "sending",
+      OR: [{ claimedAt: null }, { claimedAt: { lt: staleBefore } }],
+    },
+    data: { status: "pending", claimedAt: null },
+  });
+
+  const rows = await prisma.telegramOutbox.findMany({
+    where: { status: "pending" },
+    orderBy: { createdAt: "asc" },
+    take,
+    select: { id: true, chatId: true, text: true, customerId: true },
+  });
+  if (rows.length) {
+    await prisma.telegramOutbox.updateMany({
+      where: { id: { in: rows.map((r) => r.id) } },
+      data: {
+        status: "sending",
+        claimedAt: new Date(),
+        attempts: { increment: 1 },
+      },
+    });
+  }
+  return rows;
+};
+
+export type TelegramOutboxAckItem = {
+  id: string;
+  ok: boolean;
+  blocked?: boolean;
+  error?: string;
+};
+
+export const ackTelegramOutbox = async (
+  items: TelegramOutboxAckItem[],
+): Promise<void> => {
+  for (const item of items) {
+    if (!item?.id) continue;
+    if (item.ok) {
+      await prisma.telegramOutbox
+        .update({
+          where: { id: item.id },
+          data: { status: "sent", sentAt: new Date(), lastError: null },
+        })
+        .catch(() => undefined);
+      continue;
+    }
+
+    await prisma.telegramOutbox
+      .update({
+        where: { id: item.id },
+        data: {
+          // Re-queue soft failures; permanent Telegram blocks stay failed.
+          status: item.blocked ? "failed" : "pending",
+          lastError: (item.error || "send failed").slice(0, 500),
+        },
+      })
+      .catch(() => undefined);
+
+    if (item.blocked) {
+      const row = await prisma.telegramOutbox.findUnique({
+        where: { id: item.id },
+        select: { customerId: true },
+      });
+      if (row?.customerId) {
+        await prisma.customer
+          .update({
+            where: { id: row.customerId },
+            data: { telegramChatId: null, telegramUsername: null },
+          })
+          .catch(() => undefined);
+      }
+    }
+  }
 };

@@ -247,6 +247,25 @@ model TelegramLinkToken {
   @@index([expiresAt])
 }
 
+/// Outbound Telegram queue. Jino VPS cannot reach api.telegram.org / Vercel TLS,
+/// so the app only enqueues; Vercel gateway drains and sends.
+model TelegramOutbox {
+  id         String    @id @default(cuid())
+  chatId     String    @db.VarChar(64)
+  text       String    @db.Text
+  /// Optional: clear Customer.telegramChatId when Telegram reports blocked
+  customerId String?
+  status     String    @default("pending") @db.VarChar(16)
+  attempts   Int       @default(0)
+  lastError  String?   @db.VarChar(500)
+  createdAt  DateTime  @default(now())
+  claimedAt  DateTime?
+  sentAt     DateTime?
+
+  @@index([status, createdAt])
+  @@index([status, claimedAt])
+}
+
 /// Browser Web Push subscription (one row per device / browser).
 model PushSubscription {
   id         String   @id @default(cuid())
