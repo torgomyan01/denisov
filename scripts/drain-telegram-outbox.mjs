@@ -51,11 +51,28 @@ if (!gateway || !secret) {
 const outboxUrl = `${site}/api/telegram/outbox`;
 const auth = { Authorization: `Bearer ${secret}` };
 
-const pullRes = await fetch(`${outboxUrl}?limit=20`, {
-  headers: { ...auth, Accept: "application/json" },
-  cache: "no-store",
-});
-const pullBody = await pullRes.text();
+const fetchWithRetry = async (url, init, attempts = 4) => {
+  let lastStatus = 0;
+  let lastBody = "";
+  for (let i = 0; i < attempts; i++) {
+    const res = await fetch(url, init);
+    const body = await res.text();
+    if (res.ok) return { res, body };
+    lastStatus = res.status;
+    lastBody = body;
+    if (res.status !== 502 && res.status !== 503 && res.status !== 504) break;
+    await new Promise((r) => setTimeout(r, 1500 * (i + 1)));
+  }
+  return { res: { ok: false, status: lastStatus }, body: lastBody };
+};
+
+const { res: pullRes, body: pullBody } = await fetchWithRetry(
+  `${outboxUrl}?limit=20`,
+  {
+    headers: { ...auth, Accept: "application/json" },
+    cache: "no-store",
+  },
+);
 if (!pullRes.ok) {
   console.error("pull failed", pullRes.status, pullBody.slice(0, 300));
   process.exit(1);
