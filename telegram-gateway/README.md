@@ -6,10 +6,6 @@ Small Next.js app for Vercel: receives Telegram webhooks and relays `sendMessage
 
 - `POST /api/telegram/webhook` — BotFather webhook (`/start <token>`)
 - `POST /api/telegram/send` — `{ chatId, text }` + `Authorization: Bearer GATEWAY_SECRET`
-- `GET|POST /api/telegram/drain` — pull Denisov outbox → Telegram → ack (cron + manual)
-
-Denisov (Jino) cannot reach Telegram/Vercel TLS, so it only writes `TelegramOutbox`.
-This gateway drains every minute (`vercel.json` cron) and also on webhook traffic.
 
 ## Deploy
 

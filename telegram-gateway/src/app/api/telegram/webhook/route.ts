@@ -4,27 +4,6 @@ import { sendTelegramMessage } from "@/lib/telegram";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-/** Opportunistic outbox drain when Telegram hits this webhook. */
-const wakeDrain = (): void => {
-  const secret = process.env.GATEWAY_SECRET?.trim();
-  if (!secret) return;
-  const base =
-    process.env.VERCEL_URL?.trim() ||
-    process.env.GATEWAY_PUBLIC_URL?.trim() ||
-    "";
-  if (!base) return;
-  const origin = base.startsWith("http") ? base.replace(/\/$/, "") : `https://${base}`;
-  void fetch(`${origin}/api/telegram/drain`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${secret}`,
-      "Content-Type": "application/json",
-    },
-    body: "{}",
-    cache: "no-store",
-  }).catch(() => undefined);
-};
-
 type TgUpdate = {
   message?: {
     chat?: { id?: number };
@@ -50,9 +29,6 @@ export const POST = async (request: Request): Promise<Response> => {
   } catch {
     return NextResponse.json({ ok: true });
   }
-
-  // Any inbound update can wake the outbox drain (VPS cannot call us reliably).
-  wakeDrain();
 
   const chatId = update.message?.chat?.id;
   const text = update.message?.text ?? "";

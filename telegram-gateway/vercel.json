@@ -1,8 +1,0 @@
-{
-  "crons": [
-    {
-      "path": "/api/telegram/drain",
-      "schedule": "0 8 * * *"
-    }
-  ]
-}
