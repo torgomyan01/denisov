@@ -284,7 +284,11 @@ export const placeOrderAction = async (
     );
 
     const orderPublic = toOrderPublic(order);
-    notifyAdminsNewOrder(orderPublic);
+    try {
+      await notifyAdminsNewOrder(orderPublic);
+    } catch {
+      /* Telegram must never fail checkout */
+    }
 
     revalidatePath("/");
     revalidatePath("/admin");

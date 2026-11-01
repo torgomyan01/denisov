@@ -166,12 +166,21 @@ export const sendTelegramToChat = async (
         Authorization: `Bearer ${gateway.secret}`,
       },
       body: JSON.stringify({ chatId: id, text: body.slice(0, 4000) }),
+      cache: "no-store",
+      signal: AbortSignal.timeout(20_000),
     });
 
     if (res.status === 403) return { ok: false, blocked: true };
-    if (!res.ok) return { ok: false };
+    if (!res.ok) {
+      console.info("[tg-send-fail]", { chatId: id, status: res.status });
+      return { ok: false };
+    }
     return { ok: true };
-  } catch {
+  } catch (error) {
+    console.info("[tg-send-error]", {
+      chatId,
+      name: error instanceof Error ? error.name : "unknown",
+    });
     return { ok: false };
   }
 };
@@ -300,12 +309,34 @@ export const formatAdminNewOrderTelegramText = (order: OrderPublic): string => {
   return lines.join("\n");
 };
 
-/** Fire-and-forget: notify all configured staff chat ids about a new order. */
-export const notifyAdminsNewOrder = (order: OrderPublic): void => {
+/**
+ * Notify staff chats about a new order.
+ * Must be awaited from Server Actions — fire-and-forget gets aborted when the
+ * action response finishes (works in `next dev`, fails under `next start`).
+ */
+export const notifyAdminsNewOrder = async (
+  order: OrderPublic,
+): Promise<void> => {
   const chatIds = getAdminTelegramChatIds();
-  if (!chatIds.length) return;
+  if (!chatIds.length) {
+    console.info("[tg-admin]", { count: 0, orderNumber: order.number });
+    return;
+  }
   const text = formatAdminNewOrderTelegramText(order);
-  void Promise.all(
-    chatIds.map((chatId) => sendTelegramToChat(chatId, text)),
+  const results = await Promise.all(
+    chatIds.map(async (chatId) => {
+      const result = await sendTelegramToChat(chatId, text);
+      console.info("[tg-admin-send]", {
+        chatId,
+        ok: result.ok,
+        blocked: Boolean(result.blocked),
+      });
+      return result;
+    }),
   );
+  console.info("[tg-admin]", {
+    count: chatIds.length,
+    ok: results.filter((r) => r.ok).length,
+    orderNumber: order.number,
+  });
 };
