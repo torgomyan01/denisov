@@ -101,7 +101,9 @@ export const sendPushToCustomer = async (
 
 /**
  * Web Push + Telegram after a status change.
- * Await from `after()` in Server Actions — bare void gets aborted under `next start`.
+ * Telegram first (awaited), then push — do not Promise.all with push: on a small
+ * VPS web-push crypto can stall the event loop and trip the gateway timeout
+ * while admin-only Telegram still succeeds.
  */
 export const notifyCustomerOrderStatus = async (input: {
   customerId: string | null | undefined;
@@ -119,14 +121,12 @@ export const notifyCustomerOrderStatus = async (input: {
     fulfillmentMode,
   });
   if (!payload) return;
-  await Promise.all([
-    sendPushToCustomer(customerId, payload),
-    notifyCustomerOrderStatusTelegram({
-      customerId,
-      status,
-      orderId,
-      orderNumber,
-      fulfillmentMode,
-    }),
-  ]);
+  await notifyCustomerOrderStatusTelegram({
+    customerId,
+    status,
+    orderId,
+    orderNumber,
+    fulfillmentMode,
+  });
+  await sendPushToCustomer(customerId, payload);
 };

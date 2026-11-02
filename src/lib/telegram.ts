@@ -177,8 +177,9 @@ export const sendTelegramToChat = async (
       },
       body: JSON.stringify({ chatId: id, text: body.slice(0, 4000) }),
       cache: "no-store",
-      // Fail fast: Jino VPS often cannot complete TLS to Vercel / reach Telegram.
-      signal: AbortSignal.timeout(4_000),
+      // Jino→Vercel TLS is often slow; 4s aborted real deliveries (admin ok,
+      // customer status timed out on the same chatId). Keep under ~15s.
+      signal: AbortSignal.timeout(15_000),
     });
 
     if (res.status === 403) return { ok: false, blocked: true };

@@ -57,11 +57,13 @@ const scheduleCustomerOrderStatusNotify = async (input: {
 }): Promise<void> => {
   try {
     const { after } = await import("next/server");
-    after(async () => {
-      await notifyCustomerOrderStatus(input);
+    // Same as admin new-order: register after(), start work without tying the
+    // after-callback return to the full gateway RTT (PM2 process stays alive).
+    after(() => {
+      void notifyCustomerOrderStatus(input);
     });
   } catch {
-    await notifyCustomerOrderStatus(input);
+    void notifyCustomerOrderStatus(input);
   }
 };
 
