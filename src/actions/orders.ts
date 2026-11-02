@@ -43,23 +43,26 @@ const orderInclude = {
   statusLogs: { orderBy: { createdAt: "asc" as const } },
 } as const;
 
-/** Keep customer push/Telegram alive after the Server Action response (prod). */
-const scheduleCustomerOrderStatusNotify = (input: {
+/**
+ * Keep customer push/Telegram alive after the Server Action response (prod).
+ * Must await registering `after()` — a floating `import().then(after)` races the
+ * action return and never schedules work under `next start` (admin path awaits).
+ */
+const scheduleCustomerOrderStatusNotify = async (input: {
   customerId: string | null | undefined;
   status: OrderStatus;
   orderId: string;
   orderNumber: string;
   fulfillmentMode: OrderPublic["fulfillmentMode"];
-}): void => {
-  void import("next/server")
-    .then(({ after }) => {
-      after(async () => {
-        await notifyCustomerOrderStatus(input);
-      });
-    })
-    .catch(async () => {
+}): Promise<void> => {
+  try {
+    const { after } = await import("next/server");
+    after(async () => {
       await notifyCustomerOrderStatus(input);
     });
+  } catch {
+    await notifyCustomerOrderStatus(input);
+  }
 };
 
 export const placeOrderAction = async (
@@ -481,7 +484,7 @@ export const updateOrderStatusAction = async (
     revalidatePath("/profile/orders");
     revalidatePath(`/profile/orders/${existing.id}`);
 
-    scheduleCustomerOrderStatusNotify({
+    await scheduleCustomerOrderStatusNotify({
       customerId: updated.customerId,
       status: next,
       orderId: updated.id,
@@ -627,7 +630,7 @@ export const verifyOrderFulfillmentAction = async (
     revalidatePath("/profile/orders");
     revalidatePath(`/profile/orders/${existing.id}`);
 
-    scheduleCustomerOrderStatusNotify({
+    await scheduleCustomerOrderStatusNotify({
       customerId: updated.customerId,
       status: "completed",
       orderId: updated.id,
