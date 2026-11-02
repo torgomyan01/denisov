@@ -189,10 +189,29 @@ export const sendTelegramToChat = async (
     }
     return { ok: true };
   } catch (error) {
+    const cause =
+      error instanceof Error &&
+      "cause" in error &&
+      error.cause instanceof Error
+        ? {
+            name: error.cause.name,
+            message: error.cause.message.slice(0, 160),
+          }
+        : undefined;
     console.info("[tg-send-error]", {
       chatId,
+      gatewayHost: (() => {
+        try {
+          return gatewayConfig()?.url
+            ? new URL(gatewayConfig()!.url).host
+            : null;
+        } catch {
+          return null;
+        }
+      })(),
       name: error instanceof Error ? error.name : "unknown",
       message: error instanceof Error ? error.message.slice(0, 120) : "unknown",
+      cause,
     });
     return { ok: false };
   }
