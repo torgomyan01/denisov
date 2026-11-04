@@ -1,12 +1,17 @@
 "use client";
 
-import { btnDark, btnLine, orderBadgeClass, toastClass } from "@/components/admin/styles";
+import {
+  btnDark,
+  btnLine,
+  orderBadgeClass,
+  toastClass,
+} from "@/components/admin/styles";
 import { ArrowLeft, MapPin, Phone, Utensils } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   getOrderAdminAction,
-  updateOrderStatusAction,
+  retryIikoOrderSyncAction,
 } from "@/actions/orders";
 import { OrderDeliveryMapModal } from "@/components/admin/OrderDeliveryMapModal";
 import { OrderPrintLabel } from "@/components/admin/OrderPrintLabel";
@@ -14,10 +19,7 @@ import {
   ORDER_STATUS_HINTS,
   ORDER_STATUS_LABELS,
   PAYMENT_STATUS_LABELS,
-  canFulfillOrderByQr,
-  nextOrderStatuses,
   type OrderPublic,
-  type OrderStatus,
 } from "@/lib/orders";
 import { formatPhoneDisplay } from "@/lib/phone";
 
@@ -89,20 +91,7 @@ export const OrderDetailPanel = ({
     void load();
   }, [load]);
 
-  const setStatus = async (status: OrderStatus) => {
-    if (!order || busy) return;
-    setBusy(true);
-    const result = await updateOrderStatusAction({
-      orderId: order.id,
-      status,
-    });
-    setBusy(false);
-    if (!result.success || !result.data) {
-      showToast(result.success ? "Ошибка" : result.error, "error");
-      return;
-    }
-    setOrder(result.data);
-    showToast(`Статус: ${ORDER_STATUS_LABELS[status]}`, "success");
+  const bumpOrdersList = useCallback(() => {
     try {
       window.localStorage.setItem(
         "denisov_admin_orders_bump",
@@ -113,6 +102,25 @@ export const OrderDetailPanel = ({
     }
     window.dispatchEvent(new Event("denisov-orders-changed"));
     onOrdersChanged?.();
+  }, [onOrdersChanged]);
+
+  const retryIiko = async () => {
+    if (!order || busy) return;
+    setBusy(true);
+    const result = await retryIikoOrderSyncAction(order.id);
+    setBusy(false);
+    if (!result.success || !result.data) {
+      showToast(result.success ? "Ошибка" : result.error, "error");
+      return;
+    }
+    setOrder(result.data);
+    showToast(
+      result.data.iikoOrderId && !result.data.iikoSyncError
+        ? "Отправлено в iiko"
+        : result.data.iikoSyncError || "iiko не принял заказ",
+      result.data.iikoSyncError ? "error" : "success",
+    );
+    bumpOrdersList();
   };
 
   const toastPortal =
@@ -158,14 +166,10 @@ export const OrderDetailPanel = ({
     );
   }
 
-  const next = nextOrderStatuses(order.status, order.fulfillmentMode).filter(
-    (status) => status !== "completed",
-  );
-  const workflowNext = next.filter((status) => status !== "cancelled");
-  const awaitQrHandover =
-    workflowNext.length === 0 &&
-    (order.status === "ready" || order.status === "delivering") &&
-    canFulfillOrderByQr(order.status, order.fulfillmentMode);
+  const iikoNeedsRetry =
+    Boolean(order.iikoSyncError) ||
+    !order.iikoOrderId ||
+    order.iikoCreationStatus === "Error";
 
   return (
     <div className="animate-panel-in">
@@ -314,7 +318,7 @@ export const OrderDetailPanel = ({
         </section>
       </div>
 
-      {order.status !== "cancelled" ? (
+      {order.status !== "Cancelled" ? (
         <div className="mb-[0.85rem]">
           <OrderPrintLabel order={order} />
         </div>
@@ -362,6 +366,45 @@ export const OrderDetailPanel = ({
       </section>
 
       <section className="rounded-2xl border border-ink/8 bg-white px-[1.05rem] pt-4 pb-[1.1rem] shadow-[0_10px_28px_rgba(33,30,25,0.04)] [&_h2]:mb-[0.55rem] [&_h2]:text-[0.72rem] [&_h2]:uppercase [&_h2]:tracking-[0.12em] [&_h2]:text-ink/55 [&_p]:mt-1 [&_p]:text-[0.92rem]">
+        <h2>iiko</h2>
+        <p>
+          {order.iikoOrderId
+            ? `ID: ${order.iikoOrderId}`
+            : "Ещё не создан в iiko"}
+        </p>
+        {order.iikoCreationStatus ? (
+          <p>Создание: {order.iikoCreationStatus}</p>
+        ) : null}
+        {order.iikoSyncError ? (
+          <p className="text-clay">{order.iikoSyncError}</p>
+        ) : (
+          <p className="text-ink/48">
+            Статус подтягивается из iiko — вручную здесь не меняется.
+          </p>
+        )}
+        <div className="mt-3 flex flex-wrap gap-[0.55rem]">
+          <button
+            type="button"
+            className={btnLine}
+            disabled={busy}
+            onClick={() => void load()}
+          >
+            Обновить из iiko
+          </button>
+          {iikoNeedsRetry ? (
+            <button
+              type="button"
+              className={btnDark}
+              disabled={busy}
+              onClick={() => void retryIiko()}
+            >
+              Отправить в iiko снова
+            </button>
+          ) : null}
+        </div>
+      </section>
+
+      <section className="rounded-2xl border mt-4 border-ink/8 bg-white px-[1.05rem] pt-4 pb-[1.1rem] shadow-[0_10px_28px_rgba(33,30,25,0.04)] [&_h2]:mb-[0.55rem] [&_h2]:text-[0.72rem] [&_h2]:uppercase [&_h2]:tracking-[0.12em] [&_h2]:text-ink/55 [&_p]:mt-1 [&_p]:text-[0.92rem]">
         <h2>История статусов</h2>
         <ol className="mb-0 pl-[1.1rem] [&_li]:my-[0.35rem] [&_li]:text-[0.86rem] [&_span]:ml-[0.45rem] [&_span]:inline-block [&_span]:text-ink/55 [&_em]:block [&_em]:not-italic [&_em]:text-ink/55">
           {order.statusLogs.map((log) => (
@@ -374,56 +417,19 @@ export const OrderDetailPanel = ({
         </ol>
       </section>
 
-      {order.status === "completed" && order.fulfilledAt ? (
+      {order.status === "Closed" && order.fulfilledAt ? (
         <p className="mt-[0.85rem] text-[0.95rem] text-ink/60">
-          Выдан {formatWhen(order.fulfilledAt)} · через сканер QR
+          Закрыт {formatWhen(order.fulfilledAt)} · по данным iiko
         </p>
-      ) : null}
-
-      {awaitQrHandover ? (
-        <section className="mt-[0.85rem] rounded-2xl border border-ink/8 bg-white px-[1.05rem] pt-4 pb-[1.1rem] [&_h2]:mb-[0.55rem] [&_h2]:text-[0.72rem] [&_h2]:uppercase [&_h2]:tracking-[0.12em] [&_h2]:text-ink/55">
-          <h2>Выдача</h2>
-          <p className="mt-[0.35rem] text-[0.9rem] text-ink/48">
-            Финальную передачу подтверждайте в разделе «Выдача по QR» в меню
-            админки.
-          </p>
-          {next.includes("cancelled") ? (
-            <div className="mt-3 flex flex-wrap gap-[0.55rem]">
-              <button
-                type="button"
-                className={btnLine}
-                disabled={busy}
-                onClick={() => void setStatus("cancelled")}
-              >
-                Отменить заказ
-              </button>
-            </div>
-          ) : null}
-        </section>
-      ) : next.length ? (
-        <section className="mt-[0.85rem] rounded-2xl border border-ink/8 bg-white px-[1.05rem] pt-4 pb-[1.1rem] [&_h2]:mb-[0.55rem] [&_h2]:text-[0.72rem] [&_h2]:uppercase [&_h2]:tracking-[0.12em] [&_h2]:text-ink/55">
-          <h2>Следующий этап</h2>
-          <div className="flex flex-wrap gap-[0.55rem]">
-            {next.map((status) => (
-              <button
-                key={status}
-                type="button"
-                className={status === "cancelled" ? btnLine : btnDark}
-                disabled={busy}
-                onClick={() => void setStatus(status)}
-              >
-                {status === "cancelled"
-                  ? "Отменить заказ"
-                  : `→ ${ORDER_STATUS_LABELS[status]}`}
-              </button>
-            ))}
-          </div>
-        </section>
-      ) : order.status === "completed" || order.status === "cancelled" ? (
+      ) : order.status === "Closed" || order.status === "Cancelled" ? (
         <p className="mt-[0.85rem] text-sm text-ink/48">
           Заказ завершён — дальнейших этапов нет.
         </p>
-      ) : null}
+      ) : (
+        <p className="mt-[0.85rem] text-sm text-ink/48">
+          Ведите заказ в iiko — здесь статус обновится сам.
+        </p>
+      )}
 
       {toastPortal}
       {order.deliveryLat != null && order.deliveryLng != null ? (

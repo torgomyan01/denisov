@@ -70,11 +70,12 @@ import {
 import { DndProvider, SortableItem } from "@/components/admin/dnd";
 import { OrderDetailPanel } from "@/components/admin/OrderDetailPage";
 import { OrdersPanel } from "@/components/admin/OrdersPanel";
+import { IikoOrdersPanel } from "@/components/admin/IikoOrdersPanel";
 import { OrderScanPanel } from "@/components/admin/OrderScanPage";
 import { PickupPointsPanel } from "@/components/admin/PickupPointsPanel";
 import { AdminDocsPanel } from "@/components/admin/AdminDocsPanel";
-import { StaffTelegramPanel } from "@/components/admin/StaffTelegramPanel";
 import { UsersPanel } from "@/components/admin/UsersPanel";
+import { AdminIikoMenuPanel } from "@/components/admin/AdminIikoMenuPanel";
 import {
   createDefaultDeliverySettings,
   createDefaultMenuCategory,
@@ -93,9 +94,9 @@ const TABS = [
   "menu",
   "pickup",
   "orders",
+  "iiko-orders",
   "fulfillment",
   "users",
-  "telegram",
   "docs",
 ] as const;
 type TabId = (typeof TABS)[number];
@@ -107,9 +108,9 @@ const TAB_LABELS: Record<TabId, string> = {
   menu: "Меню",
   pickup: "Самовывоз",
   orders: "Заказы",
+  "iiko-orders": "Заказы iiko",
   fulfillment: "Выдача по QR",
   users: "Пользователи",
-  telegram: "Telegram",
   docs: "Инструкции",
 };
 
@@ -120,10 +121,10 @@ const TAB_HINTS: Record<TabId, string> = {
   menu: "Категории, позиции, доставка и допродажа",
   pickup: "Точки самовывоза: название, телефон, адрес и карта",
   orders: "Заказы клиентов: статусы от кухни до выдачи",
+  "iiko-orders": "Все доставки из iiko Cloud за день",
   fulfillment: "Сканер QR клиента — проверка и подтверждение выдачи",
   users: "Клиенты сайта: список, создание и редактирование",
-  telegram: "Сотрудники для алертов о новых заказах: имя, должность, chat id",
-  docs: "Руководство по сайту, заказам, QR и Telegram",
+  docs: "Руководство по сайту, заказам, QR и push",
 };
 
 /** Top-level collapsible groups — add new sections here as the admin grows. */
@@ -155,8 +156,8 @@ const NAV_STANDALONE: readonly TabId[] = [
   "fulfillment",
   "pickup",
   "orders",
+  "iiko-orders",
   "users",
-  "telegram",
   "docs",
 ];
 
@@ -221,6 +222,7 @@ const ensureMenu = (site: SiteData): SiteData => {
               inStock: item.inStock !== false,
               showInUpsell: Boolean(item.showInUpsell),
               upsellSortOrder: item.upsellSortOrder ?? 0,
+              iikoProductId: item.iikoProductId ?? "",
             }),
           )
         : [],
@@ -1385,316 +1387,14 @@ export default function AdminApp() {
                 ) : null}
 
                 {tab === "menu" ? (
-                  <section className="animate-panel-in rounded-3xl border border-ink/12 bg-white/78 px-[1.35rem] pt-[1.35rem] pb-6 shadow-[0_14px_40px_rgba(33,30,25,0.045)] backdrop-blur-[10px] md:px-[1.85rem] md:pt-7 md:pb-[1.9rem]">
-                    <div className="mb-[1.1rem] flex flex-wrap items-start justify-between gap-4">
-                      <div>
-                        <h2 className="m-0 font-serif text-[clamp(1.55rem,2.4vw,1.95rem)] leading-[1.15] tracking-[0.02em]">Меню</h2>
-                        <p className="mt-[0.4rem] max-w-[42rem] text-[0.92rem] leading-normal text-ink/48">
-                          {catCount} категорий · {itemCount} позиций · Изменить открывает карточку · тяните ⋮⋮ для порядка
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        className={btnDark}
-                        onClick={() => {
-                          const id = createClientId("cat");
-                          patchSite((d) => {
-                            d.menu.categories.push(
-                              createDefaultMenuCategory({
-                                id,
-                                name: "Новая категория",
-                                items: [
-                                  createDefaultMenuItem({
-                                    id: createClientId("item"),
-                                  }),
-                                ],
-                              }),
-                            );
-                          });
-                          setOpenMenuCats((prev) => ({ ...prev, [id]: true }));
-                          showToast("Категория добавлена");
-                        }}
-                      >
-                        + Категория
-                      </button>
-                    </div>
-                    <hr className="mb-5 h-px border-0 bg-[linear-gradient(90deg,transparent,rgba(156,107,74,0.45),transparent)]" />
-
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <Field label="Заголовок меню" value={site.menu.title} placeholder="Меню" onChange={(v) => patchSite((d) => { d.menu.title = v; })} />
-                      <Field label="Подпись внизу" value={site.menu.note} placeholder="Цены указаны в рублях" onChange={(v) => patchSite((d) => { d.menu.note = v; })} />
-                      <div className="col-span-full">
-                        <Field
-                          label="Быстрый поиск по позициям"
-                          value={menuFilter}
-                          placeholder="Например: борщ, блины…"
-                          onChange={setMenuFilter}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="flex flex-col gap-3 mt-5">
-                      {!site.menu.categories.length ? (
-                        <EmptyState
-                          title="Меню ещё пустое"
-                          text="Создайте первую категорию — завтраки, супы, выпечка и так далее."
-                          action={
-                            <button
-                              type="button"
-                              className={btnDark}
-                              onClick={() => {
-                                const id = createClientId("cat");
-                                patchSite((d) => {
-                                  d.menu.categories.push(
-                                    createDefaultMenuCategory({ id }),
-                                  );
-                                });
-                                setOpenMenuCats((prev) => ({
-                                  ...prev,
-                                  [id]: true,
-                                }));
-                              }}
-                            >
-                              + Категория
-                            </button>
-                          }
-                        />
-                      ) : null}
-
-                      {site.menu.categories.map((cat, ci) => {
-                        const categoryId = cat.id;
-                        const items = cat.items
-                          .map((item, ii) => ({ item, ii }))
-                          .filter(({ item }) => {
-                            if (!filter) return true;
-                            return (
-                              item.name.toLowerCase().includes(filter) ||
-                              item.description.toLowerCase().includes(filter) ||
-                              cat.name.toLowerCase().includes(filter)
-                            );
-                          });
-
-                        if (filter && !items.length && !cat.name.toLowerCase().includes(filter)) {
-                          return null;
-                        }
-
-                        // Closed by default; search keeps matching categories open.
-                        const isOpen =
-                          Boolean(openMenuCats[categoryId]) || Boolean(filter);
-
-                        const toggleCategory = () => {
-                          if (filter) return;
-                          setOpenMenuCats((prev) => ({
-                            ...prev,
-                            [categoryId]: !prev[categoryId],
-                          }));
-                        };
-
-                        return (
-                          <SortableItem
-                            key={categoryId}
-                            group="menu-categories"
-                            index={ci}
-                            className="rounded-[14px] border border-ink/12 bg-paper/72 p-[10px]"
-                            bodyClassName="flex flex-col gap-[10px]"
-                            onReorder={(from, to) =>
-                              patchSite((d) => {
-                                d.menu.categories = moveItem(d.menu.categories, from, to);
-                              })
-                            }
-                          >
-                            <div className="flex flex-wrap items-center justify-between gap-2">
-                              <button
-                                type="button"
-                                className="flex min-w-0 flex-[1_1_12rem] cursor-pointer items-center gap-[0.55rem] rounded-[10px] bg-transparent px-[0.2rem] py-[0.15rem] text-left text-inherit hover:bg-clay/6"
-                                aria-expanded={isOpen}
-                                onClick={toggleCategory}
-                              >
-                                <span
-                                  className={menuCatChevronClass(isOpen)}
-                                  aria-hidden="true"
-                                />
-                                <span className="flex min-w-0 flex-col items-start gap-[0.2rem]">
-                                  <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-clay">
-                                    Категория {ci + 1}
-                                    {cat.items.length ? ` · ${cat.items.length}` : ""}
-                                  </span>
-                                  <strong className="block max-w-full truncate text-[0.98rem] font-semibold text-ink">
-                                    {cat.name.trim() || "Без названия"}
-                                  </strong>
-                                </span>
-                              </button>
-                              <div className="flex flex-wrap items-center gap-[0.35rem]">
-                                <button
-                                  type="button"
-                                  className={btnSmGhost}
-                                  onClick={() => {
-                                    patchSite((d) => {
-                                      const target = d.menu.categories.find(
-                                        (c) => c.id === categoryId,
-                                      );
-                                      target?.items.push(
-                                        createDefaultMenuItem({
-                                          id: createClientId("item"),
-                                        }),
-                                      );
-                                    });
-                                    setOpenMenuCats((prev) => ({
-                                      ...prev,
-                                      [categoryId]: true,
-                                    }));
-                                  }}
-                                >
-                                  + Позиция
-                                </button>
-                                <button
-                                  type="button"
-                                  className={btnDangerText}
-                                  onClick={() =>
-                                    askDelete(
-                                      "Удалить категорию?",
-                                      "Все позиции внутри тоже исчезнут.",
-                                      () => {
-                                        patchSite((d) => {
-                                          d.menu.categories =
-                                            d.menu.categories.filter(
-                                              (c) => c.id !== categoryId,
-                                            );
-                                        });
-                                        setOpenMenuCats((prev) => {
-                                          const next = { ...prev };
-                                          delete next[categoryId];
-                                          return next;
-                                        });
-                                      },
-                                    )
-                                  }
-                                >
-                                  Удалить
-                                </button>
-                              </div>
-                            </div>
-
-                            {isOpen ? (
-                              <>
-                                <Field
-                                  label="Название категории"
-                                  value={cat.name}
-                                  placeholder="Например: Завтраки"
-                                  onChange={(v) =>
-                                    patchSite((d) => {
-                                      const target = d.menu.categories.find(
-                                        (c) => c.id === categoryId,
-                                      );
-                                      if (target) target.name = v;
-                                    })
-                                  }
-                                />
-                                <div className="grid gap-3 md:grid-cols-2">
-                                  <Field
-                                    label="Доступно с (доставка)"
-                                    value={cat.availableFrom}
-                                    placeholder="08:00"
-                                    hint="Пусто — без ограничения"
-                                    onChange={(v) =>
-                                      patchSite((d) => {
-                                        const target = d.menu.categories.find(
-                                          (c) => c.id === categoryId,
-                                        );
-                                        if (target) target.availableFrom = v;
-                                      })
-                                    }
-                                  />
-                                  <Field
-                                    label="Доступно до"
-                                    value={cat.availableTo}
-                                    placeholder="12:00"
-                                    onChange={(v) =>
-                                      patchSite((d) => {
-                                        const target = d.menu.categories.find(
-                                          (c) => c.id === categoryId,
-                                        );
-                                        if (target) target.availableTo = v;
-                                      })
-                                    }
-                                  />
-                                </div>
-
-                                <div className="flex flex-col gap-2">
-                                  {!items.length ? (
-                                    <p className="text-sm text-ink/48">
-                                      {filter
-                                        ? "Нет совпадений в этой категории."
-                                        : "Позиций пока нет."}
-                                    </p>
-                                  ) : null}
-                                  {items.map(({ item, ii }) => (
-                                    <SortableItem
-                                      key={item.id}
-                                      group={`menu-items-${categoryId}`}
-                                      index={ii}
-                                      
-                                      bodyClassName="grid min-h-[46px] grid-cols-[40px_minmax(0,1fr)_auto] items-center gap-2 rounded-xl border border-ink/6 bg-white/78 px-[10px] py-2"
-                                      onReorder={(from, to) =>
-                                        patchSite((d) => {
-                                          const target = d.menu.categories.find(
-                                            (c) => c.id === categoryId,
-                                          );
-                                          if (target) {
-                                            target.items = moveItem(
-                                              target.items,
-                                              from,
-                                              to,
-                                            );
-                                          }
-                                        })
-                                      }
-                                    >
-                                      {item.image ? (
-                                        <button
-                                          type="button"
-                                          className="grid size-9 shrink-0 cursor-zoom-in place-items-center overflow-hidden rounded-[10px] border border-ink/12 bg-[linear-gradient(145deg,rgba(239,231,216,0.75),rgba(251,248,241,0.98))] p-0 [&_img]:block [&_img]:size-full [&_img]:object-contain"
-                                          aria-label={`Открыть фото: ${item.name.trim() || "позиция"}`}
-                                          onClick={() => setLightbox(item.image)}
-                                        >
-                                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                                          <img src={item.image} alt="" />
-                                        </button>
-                                      ) : (
-                                        <span
-                                          className="grid size-9 shrink-0 cursor-default select-none place-items-center overflow-hidden rounded-[10px] border border-ink/12 bg-[linear-gradient(145deg,rgba(239,231,216,0.75),rgba(251,248,241,0.98))] p-[2px] text-center text-[7px] font-[650] leading-[1.15] tracking-[0.02em] text-ink/48"
-                                          aria-label="Нет фото"
-                                        >
-                                          Нет фото
-                                        </span>
-                                      )}
-                                      <div className="min-w-0">
-                                        <span className="block truncate text-[0.95rem] font-[550] text-ink">
-                                          {item.name.trim() || "Без названия"}
-                                        </span>
-                                      </div>
-                                      <button
-                                        type="button"
-                                        className={`${btnSmGhost} shrink-0`}
-                                        onClick={() =>
-                                          setMenuItemEdit({
-                                            categoryId,
-                                            itemId: item.id,
-                                          })
-                                        }
-                                      >
-                                        Изменить
-                                      </button>
-                                    </SortableItem>
-                                  ))}
-                                </div>
-                              </>
-                            ) : null}
-                          </SortableItem>
-                        );
-                      })}
-                    </div>
-                  </section>
+                  <AdminIikoMenuPanel
+                    site={site}
+                    busy={busy}
+                    setBusy={setBusy}
+                    showToast={showToast}
+                    patchSite={patchSite}
+                    onSiteReload={applySavedSite}
+                  />
                 ) : null}
 
                 {tab === "pickup" ? (
@@ -1723,6 +1423,10 @@ export default function AdminApp() {
                   )
                 ) : null}
 
+                {tab === "iiko-orders" ? (
+                  <IikoOrdersPanel busy={busy} showToast={showToast} />
+                ) : null}
+
                 {tab === "fulfillment" ? (
                   <OrderScanPanel
                     busy={busy}
@@ -1732,14 +1436,6 @@ export default function AdminApp() {
 
                 {tab === "users" ? (
                   <UsersPanel
-                    busy={busy}
-                    setBusy={setBusy}
-                    showToast={showToast}
-                  />
-                ) : null}
-
-                {tab === "telegram" ? (
-                  <StaffTelegramPanel
                     busy={busy}
                     setBusy={setBusy}
                     showToast={showToast}
@@ -1934,6 +1630,16 @@ export default function AdminApp() {
                   onChange={(v) =>
                     patchEditingMenuItem((row) => {
                       row.weight = v;
+                    })
+                  }
+                />
+                <Field
+                  label="iiko productId"
+                  value={editingMenuItem.item.iikoProductId}
+                  placeholder="uuid из iiko (меню)"
+                  onChange={(v) =>
+                    patchEditingMenuItem((row) => {
+                      row.iikoProductId = v.trim();
                     })
                   }
                 />

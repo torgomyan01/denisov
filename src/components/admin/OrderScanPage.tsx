@@ -18,7 +18,6 @@ import {
 } from "@/actions/orders";
 import {
   ORDER_STATUS_LABELS,
-  canFulfillOrderByQr,
   parseFulfillmentQrPayload,
   type OrderPublic,
 } from "@/lib/orders";
@@ -83,7 +82,6 @@ export const OrderScanPanel = ({
   const [lookupBusy, setLookupBusy] = useState(false);
   const [confirmBusy, setConfirmBusy] = useState(false);
   const [error, setError] = useState("");
-  const [done, setDone] = useState(false);
   const [cameraOpen, setCameraOpen] = useState(false);
   const [cameraNote, setCameraNote] = useState("");
   const [deliveryMapOpen, setDeliveryMapOpen] = useState(false);
@@ -108,7 +106,6 @@ export const OrderScanPanel = ({
     setScannedToken("");
     setTokenInput("");
     setError("");
-    setDone(false);
     setDeliveryMapOpen(false);
     lastScanRef.current = "";
   };
@@ -122,7 +119,6 @@ export const OrderScanPanel = ({
 
       setLookupBusy(true);
       setError("");
-      setDone(false);
       const result = await lookupOrderByFulfillmentTokenAction({ token });
       setLookupBusy(false);
 
@@ -194,26 +190,20 @@ export const OrderScanPanel = ({
     }
   };
 
-  const confirmHandover = async () => {
+  const refreshFromIiko = async () => {
     if (!order || !scannedToken || confirmBusy || busy) return;
     setConfirmBusy(true);
     setError("");
     const result = await verifyOrderFulfillmentAction({ token: scannedToken });
     setConfirmBusy(false);
     if (!result.success || !result.data) {
-      setError(result.success ? "Ошибка выдачи" : result.error);
+      setError(result.success ? "Ошибка" : result.error);
       return;
     }
     setOrder(result.data);
-    setDone(true);
     bumpOrders();
     onOrdersChanged?.();
   };
-
-  const canConfirm =
-    order &&
-    !done &&
-    canFulfillOrderByQr(order.status, order.fulfillmentMode);
 
   const actionsLocked = lookupBusy || confirmBusy || busy;
   const hasDeliveryPoint =
@@ -232,8 +222,8 @@ export const OrderScanPanel = ({
         </h2>
         <p className="mt-[0.4rem] max-w-[42rem] text-[0.92rem] leading-normal text-ink/48">
           {variant === "courier"
-            ? "Отсканируйте QR на заказе, проверьте адрес и подтвердите передачу клиенту"
-            : "Отсканируйте QR клиента, проверьте заказ и подтвердите выдачу"}
+            ? "Отсканируйте QR, сверьте адрес и состав. Статус заказа ведётся в iiko"
+            : "Отсканируйте QR клиента, сверьте заказ. Статус меняется только в iiko"}
         </p>
       </div>
 
@@ -309,31 +299,6 @@ export const OrderScanPanel = ({
               </button>
             </div>
           ) : null}
-        </div>
-      ) : done ? (
-        <div className="flex flex-col items-center gap-[0.35rem] py-[1.35rem] text-center text-[#3f6b4a]">
-          <CheckCircle2 size={36} strokeWidth={1.75} aria-hidden="true" />
-          <h3 className="m-0 mt-[0.35rem] font-serif text-[1.45rem] text-ink">
-            Заказ выдан
-          </h3>
-          <p className="m-0 text-[0.92rem] text-ink/60">
-            {order.number} · {order.customerName || "Клиент"} · {order.totalRub}{" "}
-            ₽
-          </p>
-          <div className="mt-4 flex flex-wrap justify-center gap-[0.55rem]">
-            <button
-              type="button"
-              className={btnDark}
-              onClick={resetToScan}
-            >
-              Следующий QR
-            </button>
-            {variant === "admin" ? (
-              <Link href={`/admin#order/${order.id}`} className={btnLine}>
-                Открыть заказ
-              </Link>
-            ) : null}
-          </div>
         </div>
       ) : (
         <div>
@@ -472,17 +437,21 @@ export const OrderScanPanel = ({
             <strong className="font-serif text-[1.5rem]">{order.totalRub} ₽</strong>
           </div>
 
-          {!canConfirm ? (
-            <p className="mt-[0.65rem] text-[0.88rem] text-[#9b3d2e]" role="status">
-              {order.status === "cancelled"
-                ? "Заказ отменён — выдача невозможна"
-                : order.status === "completed"
-                  ? "Этот заказ уже выдан"
-                  : order.fulfillmentMode === "pickup"
-                    ? "Заказ ещё не готов к выдаче"
-                    : "Заказ ещё не готов к передаче"}
+          {order.status === "Closed" || order.status === "Cancelled" ? (
+            <p
+              className="mt-[0.65rem] flex items-center gap-2 text-[0.88rem] text-[#3f6b4a]"
+              role="status"
+            >
+              <CheckCircle2 size={16} strokeWidth={2} aria-hidden="true" />
+              {order.status === "Closed"
+                ? "Заказ закрыт в iiko"
+                : "Заказ отменён в iiko"}
             </p>
-          ) : null}
+          ) : (
+            <p className="mt-[0.65rem] text-[0.88rem] text-ink/55" role="status">
+              Закрывайте заказ в iiko — здесь только сверка по QR.
+            </p>
+          )}
 
           {error ? (
             <p className="mt-[0.65rem] text-[0.88rem] text-[#9b3d2e]" role="alert">
@@ -491,15 +460,18 @@ export const OrderScanPanel = ({
           ) : null}
 
           <div className="mt-4 flex flex-wrap gap-[0.55rem]">
-            {canConfirm ? (
-              <button
-                type="button"
-                className={btnDark}
-                disabled={actionsLocked}
-                onClick={() => void confirmHandover()}
-              >
-                {confirmBusy ? "Подтверждаем…" : "Подтвердить выдачу"}
-              </button>
+            <button
+              type="button"
+              className={btnDark}
+              disabled={actionsLocked}
+              onClick={() => void refreshFromIiko()}
+            >
+              {confirmBusy ? "Обновляем…" : "Обновить статус из iiko"}
+            </button>
+            {variant === "admin" ? (
+              <Link href={`/admin#order/${order.id}`} className={btnLine}>
+                Открыть заказ
+              </Link>
             ) : null}
             <button
               type="button"

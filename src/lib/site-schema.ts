@@ -7,6 +7,20 @@ const optionalFloat = z
   .optional()
   .transform((v) => (v === undefined ? null : v));
 
+const menuModifierOptionSchema = z.object({
+  productId: z.string(),
+  name: z.string(),
+  price: z.number().default(0),
+});
+
+const menuModifierGroupSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  minQuantity: z.number().int().min(0).default(0),
+  maxQuantity: z.number().int().min(0).default(0),
+  options: z.array(menuModifierOptionSchema).default([]),
+});
+
 const menuItemSchema = z.object({
   id: idSchema,
   name: z.string(),
@@ -22,6 +36,8 @@ const menuItemSchema = z.object({
   inStock: z.boolean().default(true),
   showInUpsell: z.boolean().default(false),
   upsellSortOrder: z.number().int().default(0),
+  iikoProductId: z.string().default(""),
+  modifierGroups: z.array(menuModifierGroupSchema).default([]),
 });
 
 const menuCategorySchema = z.object({
@@ -29,6 +45,7 @@ const menuCategorySchema = z.object({
   name: z.string(),
   availableFrom: z.string().default(""),
   availableTo: z.string().default(""),
+  showOnSite: z.boolean().default(true),
   items: z.array(menuItemSchema),
 });
 

@@ -125,7 +125,9 @@ export const ProfileOrderDetailPage = ({
           <Clock3 size={16} strokeWidth={2} aria-hidden="true" />
           <span>{view.eta}</span>
         </div>
-        {order.status !== "cancelled" && order.status !== "completed" ? (
+        {order.status !== "Cancelled" &&
+        order.status !== "Closed" &&
+        order.status !== "Delivered" ? (
           <div className={profileOrderProgress(true)} aria-hidden="true">
             <span
               className={profileOrderProgressBar}
@@ -138,11 +140,12 @@ export const ProfileOrderDetailPage = ({
         </p>
       </section>
 
-      {order.status !== "cancelled" ? (
+      {order.status !== "Cancelled" ? (
         <ol className="mt-[1.15rem] flex flex-col">
           {flow.map((step, index) => {
             const done =
-              order.status === "completed" ||
+              order.status === "Closed" ||
+              order.status === "Delivered" ||
               (currentIdx >= 0 && index < currentIdx);
             const current = step === order.status;
             return (
@@ -164,7 +167,7 @@ export const ProfileOrderDetailPage = ({
                 />
                 <div>
                   <strong className="block text-[0.92rem]">
-                    {customerFlowStepLabel(step)}
+                    {customerFlowStepLabel(step, order.fulfillmentMode)}
                   </strong>
                   {current ? (
                     <em className="mt-[0.1rem] inline-block text-[0.75rem] tracking-[0.08em] text-clay uppercase not-italic">
@@ -235,7 +238,9 @@ export const ProfileOrderDetailPage = ({
                 key={log.id}
                 className="flex justify-between gap-3 border-b border-ink/6 py-[0.4rem] text-[0.88rem]"
               >
-                <strong>{customerFlowStepLabel(log.status)}</strong>
+                <strong>
+                  {customerFlowStepLabel(log.status, order.fulfillmentMode)}
+                </strong>
                 <span className="whitespace-nowrap text-ink/48">
                   {formatWhen(log.createdAt)}
                 </span>

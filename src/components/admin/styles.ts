@@ -180,13 +180,16 @@ const ORDER_BADGE_BASE =
   "inline-flex items-center whitespace-nowrap rounded-full px-2 py-[0.2rem] text-[0.72rem] uppercase tracking-[0.04em]";
 
 const ORDER_BADGE_TONE: Record<OrderStatus, string> = {
-  new: "bg-clay/18 text-[#7a4e32]",
-  confirmed: "bg-[#5a7aa0]/16 text-[#35506e]",
-  preparing: "bg-[#5a7aa0]/16 text-[#35506e]",
-  ready: "bg-[#6b8f71]/18 text-[#3f6a46]",
-  delivering: "bg-[#6b8f71]/18 text-[#3f6a46]",
-  completed: "bg-ink/8 text-ink",
-  cancelled: "bg-danger/14 text-[#8a2f22]",
+  Unconfirmed: "bg-clay/18 text-[#7a4e32]",
+  WaitCooking: "bg-[#5a7aa0]/16 text-[#35506e]",
+  ReadyForCooking: "bg-[#5a7aa0]/16 text-[#35506e]",
+  CookingStarted: "bg-[#5a7aa0]/16 text-[#35506e]",
+  CookingCompleted: "bg-[#6b8f71]/18 text-[#3f6a46]",
+  Waiting: "bg-[#6b8f71]/18 text-[#3f6a46]",
+  OnWay: "bg-[#6b8f71]/18 text-[#3f6a46]",
+  Delivered: "bg-olive/14 text-olive",
+  Closed: "bg-ink/8 text-ink",
+  Cancelled: "bg-danger/14 text-[#8a2f22]",
 };
 
 export const orderBadgeClass = (status: OrderStatus): string =>

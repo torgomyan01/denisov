@@ -7,8 +7,6 @@ import {
 } from "@/lib/order-notify";
 import type { OrderStatus } from "@/lib/orders";
 import { prisma } from "@/lib/prisma";
-import { notifyCustomerOrderStatusTelegram } from "@/lib/telegram";
-
 export type PushPayload = Pick<
   OrderNotifyPayload,
   "title" | "body" | "url" | "tag"
@@ -99,12 +97,7 @@ export const sendPushToCustomer = async (
   }
 };
 
-/**
- * Web Push + Telegram after a status change.
- * Telegram first (awaited), then push — do not Promise.all with push: on a small
- * VPS web-push crypto can stall the event loop and trip the gateway timeout
- * while admin-only Telegram still succeeds.
- */
+/** Web Push after a status change. Schedule via `after()` from Server Actions. */
 export const notifyCustomerOrderStatus = async (input: {
   customerId: string | null | undefined;
   status: OrderStatus;
@@ -121,12 +114,5 @@ export const notifyCustomerOrderStatus = async (input: {
     fulfillmentMode,
   });
   if (!payload) return;
-  await notifyCustomerOrderStatusTelegram({
-    customerId,
-    status,
-    orderId,
-    orderNumber,
-    fulfillmentMode,
-  });
   await sendPushToCustomer(customerId, payload);
 };

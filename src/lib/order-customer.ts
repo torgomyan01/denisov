@@ -11,20 +11,23 @@ export type CustomerOrderStatusView = {
 };
 
 const PICKUP_FLOW: OrderStatus[] = [
-  "new",
-  "confirmed",
-  "preparing",
-  "ready",
-  "completed",
+  "Unconfirmed",
+  "WaitCooking",
+  "CookingStarted",
+  "CookingCompleted",
+  "Waiting",
+  "Closed",
 ];
 
 const DELIVERY_FLOW: OrderStatus[] = [
-  "new",
-  "confirmed",
-  "preparing",
-  "ready",
-  "delivering",
-  "completed",
+  "Unconfirmed",
+  "WaitCooking",
+  "CookingStarted",
+  "CookingCompleted",
+  "Waiting",
+  "OnWay",
+  "Delivered",
+  "Closed",
 ];
 
 export const customerOrderFlow = (
@@ -56,10 +59,10 @@ const etaForStatus = (
   order: OrderPublic,
   now: Date,
 ): { eta: string; progress: number } => {
-  if (order.status === "cancelled") {
+  if (order.status === "Cancelled") {
     return { eta: "Заказ отменён", progress: 0 };
   }
-  if (order.status === "completed") {
+  if (order.status === "Closed" || order.status === "Delivered") {
     return { eta: "Уже у вас", progress: 100 };
   }
 
@@ -77,17 +80,18 @@ const etaForStatus = (
   const cookPad = Math.min(15, Math.max(0, (itemCount - 2) * 3));
 
   switch (order.status) {
-    case "new":
+    case "Unconfirmed":
       return {
         eta: "Ожидает подтверждения · обычно до 5 мин",
-        progress: 12,
+        progress: 10,
       };
-    case "confirmed":
+    case "WaitCooking":
+    case "ReadyForCooking":
       return {
         eta: "Скоро начнём готовить · около 5–10 мин",
         progress: 28,
       };
-    case "preparing": {
+    case "CookingStarted": {
       const elapsed = minutesSince(order.statusUpdatedAt, now);
       const base = order.fulfillmentMode === "delivery" ? 25 : 20;
       const remaining = Math.max(8, base + cookPad - Math.min(elapsed, base));
@@ -96,7 +100,8 @@ const etaForStatus = (
         progress: 55,
       };
     }
-    case "ready":
+    case "CookingCompleted":
+    case "Waiting":
       return order.fulfillmentMode === "delivery"
         ? {
             eta: "Передаём курьеру · около 5–10 мин",
@@ -106,7 +111,7 @@ const etaForStatus = (
             eta: "Можно забирать сейчас",
             progress: 88,
           };
-    case "delivering": {
+    case "OnWay": {
       const elapsed = minutesSince(order.statusUpdatedAt, now);
       const remaining = Math.max(8, 20 - Math.min(elapsed, 15));
       return {
@@ -121,7 +126,7 @@ const etaForStatus = (
 
 const progressForStatus = (order: OrderPublic): number => {
   const flow = customerOrderFlow(order.fulfillmentMode).filter(
-    (s) => s !== "cancelled",
+    (s) => s !== "Cancelled",
   );
   const idx = flow.findIndex((s) => s === order.status);
   if (idx < 0) return 10;
@@ -135,56 +140,71 @@ export const getCustomerOrderStatusView = (
   const { eta, progress } = etaForStatus(order, now);
 
   switch (order.status) {
-    case "new":
+    case "Unconfirmed":
       return {
         title: "Заказ получен",
         detail: "Мы видим ваш заказ и скоро подтвердим его.",
         eta,
         progress,
       };
-    case "confirmed":
+    case "WaitCooking":
+    case "ReadyForCooking":
       return {
         title: "Подтверждён",
         detail: "Заказ принят — ставим в очередь на кухню.",
         eta,
         progress,
       };
-    case "preparing":
+    case "CookingStarted":
       return {
         title: "Готовим",
         detail: "Кухня собирает ваш заказ прямо сейчас.",
         eta,
         progress,
       };
-    case "ready":
+    case "CookingCompleted":
+      return {
+        title: "Готов",
+        detail: "Кухня закончила готовить ваш заказ.",
+        eta,
+        progress,
+      };
+    case "Waiting":
       return order.fulfillmentMode === "delivery"
         ? {
-            title: "Готов к доставке",
+            title: "К доставке",
             detail: "Заказ собран, передаём курьеру.",
             eta,
             progress,
           }
         : {
-            title: "Готов к выдаче",
+            title: "К выдаче",
             detail: "Можно забирать в точке самовывоза.",
             eta,
             progress,
           };
-    case "delivering":
+    case "OnWay":
       return {
         title: "В пути",
         detail: "Курьер уже едет к вам.",
         eta,
         progress,
       };
-    case "completed":
+    case "Delivered":
       return {
         title: "Доставлен",
-        detail: "Заказ у вас. Приятного аппетита!",
+        detail: "Курьер передал заказ. Приятного аппетита!",
         eta,
         progress: 100,
       };
-    case "cancelled":
+    case "Closed":
+      return {
+        title: "Завершён",
+        detail: "Заказ закрыт. Приятного аппетита!",
+        eta,
+        progress: 100,
+      };
+    case "Cancelled":
       return {
         title: "Отменён",
         detail: "Этот заказ больше не выполняется.",
@@ -201,23 +221,31 @@ export const getCustomerOrderStatusView = (
   }
 };
 
-export const customerFlowStepLabel = (status: OrderStatus): string => {
+export const customerFlowStepLabel = (
+  status: OrderStatus,
+  fulfillmentMode: FulfillmentMode = "pickup",
+): string => {
   switch (status) {
-    case "new":
+    case "Unconfirmed":
       return "Получен";
-    case "confirmed":
+    case "WaitCooking":
+    case "ReadyForCooking":
       return "Подтверждён";
-    case "preparing":
+    case "CookingStarted":
       return "Готовим";
-    case "ready":
+    case "CookingCompleted":
       return "Готов";
-    case "delivering":
+    case "Waiting":
+      return fulfillmentMode === "delivery" ? "К доставке" : "К выдаче";
+    case "OnWay":
       return "В пути";
-    case "completed":
-      return "У вас";
-    case "cancelled":
+    case "Delivered":
+      return "Доставлен";
+    case "Closed":
+      return "Завершён";
+    case "Cancelled":
       return "Отменён";
     default:
-      return status;
+      return "В работе";
   }
 };

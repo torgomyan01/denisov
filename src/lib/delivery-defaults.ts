@@ -41,6 +41,8 @@ export const createDefaultMenuItem = (
   inStock: true,
   showInUpsell: false,
   upsellSortOrder: 0,
+  iikoProductId: "",
+  modifierGroups: [],
   ...partial,
 });
 
@@ -50,6 +52,7 @@ export const createDefaultMenuCategory = (
   name: "",
   availableFrom: "",
   availableTo: "",
+  showOnSite: true,
   items: [],
   ...partial,
 });

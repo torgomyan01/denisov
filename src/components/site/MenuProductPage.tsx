@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { ChevronLeft, Minus, Plus } from "lucide-react";
 import { useMemo, useState } from "react";
+import { ModifierChoiceModal } from "@/components/site/ModifierChoiceModal";
 import { SiteHeader } from "@/components/site/SiteHeader";
 import { CompanyRequisites } from "@/components/site/CompanyRequisites";
 import { SiteLegalLinks } from "@/components/site/SiteLegalLinks";
@@ -19,6 +20,10 @@ import {
   brandLabelOrDefault,
   formatPrice,
 } from "@/lib/format";
+import {
+  buildCartLineKey,
+  menuItemNeedsModifierChoice,
+} from "@/lib/menu-modifiers";
 import { menuItemSlug } from "@/lib/menu-slug";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
@@ -26,6 +31,7 @@ import {
   decrementQty,
   incrementQty,
   setQty,
+  type CartModifier,
   type CartProduct,
 } from "@/store/cartSlice";
 import type { MenuCategory, MenuItem, SiteData } from "@/types/site";
@@ -57,11 +63,15 @@ export const MenuProductPage = ({
 }: MenuProductPageProps) => {
   const dispatch = useAppDispatch();
   const cartItems = useAppSelector((s) => s.cart.items);
-  const lineQty = useAppSelector(
-    (s) => s.cart.items.find((row) => row.id === item.id)?.qty ?? 0,
+  const lineQty = useAppSelector((s) =>
+    s.cart.items
+      .filter((row) => row.id === item.id)
+      .reduce((sum, row) => sum + row.qty, 0),
   );
 
   const [addQty, setAddQty] = useState(1);
+  const [modifierOpen, setModifierOpen] = useState(false);
+  const [pendingRelated, setPendingRelated] = useState<MenuItem | null>(null);
 
   const footerBrand = brandLabel(site);
   const a11y = brandLabelOrDefault(site);
@@ -95,35 +105,66 @@ export const MenuProductPage = ({
   })();
   const lineLabel = formatPrice(String(Math.round(unitPrice * addQty)));
 
-  const toCartProduct = (row: MenuItem | CartProduct, cat?: MenuCategory): CartProduct => {
-    if ("categoryId" in row && row.categoryId) {
+  const toCartProduct = (
+    row: MenuItem | CartProduct,
+    cat?: MenuCategory,
+    modifiers: CartModifier[] = [],
+  ): CartProduct => {
+    if ("categoryId" in row && row.categoryId && !("modifierGroups" in row)) {
+      const mods =
+        "modifiers" in row && Array.isArray(row.modifiers)
+          ? row.modifiers
+          : modifiers;
       return {
         id: row.id,
+        lineKey: buildCartLineKey(row.id, mods),
         name: row.name,
         price: row.price,
         image: row.image || "",
         categoryId: row.categoryId,
         categoryName: row.categoryName || "",
+        modifiers: mods,
       };
     }
+    const mods = modifiers;
     return {
       id: row.id,
+      lineKey: buildCartLineKey(row.id, mods),
       name: row.name,
       price: row.price,
       image: row.image || "",
       categoryId: cat?.id ?? category.id,
       categoryName: cat?.name ?? category.name ?? "",
+      modifiers: mods,
     };
+  };
+
+  const commitAdd = (
+    target: MenuItem,
+    cat: MenuCategory,
+    modifiers: CartModifier[],
+    qty: number,
+  ) => {
+    const product = toCartProduct(target, cat, modifiers);
+    dispatch(addToCartQuiet(product));
+    if (qty > 1) {
+      dispatch(setQty({ id: product.lineKey, qty }));
+    }
   };
 
   const addCurrent = () => {
     if (!canOrder) return;
-    const product = toCartProduct(item, category);
+    if (menuItemNeedsModifierChoice(item)) {
+      setPendingRelated(null);
+      setModifierOpen(true);
+      return;
+    }
     if (lineQty <= 0) {
-      dispatch(addToCartQuiet(product));
-      if (addQty > 1) dispatch(setQty({ id: product.id, qty: addQty }));
+      commitAdd(item, category, [], addQty);
+    } else if (!menuItemNeedsModifierChoice(item)) {
+      dispatch(setQty({ id: item.id, qty: lineQty + addQty }));
     } else {
-      dispatch(setQty({ id: product.id, qty: lineQty + addQty }));
+      commitAdd(item, category, [], addQty);
     }
     setAddQty(1);
   };
@@ -308,7 +349,14 @@ export const MenuProductPage = ({
                     type="button"
                     className="inline-flex size-8 cursor-pointer items-center justify-center rounded-full hover:bg-ink/5"
                     aria-label="Убрать"
-                    onClick={() => dispatch(decrementQty(item.id))}
+                    onClick={() => {
+                      const line = [...cartItems]
+                        .reverse()
+                        .find((row) => row.id === item.id);
+                      if (line) {
+                        dispatch(decrementQty(line.lineKey || line.id));
+                      }
+                    }}
                   >
                     <Minus size={14} strokeWidth={2} />
                   </button>
@@ -320,7 +368,14 @@ export const MenuProductPage = ({
                     className="inline-flex size-8 cursor-pointer items-center justify-center rounded-full hover:bg-ink/5 disabled:opacity-40"
                     aria-label="Добавить"
                     disabled={!canOrder}
-                    onClick={() => dispatch(incrementQty(item.id))}
+                    onClick={() => {
+                      if (menuItemNeedsModifierChoice(item)) {
+                        setPendingRelated(null);
+                        setModifierOpen(true);
+                        return;
+                      }
+                      dispatch(incrementQty(item.id));
+                    }}
                   >
                     <Plus size={14} strokeWidth={2} />
                   </button>
@@ -341,8 +396,19 @@ export const MenuProductPage = ({
             <div className="grid grid-cols-2 gap-3 min-[900px]:grid-cols-4 min-[900px]:gap-5">
               {related.map((product) => {
                 const href = `/menu/${menuItemSlug(product)}`;
-                const qty =
-                  cartItems.find((row) => row.id === product.id)?.qty ?? 0;
+                const qty = cartItems
+                  .filter((row) => row.id === product.id)
+                  .reduce((sum, row) => sum + row.qty, 0);
+                const relatedCategory =
+                  site.menu.categories.find((cat) =>
+                    cat.items.some((row) => row.id === product.id),
+                  ) ?? category;
+                const relatedItem =
+                  relatedCategory.items.find((row) => row.id === product.id) ??
+                  null;
+                const needsMods = relatedItem
+                  ? menuItemNeedsModifierChoice(relatedItem)
+                  : false;
                 return (
                   <article
                     key={product.id}
@@ -381,7 +447,16 @@ export const MenuProductPage = ({
                             type="button"
                             className="inline-flex size-8 cursor-pointer items-center justify-center rounded-full hover:bg-ink/5"
                             aria-label="Убрать"
-                            onClick={() => dispatch(decrementQty(product.id))}
+                            onClick={() => {
+                              const line = [...cartItems]
+                                .reverse()
+                                .find((row) => row.id === product.id);
+                              if (line) {
+                                dispatch(
+                                  decrementQty(line.lineKey || line.id),
+                                );
+                              }
+                            }}
                           >
                             <Minus size={14} strokeWidth={2} />
                           </button>
@@ -390,7 +465,14 @@ export const MenuProductPage = ({
                             type="button"
                             className="inline-flex size-8 cursor-pointer items-center justify-center rounded-full hover:bg-ink/5"
                             aria-label="Добавить"
-                            onClick={() => dispatch(incrementQty(product.id))}
+                            onClick={() => {
+                              if (needsMods && relatedItem) {
+                                setPendingRelated(relatedItem);
+                                setModifierOpen(true);
+                                return;
+                              }
+                              dispatch(incrementQty(product.id));
+                            }}
                           >
                             <Plus size={14} strokeWidth={2} />
                           </button>
@@ -400,9 +482,18 @@ export const MenuProductPage = ({
                           type="button"
                           className="mt-auto min-h-[34px] w-full cursor-pointer rounded-full border border-clay/40 text-[10px] font-bold tracking-[0.12em] text-clay uppercase hover:border-transparent hover:bg-clay hover:text-paper disabled:opacity-45"
                           disabled={!ordersEnabled}
-                          onClick={() =>
-                            dispatch(addToCartQuiet(toCartProduct(product)))
-                          }
+                          onClick={() => {
+                            if (needsMods && relatedItem) {
+                              setPendingRelated(relatedItem);
+                              setModifierOpen(true);
+                              return;
+                            }
+                            dispatch(
+                              addToCartQuiet(
+                                toCartProduct(product, relatedCategory),
+                              ),
+                            );
+                          }}
                         >
                           В корзину
                         </button>
@@ -437,6 +528,28 @@ export const MenuProductPage = ({
         <CompanyRequisites />
       </footer>
 
+      {modifierOpen ? (
+        <ModifierChoiceModal
+          item={pendingRelated ?? item}
+          open
+          onClose={() => {
+            setModifierOpen(false);
+            setPendingRelated(null);
+          }}
+          onConfirm={(modifiers) => {
+            const target = pendingRelated ?? item;
+            const cat =
+              site.menu.categories.find((row) =>
+                row.items.some((it) => it.id === target.id),
+              ) ?? category;
+            const qty = pendingRelated ? 1 : addQty;
+            commitAdd(target, cat, modifiers, qty);
+            setAddQty(1);
+            setModifierOpen(false);
+            setPendingRelated(null);
+          }}
+        />
+      ) : null}
     </div>
   );
 };

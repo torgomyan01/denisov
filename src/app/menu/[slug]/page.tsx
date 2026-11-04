@@ -18,7 +18,7 @@ export async function generateMetadata({
     const { slug } = await params;
     const site = await getSite();
     const found = findMenuItemBySlug(site.menu, slug);
-    if (found) {
+    if (found && found.item.showInDelivery !== false) {
       return {
         title: `${found.item.name} — ${site.menu.title || "Меню"} — ДЕНИСОВ`,
         description:
@@ -35,7 +35,7 @@ export default async function MenuProductRoute({ params }: PageProps) {
   const { slug } = await params;
   const [site, customer] = await Promise.all([getSite(), getCustomer()]);
   const found = findMenuItemBySlug(site.menu, slug);
-  if (!found) notFound();
+  if (!found || found.item.showInDelivery === false) notFound();
   return (
     <MenuProductPage
       site={site}

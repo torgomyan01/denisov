@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { logoutCustomerAction } from "@/actions/customer-auth";
+import { lockBodyScroll } from "@/lib/body-scroll-lock";
 import { resetCartToGuestMode } from "@/lib/cart-auth-sync";
 import type { CustomerPublic } from "@/lib/customer-auth";
 import { customerFirstName } from "@/lib/customer-display";
@@ -40,7 +41,6 @@ export const SiteMobileMenu = ({
   const [mounted, setMounted] = useState(false);
   const [visible, setVisible] = useState(false);
   const [logoutBusy, setLogoutBusy] = useState(false);
-  const scrollYRef = useRef(0);
   const closeTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -76,41 +76,9 @@ export const SiteMobileMenu = ({
   }, [open]);
 
   useEffect(() => {
-    if (!open) return;
-
-    const html = document.documentElement;
-    const body = document.body;
-    scrollYRef.current = window.scrollY;
-
-    const prev = {
-      htmlOverflow: html.style.overflow,
-      bodyOverflow: body.style.overflow,
-      bodyPosition: body.style.position,
-      bodyTop: body.style.top,
-      bodyWidth: body.style.width,
-      bodyLeft: body.style.left,
-      bodyRight: body.style.right,
-    };
-
-    html.style.overflow = "hidden";
-    body.style.overflow = "hidden";
-    body.style.position = "fixed";
-    body.style.top = `-${scrollYRef.current}px`;
-    body.style.left = "0";
-    body.style.right = "0";
-    body.style.width = "100%";
-
-    return () => {
-      html.style.overflow = prev.htmlOverflow;
-      body.style.overflow = prev.bodyOverflow;
-      body.style.position = prev.bodyPosition;
-      body.style.top = prev.bodyTop;
-      body.style.left = prev.bodyLeft;
-      body.style.right = prev.bodyRight;
-      body.style.width = prev.bodyWidth;
-      window.scrollTo(0, scrollYRef.current);
-    };
-  }, [open]);
+    if (!mounted) return;
+    return lockBodyScroll();
+  }, [mounted]);
 
   if (!portalReady || !mounted) return null;
 

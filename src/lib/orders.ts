@@ -8,35 +8,61 @@ const parsePriceNumber = (price: string): number => {
   return Number.isFinite(n) ? n : 0;
 };
 
+/**
+ * Order statuses — same set as iiko Cloud `DeliveryStatus`
+ * (api-ru.iiko.services OpenAPI).
+ */
 export type OrderStatus =
-  | "new"
-  | "confirmed"
-  | "preparing"
-  | "ready"
-  | "delivering"
-  | "completed"
-  | "cancelled";
+  | "Unconfirmed"
+  | "WaitCooking"
+  | "ReadyForCooking"
+  | "CookingStarted"
+  | "CookingCompleted"
+  | "Waiting"
+  | "OnWay"
+  | "Delivered"
+  | "Closed"
+  | "Cancelled";
+
+export const ORDER_STATUSES: readonly OrderStatus[] = [
+  "Unconfirmed",
+  "WaitCooking",
+  "ReadyForCooking",
+  "CookingStarted",
+  "CookingCompleted",
+  "Waiting",
+  "OnWay",
+  "Delivered",
+  "Closed",
+  "Cancelled",
+] as const;
 
 export type PaymentStatus = "pending" | "paid" | "failed";
 
 export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
-  new: "Новый",
-  confirmed: "Подтверждён",
-  preparing: "Готовится",
-  ready: "Готов",
-  delivering: "В пути",
-  completed: "Выдан",
-  cancelled: "Отменён",
+  Unconfirmed: "Не подтверждён",
+  WaitCooking: "Ожидает кухню",
+  ReadyForCooking: "К готовке",
+  CookingStarted: "Готовится",
+  CookingCompleted: "Приготовлен",
+  Waiting: "Ожидает выдачи",
+  OnWay: "В пути",
+  Delivered: "Доставлен",
+  Closed: "Закрыт",
+  Cancelled: "Отменён",
 };
 
 export const ORDER_STATUS_HINTS: Record<OrderStatus, string> = {
-  new: "Заказ только что оформлен",
-  confirmed: "Принят в работу",
-  preparing: "Кухня готовит заказ",
-  ready: "Можно выдавать / отдавать курьеру",
-  delivering: "Курьер везёт клиенту",
-  completed: "Клиент получил заказ",
-  cancelled: "Заказ отменён",
+  Unconfirmed: "Заказ только что оформлен, ждёт подтверждения",
+  WaitCooking: "Принят — в очереди на кухню",
+  ReadyForCooking: "Можно отдавать на кухню",
+  CookingStarted: "Кухня готовит заказ",
+  CookingCompleted: "Блюда готовы",
+  Waiting: "Ждёт выдачи клиенту или курьеру",
+  OnWay: "Курьер везёт клиенту",
+  Delivered: "Курьер доставил — можно закрыть",
+  Closed: "Заказ завершён",
+  Cancelled: "Заказ отменён",
 };
 
 export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
@@ -45,26 +71,32 @@ export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
   failed: "Ошибка оплаты",
 };
 
-/** Allowed next statuses from current (by fulfillment). */
+/** Allowed next statuses from current (by fulfillment), iiko-aligned. */
 export const nextOrderStatuses = (
   status: OrderStatus,
   fulfillmentMode: FulfillmentMode,
 ): OrderStatus[] => {
   switch (status) {
-    case "new":
-      return ["confirmed", "cancelled"];
-    case "confirmed":
-      return ["preparing", "cancelled"];
-    case "preparing":
-      return ["ready", "cancelled"];
-    case "ready":
+    case "Unconfirmed":
+      return ["WaitCooking", "Cancelled"];
+    case "WaitCooking":
+      return ["ReadyForCooking", "CookingStarted", "Cancelled"];
+    case "ReadyForCooking":
+      return ["CookingStarted", "Cancelled"];
+    case "CookingStarted":
+      return ["CookingCompleted", "Cancelled"];
+    case "CookingCompleted":
+      return ["Waiting", "Cancelled"];
+    case "Waiting":
       return fulfillmentMode === "delivery"
-        ? ["delivering", "cancelled"]
-        : ["completed", "cancelled"];
-    case "delivering":
-      return ["completed", "cancelled"];
-    case "completed":
-    case "cancelled":
+        ? ["OnWay", "Cancelled"]
+        : ["Cancelled"];
+    case "OnWay":
+      return ["Delivered", "Cancelled"];
+    case "Delivered":
+      return ["Cancelled"];
+    case "Closed":
+    case "Cancelled":
       return [];
     default:
       return [];
@@ -93,14 +125,16 @@ export const parseFulfillmentQrPayload = (raw: string): string | null => {
   return /^[A-F0-9]{16}$/.test(body) ? body : null;
 };
 
-/** When staff/courier may scan QR to hand over the order. */
+/** When staff/courier may scan QR to close the order (iiko → Closed). */
 export const canFulfillOrderByQr = (
   status: OrderStatus,
   fulfillmentMode: FulfillmentMode,
 ): boolean => {
-  if (status === "completed" || status === "cancelled") return false;
-  if (fulfillmentMode === "pickup") return status === "ready";
-  return status === "ready" || status === "delivering";
+  if (status === "Closed" || status === "Cancelled") return false;
+  if (fulfillmentMode === "pickup") {
+    return status === "Waiting" || status === "CookingCompleted";
+  }
+  return status === "OnWay" || status === "Delivered" || status === "Waiting";
 };
 
 export const rubFromPriceString = (price: string, qty: number): number =>
@@ -156,6 +190,9 @@ export type OrderPublic = {
   paidAt: string | null;
   fulfillmentToken: string;
   fulfilledAt: string | null;
+  iikoOrderId: string | null;
+  iikoCreationStatus: string;
+  iikoSyncError: string;
   statusUpdatedAt: string;
   createdAt: string;
   items: OrderItemPublic[];
@@ -193,6 +230,9 @@ export const toOrderPublic = (row: {
   paidAt: Date | null;
   fulfillmentToken: string;
   fulfilledAt: Date | null;
+  iikoOrderId?: string | null;
+  iikoCreationStatus?: string | null;
+  iikoSyncError?: string | null;
   statusUpdatedAt: Date;
   createdAt: Date;
   items: Array<{
@@ -243,6 +283,9 @@ export const toOrderPublic = (row: {
   paidAt: row.paidAt ? row.paidAt.toISOString() : null,
   fulfillmentToken: row.fulfillmentToken,
   fulfilledAt: row.fulfilledAt ? row.fulfilledAt.toISOString() : null,
+  iikoOrderId: row.iikoOrderId ?? null,
+  iikoCreationStatus: row.iikoCreationStatus?.trim() || "",
+  iikoSyncError: row.iikoSyncError?.trim() || "",
   statusUpdatedAt: row.statusUpdatedAt.toISOString(),
   createdAt: row.createdAt.toISOString(),
   items: row.items.map((item) => ({

@@ -8,7 +8,6 @@ import { AddressSuggestField } from "@/components/cart/AddressSuggestField";
 import { DeliveryMapModal } from "@/components/cart/DeliveryMapModal";
 import { PickupPointPickerModal } from "@/components/cart/PickupPointPickerModal";
 import { PushOptIn } from "@/components/profile/PushOptIn";
-import { TelegramOptIn } from "@/components/profile/TelegramOptIn";
 import {
   profileBadge,
   profileBlockTitle,
@@ -634,7 +633,6 @@ export const ProfilePage = ({
           </section>
 
           <PushOptIn />
-          <TelegramOptIn />
 
           <section>
             <div className={blockHeadClass}>

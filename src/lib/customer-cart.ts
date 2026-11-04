@@ -2,8 +2,9 @@ import type {
   FulfillmentMode,
   PickupTimeMode,
 } from "@/lib/cart-fulfillment";
+import { buildCartLineKey } from "@/lib/menu-modifiers";
 import { prisma } from "@/lib/prisma";
-import type { CartLine, PersistedCart } from "@/store/cartSlice";
+import type { CartLine, CartModifier, PersistedCart } from "@/store/cartSlice";
 
 export const emptyCustomerCart = (): PersistedCart => ({
   items: [],
@@ -30,6 +31,35 @@ export const clearCartItemsKeepingFulfillment = (
   scheduledAt: null,
 });
 
+const parseModifiersJson = (raw: string | null | undefined): CartModifier[] => {
+  if (!raw?.trim()) return [];
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    const out: CartModifier[] = [];
+    for (const row of parsed) {
+      if (!row || typeof row !== "object") continue;
+      const r = row as Record<string, unknown>;
+      const productId = typeof r.productId === "string" ? r.productId : "";
+      const groupId = typeof r.groupId === "string" ? r.groupId : "";
+      if (!productId || !groupId) continue;
+      out.push({
+        groupId,
+        groupName: typeof r.groupName === "string" ? r.groupName : "",
+        productId,
+        name: typeof r.name === "string" ? r.name : "",
+        amount:
+          typeof r.amount === "number" && Number.isFinite(r.amount)
+            ? Math.max(1, Math.min(99, Math.round(r.amount)))
+            : 1,
+      });
+    }
+    return out;
+  } catch {
+    return [];
+  }
+};
+
 const toPersisted = (row: {
   utensils: number;
   comment: string;
@@ -42,12 +72,14 @@ const toPersisted = (row: {
   scheduledAt: Date | null;
   items: Array<{
     productId: string;
+    lineKey?: string | null;
     name: string;
     price: string;
     image: string;
     categoryId: string;
     categoryName: string;
     qty: number;
+    modifiersJson?: string | null;
   }>;
 }): PersistedCart => ({
   utensils: Math.max(0, Math.min(20, row.utensils)),
@@ -59,17 +91,23 @@ const toPersisted = (row: {
   deliveryLng: row.deliveryLng,
   timeMode: row.timeMode === "scheduled" ? "scheduled" : "asap",
   scheduledAt: row.scheduledAt ? row.scheduledAt.toISOString() : null,
-  items: row.items.map(
-    (item): CartLine => ({
+  items: row.items.map((item): CartLine => {
+    const modifiers = parseModifiersJson(item.modifiersJson);
+    const lineKey =
+      (item.lineKey || "").trim() ||
+      buildCartLineKey(item.productId, modifiers);
+    return {
       id: item.productId,
+      lineKey,
       name: item.name,
       price: item.price,
       image: item.image,
       categoryId: item.categoryId,
       categoryName: item.categoryName,
+      modifiers,
       qty: Math.max(1, Math.min(99, item.qty)),
-    }),
-  ),
+    };
+  }),
 });
 
 export const loadCustomerCart = async (
@@ -137,15 +175,22 @@ export const saveCustomerCart = async (
 
   const itemsData = cart.items
     .filter((line) => line.id && line.name)
-    .map((line) => ({
-      productId: line.id,
-      name: line.name.slice(0, 255),
-      price: String(line.price ?? "").slice(0, 64),
-      image: String(line.image ?? "").slice(0, 500),
-      categoryId: String(line.categoryId ?? "").slice(0, 64),
-      categoryName: String(line.categoryName ?? "").slice(0, 255),
-      qty: Math.max(1, Math.min(99, Math.round(line.qty))),
-    }));
+    .map((line) => {
+      const modifiers = line.modifiers || [];
+      const lineKey =
+        line.lineKey || buildCartLineKey(line.id, modifiers);
+      return {
+        productId: line.id,
+        lineKey: lineKey.slice(0, 255),
+        name: line.name.slice(0, 255),
+        price: String(line.price ?? "").slice(0, 64),
+        image: String(line.image ?? "").slice(0, 500),
+        categoryId: String(line.categoryId ?? "").slice(0, 64),
+        categoryName: String(line.categoryName ?? "").slice(0, 255),
+        qty: Math.max(1, Math.min(99, Math.round(line.qty))),
+        modifiersJson: JSON.stringify(modifiers).slice(0, 2000),
+      };
+    });
 
   if (existing) {
     await prisma.$transaction([
@@ -203,15 +248,19 @@ const mergeLines = (
   mode: "sum" | "max",
 ): CartLine[] => {
   const map = new Map<string, CartLine>();
-  for (const line of primary) map.set(line.id, { ...line });
+  for (const line of primary) {
+    const key = line.lineKey || buildCartLineKey(line.id, line.modifiers || []);
+    map.set(key, { ...line, lineKey: key, modifiers: line.modifiers || [] });
+  }
   for (const line of secondary) {
-    const existing = map.get(line.id);
+    const key = line.lineKey || buildCartLineKey(line.id, line.modifiers || []);
+    const existing = map.get(key);
     if (existing) {
       const qty =
         mode === "sum"
           ? Math.min(99, existing.qty + line.qty)
           : Math.min(99, Math.max(existing.qty, line.qty));
-      map.set(line.id, {
+      map.set(key, {
         ...existing,
         qty,
         name: line.name || existing.name,
@@ -219,9 +268,16 @@ const mergeLines = (
         image: line.image || existing.image,
         categoryId: line.categoryId || existing.categoryId,
         categoryName: line.categoryName || existing.categoryName,
+        modifiers: line.modifiers?.length
+          ? line.modifiers
+          : existing.modifiers,
       });
     } else {
-      map.set(line.id, { ...line });
+      map.set(key, {
+        ...line,
+        lineKey: key,
+        modifiers: line.modifiers || [],
+      });
     }
   }
   return [...map.values()];

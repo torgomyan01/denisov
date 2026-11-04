@@ -3,12 +3,17 @@
 import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { ModifierChoiceModal } from "@/components/site/ModifierChoiceModal";
 import type { HomeFeaturedDish } from "@/lib/home-menu-featured";
 import { isCategoryAvailableNow } from "@/lib/delivery-availability";
 import { formatPrice } from "@/lib/format";
+import {
+  buildCartLineKey,
+  menuItemNeedsModifierChoice,
+} from "@/lib/menu-modifiers";
 import { menuItemSlug } from "@/lib/menu-slug";
 import { useAppDispatch } from "@/store/hooks";
-import { addToCartQuiet } from "@/store/cartSlice";
+import { addToCartQuiet, type CartModifier } from "@/store/cartSlice";
 
 type HomeMenuSliderProps = {
   items: HomeFeaturedDish[];
@@ -26,6 +31,9 @@ export const HomeMenuSlider = ({
   const scrollerRef = useRef<HTMLDivElement | null>(null);
   const [canPrev, setCanPrev] = useState(false);
   const [canNext, setCanNext] = useState(false);
+  const [modifierItem, setModifierItem] = useState<HomeFeaturedDish | null>(
+    null,
+  );
 
   const syncNav = useCallback(() => {
     const el = scrollerRef.current;
@@ -60,6 +68,21 @@ export const HomeMenuSlider = ({
     el.scrollBy({ left: dir * step, behavior: "smooth" });
   };
 
+  const commitAdd = (item: HomeFeaturedDish, modifiers: CartModifier[] = []) => {
+    dispatch(
+      addToCartQuiet({
+        id: item.id,
+        lineKey: buildCartLineKey(item.id, modifiers),
+        name: item.name,
+        price: item.price,
+        image: item.image || "",
+        categoryId: item.categoryId,
+        categoryName: item.categoryName,
+        modifiers,
+      }),
+    );
+  };
+
   const addOne = (item: HomeFeaturedDish) => {
     if (!ordersEnabled || item.inStock === false) return;
     if (item.showInDelivery === false) return;
@@ -71,25 +94,17 @@ export const HomeMenuSlider = ({
     ) {
       return;
     }
-    dispatch(
-      addToCartQuiet({
-        id: item.id,
-        name: item.name,
-        price: item.price,
-        image: item.image || "",
-        categoryId: item.categoryId,
-        categoryName: item.categoryName,
-      }),
-    );
+    if (menuItemNeedsModifierChoice(item)) {
+      setModifierItem(item);
+      return;
+    }
+    commitAdd(item);
   };
 
   if (!items.length) return null;
 
   return (
-    <section
-      className="relative mt-16 md:mt-24"
-      aria-label="Блюда из меню"
-    >
+    <section className="relative mt-16 md:mt-24" aria-label="Блюда из меню">
       <div className="mb-7 flex items-end justify-between gap-4 md:mb-9">
         <div>
           <p className="font-sans text-[10px] tracking-[0.34em] text-clay uppercase">
@@ -99,18 +114,12 @@ export const HomeMenuSlider = ({
             Блюда, которые стоит попробовать
           </h2>
         </div>
-        <Link
-          href="/menu"
-          className="hidden shrink-0 font-sans text-[11px] tracking-[0.22em] text-ink/50 uppercase no-underline transition-colors hover:text-clay sm:inline-flex"
-        >
-          Всё меню →
-        </Link>
       </div>
 
       <div className="relative">
         <div
           ref={scrollerRef}
-          className="flex snap-x snap-mandatory gap-4 overflow-x-auto overscroll-x-contain scroll-px-1 pb-2 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden md:gap-5"
+          className="flex gap-5 overflow-x-auto scroll-smooth pb-2 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
         >
           {items.map((item) => {
             const href = `/menu/${menuItemSlug(item)}`;
@@ -122,29 +131,31 @@ export const HomeMenuSlider = ({
                 availableFrom: item.availableFrom,
                 availableTo: item.availableTo,
               });
-
             return (
               <article
                 key={item.id}
                 data-home-dish
-                className="group/card relative flex w-[min(78vw,19.5rem)] shrink-0 snap-start flex-col overflow-hidden rounded-[22px] border border-ink/[.07] bg-white/55 shadow-[0_12px_32px_rgba(33,30,25,.05)] transition-[border-color,box-shadow,transform] duration-300 hover:-translate-y-0.5 hover:border-clay/25 hover:shadow-[0_22px_48px_rgba(33,30,25,.1)] motion-reduce:transition-none sm:w-[17.5rem] md:w-[18.75rem]"
+                className="group/card flex w-[min(78vw,280px)] shrink-0 flex-col overflow-hidden rounded-[22px] border border-ink/[0.07] bg-white/70 shadow-[0_18px_40px_rgba(33,30,25,0.05)] md:w-[300px]"
               >
                 <Link
                   href={href}
-                  className="relative block aspect-[4/5] overflow-hidden bg-[linear-gradient(145deg,#efe7d8,#fbf8f1)] no-underline"
-                  aria-label={item.name}
+                  className="relative aspect-[4/3] overflow-hidden bg-[linear-gradient(145deg,#efe7d8,#fbf8f1)] no-underline"
                 >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={item.image}
-                    alt={item.name}
-                    className="h-full w-full object-cover object-center transition-transform duration-700 ease-[cubic-bezier(.22,1,.36,1)] group-hover/card:scale-[1.05] motion-reduce:transition-none"
-                    loading="lazy"
-                    decoding="async"
-                  />
-                  <span className="pointer-events-none absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-ink/35 to-transparent opacity-80" />
+                  {item.image ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={item.image}
+                      alt=""
+                      loading="lazy"
+                      className="block size-full object-cover transition-transform duration-500 group-hover/card:scale-[1.03]"
+                    />
+                  ) : (
+                    <span className="grid size-full place-items-center text-[10px] tracking-[0.14em] text-ink/40 uppercase">
+                      Нет фото
+                    </span>
+                  )}
                   {item.categoryName ? (
-                    <span className="absolute top-3 left-3 rounded-full border border-paper/25 bg-ink/55 px-2.5 py-1 font-sans text-[9px] tracking-[0.14em] text-paper uppercase backdrop-blur-[6px]">
+                    <span className="absolute bottom-3 left-3 rounded-full bg-paper/90 px-2.5 py-1 font-sans text-[9px] tracking-[0.14em] text-ink/55 uppercase backdrop-blur-sm">
                       {item.categoryName}
                     </span>
                   ) : null}
@@ -195,14 +206,17 @@ export const HomeMenuSlider = ({
         </button>
       </div>
 
-      <div className="mt-6 sm:hidden">
-        <Link
-          href="/menu"
-          className="inline-flex font-sans text-[11px] tracking-[0.22em] text-ink/50 uppercase no-underline transition-colors hover:text-clay"
-        >
-          Всё меню →
-        </Link>
-      </div>
+      {modifierItem ? (
+        <ModifierChoiceModal
+          item={modifierItem}
+          open
+          onClose={() => setModifierItem(null)}
+          onConfirm={(modifiers) => {
+            commitAdd(modifierItem, modifiers);
+            setModifierItem(null);
+          }}
+        />
+      ) : null}
     </section>
   );
 };

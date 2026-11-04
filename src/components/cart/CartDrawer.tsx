@@ -12,10 +12,15 @@ import {
   X,
 } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { getCustomerAction } from "@/actions/customer-auth";
 import { saveMyCartAction } from "@/actions/customer-cart";
 import { CheckoutStep } from "@/components/cart/CheckoutStep";
+import { ModifierChoiceModal } from "@/components/site/ModifierChoiceModal";
+import {
+  buildCartLineKey,
+  menuItemNeedsModifierChoice,
+} from "@/lib/menu-modifiers";
 import {
   cartCheckoutButton,
   cartCheckoutSubmitButton,
@@ -38,6 +43,7 @@ import {
   buildPickupTimeSlots,
   formatScheduledLabel,
 } from "@/lib/cart-fulfillment";
+import { lockBodyScroll } from "@/lib/body-scroll-lock";
 import type { CustomerPublic } from "@/lib/customer-auth";
 import { formatPrice } from "@/lib/format";
 import type { OrderPublic } from "@/lib/orders";
@@ -76,9 +82,10 @@ import {
   setTimeMode,
   toggleComment,
   removeFromCart,
+  type CartModifier,
   type CartProduct,
 } from "@/store/cartSlice";
-import type { SiteMenu } from "@/types/site";
+import type { MenuItem, SiteMenu } from "@/types/site";
 
 type CartDrawerProps = {
   menu: SiteMenu;
@@ -133,11 +140,35 @@ export const CartDrawer = ({
   const [checkoutNote, setCheckoutNote] = useState("");
   const [step, setStep] = useState<"cart" | "checkout" | "success">("cart");
   const [placedOrder, setPlacedOrder] = useState<OrderPublic | null>(null);
+  const [modifierItem, setModifierItem] = useState<MenuItem | null>(null);
 
   const suggestions = useMemo(
     () => getSuggestedProducts(menu, items, 6),
     [menu, items],
   );
+
+  const findMenuItem = (productId: string): MenuItem | null => {
+    for (const category of menu.categories || []) {
+      const found = (category.items || []).find((row) => row.id === productId);
+      if (found) return found;
+    }
+    return null;
+  };
+
+  const addSuggested = (product: CartProduct) => {
+    const menuItem = findMenuItem(product.id);
+    if (menuItem && menuItemNeedsModifierChoice(menuItem)) {
+      setModifierItem(menuItem);
+      return;
+    }
+    dispatch(
+      addToCart({
+        ...product,
+        lineKey: product.lineKey || product.id,
+        modifiers: product.modifiers || [],
+      }),
+    );
+  };
   const suggestedProducts = suggestions.products;
   const nutrition = useMemo(
     () => cartNutritionTotals(items, menu),
@@ -244,8 +275,6 @@ export const CartDrawer = ({
     return () => window.cancelAnimationFrame(id);
   }, [mounted, isOpen]);
 
-  const scrollYRef = useRef(0);
-
   useEffect(() => {
     if (!isOpen) return;
     const onKey = (e: KeyboardEvent) => {
@@ -257,42 +286,12 @@ export const CartDrawer = ({
     return () => window.removeEventListener("keydown", onKey);
   }, [isOpen, mapModalOpen, dispatch]);
 
+  // Keep lock for the whole open + close animation (`mounted`), not only
+  // while `isOpen` — unlocking mid-close made the page jump under smooth scroll.
   useEffect(() => {
-    if (!isOpen) return;
-
-    const html = document.documentElement;
-    const body = document.body;
-    scrollYRef.current = window.scrollY;
-
-    const prev = {
-      htmlOverflow: html.style.overflow,
-      bodyOverflow: body.style.overflow,
-      bodyPosition: body.style.position,
-      bodyTop: body.style.top,
-      bodyLeft: body.style.left,
-      bodyRight: body.style.right,
-      bodyWidth: body.style.width,
-    };
-
-    html.style.overflow = "hidden";
-    body.style.overflow = "hidden";
-    body.style.position = "fixed";
-    body.style.top = `-${scrollYRef.current}px`;
-    body.style.left = "0";
-    body.style.right = "0";
-    body.style.width = "100%";
-
-    return () => {
-      html.style.overflow = prev.htmlOverflow;
-      body.style.overflow = prev.bodyOverflow;
-      body.style.position = prev.bodyPosition;
-      body.style.top = prev.bodyTop;
-      body.style.left = prev.bodyLeft;
-      body.style.right = prev.bodyRight;
-      body.style.width = prev.bodyWidth;
-      window.scrollTo(0, scrollYRef.current);
-    };
-  }, [isOpen]);
+    if (!mounted) return;
+    return lockBodyScroll();
+  }, [mounted]);
 
   if (!mounted) return null;
 
@@ -696,7 +695,7 @@ export const CartDrawer = ({
                   <ul className="m-0 flex list-none flex-col gap-3 p-0">
                     {items.map((line) => (
                       <li
-                        key={line.id}
+                        key={line.lineKey || line.id}
                         className="grid grid-cols-[72px_minmax(0,1fr)] gap-3 rounded-2xl border border-ink/7 bg-white/62 p-[0.65rem]"
                       >
                         <div
@@ -723,12 +722,25 @@ export const CartDrawer = ({
                               type="button"
                               className="cursor-pointer border-0 bg-transparent p-0 text-[10px] tracking-[0.08em] text-ink/40 uppercase hover:text-clay"
                               aria-label={`Удалить ${line.name}`}
-                              onClick={() => dispatch(removeFromCart(line.id))}
+                              onClick={() =>
+                                dispatch(
+                                  removeFromCart(line.lineKey || line.id),
+                                )
+                              }
                             >
                               Удалить
                             </button>
                           </div>
-                          {line.categoryName ? (
+                          {line.modifiers?.length ? (
+                            <p className="text-[11px] text-ink/55">
+                              {line.modifiers
+                                .map((m) =>
+                                  m.name.replace(/^[-–—\s]+/, "").trim() ||
+                                  m.name,
+                                )
+                                .join(", ")}
+                            </p>
+                          ) : line.categoryName ? (
                             <p className="text-[11px] text-ink/45">
                               {line.categoryName}
                             </p>
@@ -739,7 +751,11 @@ export const CartDrawer = ({
                                 type="button"
                                 className={qtyButton}
                                 aria-label="Меньше"
-                                onClick={() => dispatch(decrementQty(line.id))}
+                                onClick={() =>
+                                  dispatch(
+                                    decrementQty(line.lineKey || line.id),
+                                  )
+                                }
                               >
                                 −
                               </button>
@@ -748,7 +764,11 @@ export const CartDrawer = ({
                                 type="button"
                                 className={qtyButton}
                                 aria-label="Больше"
-                                onClick={() => dispatch(incrementQty(line.id))}
+                                onClick={() =>
+                                  dispatch(
+                                    incrementQty(line.lineKey || line.id),
+                                  )
+                                }
                               >
                                 +
                               </button>
@@ -862,7 +882,7 @@ export const CartDrawer = ({
                         <SuggestedCard
                           key={product.id}
                           product={product}
-                          onAdd={() => dispatch(addToCart(product))}
+                          onAdd={() => addSuggested(product)}
                         />
                       ))}
                     </div>
@@ -978,6 +998,32 @@ export const CartDrawer = ({
           setLocationOpen(false);
         }}
       />
+
+      {modifierItem ? (
+        <ModifierChoiceModal
+          item={modifierItem}
+          open
+          onClose={() => setModifierItem(null)}
+          onConfirm={(modifiers: CartModifier[]) => {
+            const category = (menu.categories || []).find((cat) =>
+              (cat.items || []).some((row) => row.id === modifierItem.id),
+            );
+            dispatch(
+              addToCart({
+                id: modifierItem.id,
+                lineKey: buildCartLineKey(modifierItem.id, modifiers),
+                name: modifierItem.name,
+                price: modifierItem.price,
+                image: modifierItem.image || "",
+                categoryId: category?.id || "",
+                categoryName: category?.name || "",
+                modifiers,
+              }),
+            );
+            setModifierItem(null);
+          }}
+        />
+      ) : null}
     </>
   );
 };

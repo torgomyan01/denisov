@@ -30,24 +30,28 @@ const FILTERS: { id: OrdersFilter; label: string }[] = [
 ];
 
 const ACTIVE_STATUSES: OrderStatus[] = [
-  "new",
-  "confirmed",
-  "preparing",
-  "ready",
-  "delivering",
+  "Unconfirmed",
+  "WaitCooking",
+  "ReadyForCooking",
+  "CookingStarted",
+  "CookingCompleted",
+  "Waiting",
+  "OnWay",
+  "Delivered",
 ];
 
 const matchesFilter = (order: OrderPublic, filter: OrdersFilter): boolean => {
   if (filter === "new") return ACTIVE_STATUSES.includes(order.status);
-  if (filter === "completed") return order.status === "completed";
-  return order.status === "cancelled";
+  if (filter === "completed")
+    return order.status === "Closed" || order.status === "Delivered";
+  return order.status === "Cancelled";
 };
 
 /** In-transit first, then other active, then by newest created. */
 const sortOrders = (list: OrderPublic[]): OrderPublic[] =>
   [...list].sort((a, b) => {
-    const aTransit = a.status === "delivering" ? 0 : 1;
-    const bTransit = b.status === "delivering" ? 0 : 1;
+    const aTransit = a.status === "OnWay" ? 0 : 1;
+    const bTransit = b.status === "OnWay" ? 0 : 1;
     if (aTransit !== bTransit) return aTransit - bTransit;
 
     const aActive = ACTIVE_STATUSES.includes(a.status) ? 0 : 1;
@@ -106,8 +110,9 @@ export const ProfileOrdersPage = () => {
     const next = { new: 0, old: 0, completed: 0 };
     for (const order of orders) {
       if (ACTIVE_STATUSES.includes(order.status)) next.new += 1;
-      else if (order.status === "completed") next.completed += 1;
-      else if (order.status === "cancelled") next.old += 1;
+      else if (order.status === "Closed" || order.status === "Delivered")
+        next.completed += 1;
+      else if (order.status === "Cancelled") next.old += 1;
     }
     return next;
   }, [orders]);
@@ -195,8 +200,10 @@ export const ProfileOrdersPage = () => {
           {visibleOrders.map((order) => {
             const view = getCustomerOrderStatusView(order);
             const active =
-              order.status !== "completed" && order.status !== "cancelled";
-            const inTransit = order.status === "delivering";
+              order.status !== "Closed" &&
+              order.status !== "Delivered" &&
+              order.status !== "Cancelled";
+            const inTransit = order.status === "OnWay";
             return (
               <li key={order.id}>
                 <Link

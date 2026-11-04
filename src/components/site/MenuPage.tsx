@@ -20,11 +20,17 @@ import {
 import { isBlyudaCategory } from "@/lib/home-menu-featured";
 import { menuItemSlug } from "@/lib/menu-slug";
 import { SiteLegalLinks } from "@/components/site/SiteLegalLinks";
+import { ModifierChoiceModal } from "@/components/site/ModifierChoiceModal";
+import {
+  buildCartLineKey,
+  menuItemNeedsModifierChoice,
+} from "@/lib/menu-modifiers";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
   addToCartQuiet,
   decrementQty,
   incrementQty,
+  type CartModifier,
 } from "@/store/cartSlice";
 import type { MenuCategory, MenuItem, SiteData } from "@/types/site";
 
@@ -59,9 +65,15 @@ export const MenuPageView = ({ site, customer }: MenuPageProps) => {
   const cartItems = useAppSelector((s) => s.cart.items);
   const qtyById = useMemo(() => {
     const map = new Map<string, number>();
-    for (const line of cartItems) map.set(line.id, line.qty);
+    for (const line of cartItems) {
+      map.set(line.id, (map.get(line.id) ?? 0) + line.qty);
+    }
     return map;
   }, [cartItems]);
+  const [modifierTarget, setModifierTarget] = useState<{
+    item: MenuItem;
+    category: MenuCategory;
+  } | null>(null);
 
   const footerBrand = brandLabel(site);
   const a11y = brandLabelOrDefault(site);
@@ -69,16 +81,24 @@ export const MenuPageView = ({ site, customer }: MenuPageProps) => {
   const ordersEnabled =
     (site.delivery ?? createDefaultDeliverySettings()).ordersEnabled !== false;
 
-  const categories = useMemo(
-    () =>
-      (menu.categories || []).filter(
+  const categories = useMemo(() => {
+    const visibleItem = (it: MenuItem | undefined): boolean =>
+      Boolean(it && (it.name || it.price) && it.showInDelivery !== false);
+
+    return (menu.categories || [])
+      .filter(
         (c) =>
           c &&
+          c.showOnSite !== false &&
           (c.name || (c.items && c.items.length)) &&
           !isBlyudaCategory(c.name || ""),
-      ),
-    [menu.categories],
-  );
+      )
+      .map((c) => ({
+        ...c,
+        items: (c.items || []).filter(visibleItem),
+      }))
+      .filter((c) => (c.items || []).length > 0);
+  }, [menu.categories]);
 
   const [navStuck, setNavStuck] = useState(false);
   const navSentinelRef = useRef<HTMLDivElement | null>(null);
@@ -205,20 +225,50 @@ export const MenuPageView = ({ site, customer }: MenuPageProps) => {
     };
   }, [categories.length]);
 
-  const toCartProduct = (item: MenuItem, category: MenuCategory) => ({
-    id: item.id,
-    name: item.name,
-    price: item.price,
-    image: item.image || "",
-    categoryId: category.id,
-    categoryName: category.name || "",
-  });
+  const toCartProduct = (
+    item: MenuItem,
+    category: MenuCategory,
+    modifiers: CartModifier[] = [],
+  ) => {
+    const lineKey = buildCartLineKey(item.id, modifiers);
+    return {
+      id: item.id,
+      lineKey,
+      name: item.name,
+      price: item.price,
+      image: item.image || "",
+      categoryId: category.id,
+      categoryName: category.name || "",
+      modifiers,
+    };
+  };
 
   const addOne = (item: MenuItem, category: MenuCategory) => {
     if (!ordersEnabled || item.inStock === false) return;
     if (item.showInDelivery === false) return;
     if (!isCategoryAvailableNow(category)) return;
+    if (menuItemNeedsModifierChoice(item)) {
+      setModifierTarget({ item, category });
+      return;
+    }
     dispatch(addToCartQuiet(toCartProduct(item, category)));
+  };
+
+  const bumpOne = (item: MenuItem, category: MenuCategory) => {
+    if (!ordersEnabled || item.inStock === false) return;
+    if (item.showInDelivery === false) return;
+    if (!isCategoryAvailableNow(category)) return;
+    if (menuItemNeedsModifierChoice(item)) {
+      setModifierTarget({ item, category });
+      return;
+    }
+    dispatch(incrementQty(item.id));
+  };
+
+  const dropOne = (item: MenuItem) => {
+    const line = [...cartItems].reverse().find((row) => row.id === item.id);
+    if (!line) return;
+    dispatch(decrementQty(line.lineKey || line.id));
   };
 
   return (
@@ -307,9 +357,7 @@ export const MenuPageView = ({ site, customer }: MenuPageProps) => {
               </p>
             ) : (
               categories.map((category, i) => {
-                const items = (category.items || []).filter(
-                  (it) => it && (it.name || it.price),
-                );
+                const items = category.items || [];
                 const sectionId = slugify(category.name, i);
                 const available = isCategoryAvailableNow(category);
                 return (
@@ -351,12 +399,8 @@ export const MenuPageView = ({ site, customer }: MenuPageProps) => {
                         {items.map((item, ii) => {
                           const qty = qtyById.get(item.id) ?? 0;
                           const soldOut = item.inStock === false;
-                          const notDeliverable = item.showInDelivery === false;
                           const canAdd =
-                            ordersEnabled &&
-                            available &&
-                            !soldOut &&
-                            !notDeliverable;
+                            ordersEnabled && available && !soldOut;
                           const href = `/menu/${menuItemSlug(item)}`;
                           return (
                             <article
@@ -390,10 +434,6 @@ export const MenuPageView = ({ site, customer }: MenuPageProps) => {
                                   <span className="absolute top-2 left-2 rounded-full bg-ink/75 px-2 py-1 text-[10px] tracking-[0.1em] text-paper uppercase">
                                     Закончилось
                                   </span>
-                                ) : notDeliverable ? (
-                                  <span className="absolute top-2 left-2 rounded-full bg-ink/75 px-2 py-1 text-[10px] tracking-[0.1em] text-paper uppercase">
-                                    Только в кафе
-                                  </span>
                                 ) : null}
                               </Link>
 
@@ -424,10 +464,6 @@ export const MenuPageView = ({ site, customer }: MenuPageProps) => {
                                   <p className="mt-auto pt-2 text-center text-[11px] tracking-[0.1em] text-ink/45 uppercase">
                                     Закончилось
                                   </p>
-                                ) : notDeliverable ? (
-                                  <p className="mt-auto pt-2 text-center text-[11px] tracking-[0.1em] text-ink/45 uppercase">
-                                    Не доставляется
-                                  </p>
                                 ) : !canAdd && !available ? (
                                   <p className="mt-auto pt-2 text-center text-[11px] text-ink/50">
                                     {categoryUnavailableMessage(category)}
@@ -438,9 +474,7 @@ export const MenuPageView = ({ site, customer }: MenuPageProps) => {
                                       type="button"
                                       className="inline-flex size-9 cursor-pointer items-center justify-center rounded-full hover:bg-ink/5"
                                       aria-label="Убрать"
-                                      onClick={() =>
-                                        dispatch(decrementQty(item.id))
-                                      }
+                                      onClick={() => dropOne(item)}
                                     >
                                       <Minus size={15} strokeWidth={2} />
                                     </button>
@@ -452,9 +486,7 @@ export const MenuPageView = ({ site, customer }: MenuPageProps) => {
                                       className="inline-flex size-9 cursor-pointer items-center justify-center rounded-full hover:bg-ink/5 disabled:opacity-40"
                                       aria-label="Добавить"
                                       disabled={!canAdd}
-                                      onClick={() =>
-                                        dispatch(incrementQty(item.id))
-                                      }
+                                      onClick={() => bumpOne(item, category)}
                                     >
                                       <Plus size={15} strokeWidth={2} />
                                     </button>
@@ -480,6 +512,26 @@ export const MenuPageView = ({ site, customer }: MenuPageProps) => {
               })
             )}
           </div>
+
+          {modifierTarget ? (
+            <ModifierChoiceModal
+              item={modifierTarget.item}
+              open
+              onClose={() => setModifierTarget(null)}
+              onConfirm={(modifiers) => {
+                dispatch(
+                  addToCartQuiet(
+                    toCartProduct(
+                      modifierTarget.item,
+                      modifierTarget.category,
+                      modifiers,
+                    ),
+                  ),
+                );
+                setModifierTarget(null);
+              }}
+            />
+          ) : null}
 
           {menu.note ? (
             <p className="mt-11 text-center text-[10px] tracking-[0.18em] text-ink/40 uppercase">

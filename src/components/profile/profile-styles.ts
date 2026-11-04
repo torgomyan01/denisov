@@ -33,13 +33,16 @@ const statusBase =
   "inline-flex items-center rounded-full px-[0.55rem] py-[0.22rem] text-[0.72rem] tracking-[0.06em] whitespace-nowrap uppercase";
 
 const statusTone: Record<OrderStatus, string> = {
-  new: "bg-clay/14 text-clay-deep",
-  confirmed: "bg-clay/14 text-clay-deep",
-  preparing: "bg-clay/14 text-clay-deep",
-  ready: "bg-clay/14 text-clay-deep",
-  delivering: "bg-clay/14 text-clay-deep",
-  completed: "bg-olive/14 text-olive",
-  cancelled: "bg-danger/12 text-[#8a2f22]",
+  Unconfirmed: "bg-clay/14 text-clay-deep",
+  WaitCooking: "bg-clay/14 text-clay-deep",
+  ReadyForCooking: "bg-clay/14 text-clay-deep",
+  CookingStarted: "bg-clay/14 text-clay-deep",
+  CookingCompleted: "bg-clay/14 text-clay-deep",
+  Waiting: "bg-clay/14 text-clay-deep",
+  OnWay: "bg-clay/14 text-clay-deep",
+  Delivered: "bg-olive/14 text-olive",
+  Closed: "bg-olive/14 text-olive",
+  Cancelled: "bg-danger/12 text-[#8a2f22]",
 };
 
 export const profileOrderStatus = (status: OrderStatus): string =>

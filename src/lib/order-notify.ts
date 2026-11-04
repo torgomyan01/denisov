@@ -2,27 +2,18 @@ import type { FulfillmentMode } from "@/lib/customer-auth";
 import {
   ORDER_STATUS_HINTS,
   ORDER_STATUS_LABELS,
+  ORDER_STATUSES,
   type OrderStatus,
 } from "@/lib/orders";
 
 export type OrderNotifyPayload = {
   title: string;
   body: string;
-  /** Longer text for Telegram (multiline). */
-  telegramText: string;
   url: string;
   tag?: string;
 };
 
-const ALL_STATUSES = new Set<OrderStatus>([
-  "new",
-  "confirmed",
-  "preparing",
-  "ready",
-  "delivering",
-  "completed",
-  "cancelled",
-]);
+const ALL_STATUSES = new Set<OrderStatus>(ORDER_STATUSES);
 
 export const isOrderNotifyStatus = (status: OrderStatus): boolean =>
   ALL_STATUSES.has(status);
@@ -43,7 +34,7 @@ const detailForStatus = (
   const fulfill = fulfillmentLabel(mode);
 
   switch (status) {
-    case "new":
+    case "Unconfirmed":
       return {
         pushBody: `Заказ ${orderNumber} оформлен и ожидает подтверждения`,
         lines: [
@@ -52,16 +43,17 @@ const detailForStatus = (
           fulfill ? `Способ получения: ${fulfill}.` : "",
         ],
       };
-    case "confirmed":
+    case "WaitCooking":
+    case "ReadyForCooking":
       return {
         pushBody: `Заказ ${orderNumber} подтверждён и принят в работу`,
         lines: [
-          `Заказ ${orderNumber} подтверждён.`,
+          `Заказ ${orderNumber}: статус «${label}».`,
           "Мы приняли его в работу.",
           fulfill ? `Способ получения: ${fulfill}.` : "",
         ],
       };
-    case "preparing":
+    case "CookingStarted":
       return {
         pushBody: `Заказ ${orderNumber} готовится на кухне`,
         lines: [
@@ -69,7 +61,8 @@ const detailForStatus = (
           "Кухня готовит ваш заказ.",
         ],
       };
-    case "ready":
+    case "CookingCompleted":
+    case "Waiting":
       if (mode === "delivery") {
         return {
           pushBody: `Заказ ${orderNumber} готов — передаём курьеру`,
@@ -86,7 +79,7 @@ const detailForStatus = (
           "Можно забирать в точке самовывоза.",
         ],
       };
-    case "delivering":
+    case "OnWay":
       return {
         pushBody: `Заказ ${orderNumber} уже в пути к вам`,
         lines: [
@@ -94,7 +87,8 @@ const detailForStatus = (
           "Курьер везёт заказ к вам.",
         ],
       };
-    case "completed":
+    case "Delivered":
+    case "Closed":
       if (mode === "delivery") {
         return {
           pushBody: `Заказ ${orderNumber} доставлен`,
@@ -111,7 +105,7 @@ const detailForStatus = (
           "Спасибо, что выбрали Денисов!",
         ],
       };
-    case "cancelled":
+    case "Cancelled":
       return {
         pushBody: `Заказ ${orderNumber} отменён`,
         lines: [
@@ -127,11 +121,6 @@ const detailForStatus = (
   }
 };
 
-const siteOrigin = (): string => {
-  const raw = process.env.SITE_URL?.trim() || "https://cafedenisov.ru";
-  return raw.replace(/\/$/, "");
-};
-
 export const orderStatusNotifyPayload = (input: {
   status: OrderStatus;
   orderId: string;
@@ -142,29 +131,16 @@ export const orderStatusNotifyPayload = (input: {
   if (!isOrderNotifyStatus(status)) return null;
 
   const path = `/profile/orders/${orderId}`;
-  const url = path;
-  const label = ORDER_STATUS_LABELS[status];
-  const { pushBody, lines } = detailForStatus(
+  const { pushBody } = detailForStatus(
     status,
     orderNumber,
     fulfillmentMode,
   );
-  const absoluteUrl = `${siteOrigin()}${path}`;
-  const telegramText = [
-    "Кафе Денисов",
-    `Заказ ${orderNumber}`,
-    `Статус: ${label}`,
-    "",
-    ...lines.filter(Boolean),
-    "",
-    `Открыть заказ: ${absoluteUrl}`,
-  ].join("\n");
 
   return {
     title: `Денисов · ${orderNumber}`,
     body: pushBody,
-    telegramText,
-    url,
+    url: path,
     tag: `order-${orderId}-${status}`,
   };
 };

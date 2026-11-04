@@ -125,42 +125,28 @@ VAPID_SUBJECT="mailto:hello@cafedenisov.ru"
 
 4. Гость: `/profile` → «Включить уведомления». На iPhone — Safari + «На экран Домой».
 
-### Telegram (уведомления о статусе заказа)
-
-Гость в профиле подключает бота. При статусах **готов / в пути / выдан** приходит сообщение в Telegram. С RU-сервера исходящие вызовы идут через маленький gateway на Vercel (`telegram-gateway/`), webhook бота тоже на Vercel.
-
-1. Создай бота у [@BotFather](https://t.me/BotFather), сохрани token и username.
-2. Задеплой папку `telegram-gateway` на Vercel (Root Directory = `telegram-gateway`). Env:
-
-```env
-TELEGRAM_BOT_TOKEN="…"
-GATEWAY_SECRET="длинный-секрет"
-DENISOV_BIND_URL="https://cafedenisov.ru/api/telegram/bind"
-DENISOV_BIND_SECRET="тот-же-или-отдельный-секрет"
-```
-
-3. Укажи webhook бота на Vercel:
-
-```bash
-curl "https://api.telegram.org/bot<TOKEN>/setWebhook?url=https://<твой-vercel-домен>/api/telegram/webhook"
-```
-
-4. В `.env` основного сайта:
-
-```env
-NEXT_PUBLIC_TELEGRAM_BOT_USERNAME="DenisovCafeBot"
-TELEGRAM_GATEWAY_URL="https://<твой-vercel-домен>"
-TELEGRAM_GATEWAY_SECRET="тот-же-что-GATEWAY_SECRET"
-TELEGRAM_BIND_SECRET="тот-же-что-DENISOV_BIND_SECRET"
-```
-
-5. `npx prisma db push` и перезапуск. В `/profile` → «Подключить Telegram».
-
-6. Уведомления админам о **новых** заказах (тот же бот): в админке раздел **Telegram** — добавить сотрудников (имя, должность, chat id). Список хранится в БД (`StaffTelegramRecipient`), не в `.env`.
-
-Chat id — личный (или группы). Узнать: написать боту `/start`, затем через @userinfobot / @getidsbot.
-
 При входе через Яндекс сохраняем: имя, email, дату рождения (если пользователь разрешил).
+
+### iiko Cloud (создание заказа)
+
+При оформлении заказа на сайте заказ пишется в нашу БД и сразу уходит в iiko (`/api/1/deliveries/create`). Меню остаётся у нас; у каждой позиции в админке нужен **iiko productId** (UUID из iiko).
+
+1. [Developer Portal](https://public-api.iikoweb.ru/portal) → приложение → `appId` + `clientSecret` (секрет показывается один раз).
+2. iikoWeb → Integrations → API Keys → `apiKey`.
+3. Через API (после токена) возьми `organizationId`, `terminalGroupId`, `paymentTypeId`.
+4. В `.env`:
+
+```env
+IIKO_API_KEY="…"
+IIKO_APP_ID="…"
+IIKO_CLIENT_SECRET="…"
+IIKO_ORGANIZATION_ID="…"
+IIKO_TERMINAL_GROUP_ID="…"
+IIKO_PAYMENT_TYPE_ID="…"   # чтобы в iiko заказ был «оплачен»
+IIKO_CITY="Санкт-Петербург"
+```
+
+`apiKey` одного недостаточно для актуального `/api/v2/access_token` — нужны ещё `appId` и `clientSecret`. Без полного набора синк в iiko не включается.
 
 ## База данных (реляционная CMS)
 
@@ -178,8 +164,6 @@ Chat id — личный (или группы). Узнать: написать �
 | `MenuCategory` / `MenuItem` | Меню |
 | `PickupPoint` | Точки самовывоза (кафе) |
 | `PushSubscription` | Web Push подписки клиентов |
-| `TelegramLinkToken` | One-time deep-link для привязки Telegram |
-| `StaffTelegramRecipient` | Сотрудники для алертов о новых заказах |
 | `AdminSession` | Сессии админа |
 
 `prisma/seed-data/site.json` используется **только** для первичного seed (`npm run db:seed`).

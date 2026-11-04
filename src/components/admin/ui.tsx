@@ -9,13 +9,13 @@ import {
 } from "@/components/admin/styles";
 import {
   BookOpen,
+  Cloud,
   Info,
   LayoutTemplate,
   List,
   Mail,
   MapPin,
   Menu,
-  MessageCircle,
   PanelTop,
   QrCode,
   ShoppingBag,
@@ -335,12 +335,12 @@ export const IconNav = ({ name }: { name: string }) => {
       return <MapPin {...props} />;
     case "orders":
       return <ShoppingBag {...props} />;
+    case "iiko-orders":
+      return <Cloud {...props} />;
     case "fulfillment":
       return <QrCode {...props} />;
     case "users":
       return <Users {...props} />;
-    case "telegram":
-      return <MessageCircle {...props} />;
     case "docs":
       return <BookOpen {...props} />;
     case "sections":

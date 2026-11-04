@@ -37,9 +37,9 @@ export const OrderFulfillmentQr = ({
     };
   }, [token]);
 
-  if (status === "cancelled") return null;
+  if (status === "Cancelled") return null;
 
-  const done = status === "completed";
+  const done = status === "Closed" || status === "Delivered";
   const hint =
     fulfillmentMode === "pickup"
       ? "Покажите этот QR на точке самовывоза"

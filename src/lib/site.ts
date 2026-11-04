@@ -8,6 +8,7 @@ import {
   parseOptionalFloat,
   parseZonePolygon,
 } from "@/lib/delivery-defaults";
+import { loadMergedIikoMenu } from "@/lib/iiko/site-menu";
 import { prisma } from "@/lib/prisma";
 import { normalizeHeaderLogoMode } from "@/lib/format";
 import { isTempId } from "@/lib/ids";
@@ -31,6 +32,8 @@ const mapMenuItem = (item: {
   inStock?: boolean | null;
   showInUpsell?: boolean | null;
   upsellSortOrder?: number | null;
+  iikoProductId?: string | null;
+  modifierGroups?: MenuItem["modifierGroups"] | null;
 }): MenuItem =>
   createDefaultMenuItem({
     id: item.id,
@@ -47,6 +50,25 @@ const mapMenuItem = (item: {
     inStock: item.inStock !== false,
     showInUpsell: Boolean(item.showInUpsell),
     upsellSortOrder: parseNonNegInt(item.upsellSortOrder, 0),
+    iikoProductId: (item.iikoProductId ?? "").trim(),
+    modifierGroups: Array.isArray(item.modifierGroups)
+      ? item.modifierGroups.map((group) => ({
+          id: group.id,
+          name: group.name ?? "",
+          minQuantity: Math.max(0, Number(group.minQuantity) || 0),
+          maxQuantity: Math.max(0, Number(group.maxQuantity) || 0),
+          options: Array.isArray(group.options)
+            ? group.options.map((opt) => ({
+                productId: opt.productId,
+                name: opt.name ?? "",
+                price:
+                  typeof opt.price === "number" && Number.isFinite(opt.price)
+                    ? opt.price
+                    : 0,
+              }))
+            : [],
+        }))
+      : [],
   });
 
 const mapDeliveryRow = (row: {
@@ -104,6 +126,7 @@ export const normalizeSite = (raw: unknown): SiteData => {
       name: category.name ?? "",
       availableFrom: category.availableFrom ?? "",
       availableTo: category.availableTo ?? "",
+      showOnSite: category.showOnSite !== false,
       items: Array.isArray(category.items)
         ? category.items.map((item) => mapMenuItem(item))
         : [],
@@ -133,8 +156,8 @@ export const getSite = async (): Promise<SiteData> => {
     footer,
     brand,
     dishes,
-    categories,
     deliveryRow,
+    iikoMenu,
   ] = await Promise.all([
     prisma.siteSettings.findUnique({ where: { id: "main" } }),
     prisma.siteMeta.findUnique({ where: { id: "main" } }),
@@ -147,17 +170,8 @@ export const getSite = async (): Promise<SiteData> => {
       where: { isActive: true },
       orderBy: { sortOrder: "asc" },
     }),
-    prisma.menuCategory.findMany({
-      where: { isActive: true },
-      orderBy: { sortOrder: "asc" },
-      include: {
-        items: {
-          where: { isActive: true },
-          orderBy: { sortOrder: "asc" },
-        },
-      },
-    }),
     prisma.deliverySettings.findUnique({ where: { id: "main" } }),
+    loadMergedIikoMenu(),
   ]);
 
   if (!meta || !hero || !about || !contacts || !footer || !brand || !settings) {
@@ -224,15 +238,7 @@ export const getSite = async (): Promise<SiteData> => {
     menu: {
       title: settings.menuTitle,
       note: settings.menuNote,
-      categories: categories.map((category) =>
-        createDefaultMenuCategory({
-          id: category.id,
-          name: category.name,
-          availableFrom: category.availableFrom ?? "",
-          availableTo: category.availableTo ?? "",
-          items: category.items.map((item) => mapMenuItem(item)),
-        }),
-      ),
+      categories: iikoMenu.categories,
     },
     delivery: mapDeliveryRow(deliveryRow),
     menuPdf: settings.menuPdf ?? undefined,
@@ -266,37 +272,7 @@ export const saveSite = async (content: SiteData): Promise<SiteData> => {
     isActive: true,
   }));
 
-  const categoryRows = normalized.menu.categories.map((category, index) => {
-    const categoryId = resolveId(category.id);
-    return {
-      id: categoryId,
-      sortOrder: index,
-      name: category.name,
-      availableFrom: category.availableFrom?.trim() || "",
-      availableTo: category.availableTo?.trim() || "",
-      isActive: true,
-      items: category.items.map((item, itemIndex) => ({
-        id: resolveId(item.id),
-        categoryId,
-        sortOrder: itemIndex,
-        name: item.name,
-        description: item.description,
-        price: item.price,
-        image: item.image ?? "",
-        weight: item.weight ?? "",
-        kcal: parseOptionalFloat(item.kcal),
-        protein: parseOptionalFloat(item.protein),
-        fat: parseOptionalFloat(item.fat),
-        carbs: parseOptionalFloat(item.carbs),
-        showInDelivery: item.showInDelivery !== false,
-        inStock: item.inStock !== false,
-        showInUpsell: Boolean(item.showInUpsell),
-        upsellSortOrder: parseNonNegInt(item.upsellSortOrder, 0),
-        isActive: true,
-      })),
-    };
-  });
-
+  // Menu tree is owned by iiko + IikoMenuOverride — not rewritten here.
   const delivery = normalized.delivery;
 
   await prisma.$transaction(
@@ -391,19 +367,6 @@ export const saveSite = async (content: SiteData): Promise<SiteData> => {
     await tx.dish.deleteMany({});
     if (dishRows.length) {
       await tx.dish.createMany({ data: dishRows });
-    }
-
-    // Replace menu tree.
-    await tx.menuItem.deleteMany({});
-    await tx.menuCategory.deleteMany({});
-    if (categoryRows.length) {
-      await tx.menuCategory.createMany({
-        data: categoryRows.map(({ items: _items, ...category }) => category),
-      });
-      const itemRows = categoryRows.flatMap((category) => category.items);
-      if (itemRows.length) {
-        await tx.menuItem.createMany({ data: itemRows });
-      }
     }
   },
     { timeout: 30_000 },

@@ -3,14 +3,27 @@ import type {
   FulfillmentMode,
   PickupTimeMode,
 } from "@/lib/cart-fulfillment";
+import { buildCartLineKey } from "@/lib/menu-modifiers";
+
+export type CartModifier = {
+  groupId: string;
+  groupName: string;
+  productId: string;
+  name: string;
+  amount: number;
+};
 
 export type CartProduct = {
+  /** iiko / menu product id */
   id: string;
+  /** Unique cart row id (product + selected modifiers). */
+  lineKey: string;
   name: string;
   price: string;
   image: string;
   categoryId: string;
   categoryName: string;
+  modifiers: CartModifier[];
 };
 
 export type CartLine = CartProduct & {
@@ -45,7 +58,28 @@ type CartState = {
   isOpen: boolean;
 };
 
-const STORAGE_KEY = "denisov_cart_v5";
+const STORAGE_KEY = "denisov_cart_v6";
+
+const normalizeModifiers = (raw: unknown): CartModifier[] => {
+  if (!Array.isArray(raw)) return [];
+  const out: CartModifier[] = [];
+  for (const row of raw) {
+    if (!row || typeof row !== "object") continue;
+    const r = row as Record<string, unknown>;
+    const productId = typeof r.productId === "string" ? r.productId.trim() : "";
+    const groupId = typeof r.groupId === "string" ? r.groupId.trim() : "";
+    if (!productId || !groupId) continue;
+    const amountRaw = typeof r.amount === "number" ? r.amount : 1;
+    out.push({
+      groupId,
+      groupName: typeof r.groupName === "string" ? r.groupName : "",
+      productId,
+      name: typeof r.name === "string" ? r.name : "",
+      amount: Math.max(1, Math.min(99, Math.round(amountRaw))),
+    });
+  }
+  return out;
+};
 
 const normalizeCoord = (value: unknown): number | null => {
   if (typeof value !== "number" || !Number.isFinite(value)) return null;
@@ -88,13 +122,18 @@ const normalizeLine = (row: unknown): CartLine | null => {
   const name = typeof r.name === "string" ? r.name : "";
   if (!id || !name) return null;
   const qtyRaw = typeof r.qty === "number" ? r.qty : 1;
+  const modifiers = normalizeModifiers(r.modifiers);
+  const lineKeyRaw = typeof r.lineKey === "string" ? r.lineKey.trim() : "";
+  const lineKey = lineKeyRaw || buildCartLineKey(id, modifiers);
   return {
     id,
+    lineKey,
     name,
     price: typeof r.price === "string" ? r.price : "",
     image: typeof r.image === "string" ? r.image : "",
     categoryId: typeof r.categoryId === "string" ? r.categoryId : "",
     categoryName: typeof r.categoryName === "string" ? r.categoryName : "",
+    modifiers,
     qty: Math.max(1, Math.min(99, Math.round(qtyRaw))),
   };
 };
@@ -110,6 +149,7 @@ export const loadPersistedCart = (): PersistedCart => {
   try {
     const raw =
       window.localStorage.getItem(STORAGE_KEY) ||
+      window.localStorage.getItem("denisov_cart_v5") ||
       window.localStorage.getItem("denisov_cart_v4") ||
       window.localStorage.getItem("denisov_cart_v3") ||
       window.localStorage.getItem("denisov_cart_v2") ||
@@ -226,6 +266,7 @@ export const clearPersistedCart = (): void => {
   if (typeof window === "undefined") return;
   try {
     window.localStorage.removeItem(STORAGE_KEY);
+    window.localStorage.removeItem("denisov_cart_v5");
     window.localStorage.removeItem("denisov_cart_v4");
     window.localStorage.removeItem("denisov_cart_v3");
     window.localStorage.removeItem("denisov_cart_v2");
@@ -278,8 +319,14 @@ const cartSlice = createSlice({
       if (!state.isOpen) state.commentOpen = false;
     },
     addToCart(state, action: PayloadAction<CartProduct>) {
-      const product = action.payload;
-      const existing = state.items.find((line) => line.id === product.id);
+      const product = {
+        ...action.payload,
+        modifiers: action.payload.modifiers || [],
+        lineKey:
+          action.payload.lineKey ||
+          buildCartLineKey(action.payload.id, action.payload.modifiers || []),
+      };
+      const existing = state.items.find((line) => line.lineKey === product.lineKey);
       if (existing) {
         existing.qty = Math.min(99, existing.qty + 1);
       } else {
@@ -290,8 +337,14 @@ const cartSlice = createSlice({
     },
     /** Add without opening the drawer (catalog / modal). */
     addToCartQuiet(state, action: PayloadAction<CartProduct>) {
-      const product = action.payload;
-      const existing = state.items.find((line) => line.id === product.id);
+      const product = {
+        ...action.payload,
+        modifiers: action.payload.modifiers || [],
+        lineKey:
+          action.payload.lineKey ||
+          buildCartLineKey(action.payload.id, action.payload.modifiers || []),
+      };
+      const existing = state.items.find((line) => line.lineKey === product.lineKey);
       if (existing) {
         existing.qty = Math.min(99, existing.qty + 1);
       } else {
@@ -300,34 +353,52 @@ const cartSlice = createSlice({
       persistCart(state);
     },
     setQty(state, action: PayloadAction<{ id: string; qty: number }>) {
-      const line = state.items.find((row) => row.id === action.payload.id);
+      const key = action.payload.id;
+      const line = state.items.find(
+        (row) => row.lineKey === key || row.id === key,
+      );
       if (!line) return;
       const next = Math.round(action.payload.qty);
       if (next <= 0) {
-        state.items = state.items.filter((row) => row.id !== action.payload.id);
+        state.items = state.items.filter(
+          (row) => row.lineKey !== line.lineKey,
+        );
       } else {
         line.qty = Math.min(99, next);
       }
       persistCart(state);
     },
     incrementQty(state, action: PayloadAction<string>) {
-      const line = state.items.find((row) => row.id === action.payload);
+      const key = action.payload;
+      const line = state.items.find(
+        (row) => row.lineKey === key || row.id === key,
+      );
       if (!line) return;
       line.qty = Math.min(99, line.qty + 1);
       persistCart(state);
     },
     decrementQty(state, action: PayloadAction<string>) {
-      const line = state.items.find((row) => row.id === action.payload);
+      const key = action.payload;
+      const line = state.items.find(
+        (row) => row.lineKey === key || row.id === key,
+      );
       if (!line) return;
       if (line.qty <= 1) {
-        state.items = state.items.filter((row) => row.id !== action.payload);
+        state.items = state.items.filter(
+          (row) => row.lineKey !== line.lineKey,
+        );
       } else {
         line.qty -= 1;
       }
       persistCart(state);
     },
     removeFromCart(state, action: PayloadAction<string>) {
-      state.items = state.items.filter((row) => row.id !== action.payload);
+      const key = action.payload;
+      if (state.items.some((row) => row.lineKey === key)) {
+        state.items = state.items.filter((row) => row.lineKey !== key);
+      } else {
+        state.items = state.items.filter((row) => row.id !== key);
+      }
       persistCart(state);
     },
     /** Clears line items / extras; keeps pickup / delivery choice until the user changes it. */

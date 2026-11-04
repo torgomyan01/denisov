@@ -64,6 +64,21 @@ export interface SiteBrand {
   headerLogoMode: HeaderLogoMode;
 }
 
+/** Choice inside an iiko modifier group (e.g. egg: пашот / глазунья). */
+export interface MenuModifierOption {
+  productId: string;
+  name: string;
+  price: number;
+}
+
+export interface MenuModifierGroup {
+  id: string;
+  name: string;
+  minQuantity: number;
+  maxQuantity: number;
+  options: MenuModifierOption[];
+}
+
 export interface MenuItem {
   id: string;
   name: string;
@@ -81,6 +96,10 @@ export interface MenuItem {
   inStock: boolean;
   showInUpsell: boolean;
   upsellSortOrder: number;
+  /** iiko Cloud productId (UUID). Empty until mapped in admin. */
+  iikoProductId: string;
+  /** From iiko external menu — empty when product has no modifiers. */
+  modifierGroups: MenuModifierGroup[];
 }
 
 export interface MenuCategory {
@@ -89,6 +108,8 @@ export interface MenuCategory {
   /** HH:MM — empty = always available */
   availableFrom: string;
   availableTo: string;
+  /** Admin: hide whole category from public site when false */
+  showOnSite: boolean;
   items: MenuItem[];
 }
 

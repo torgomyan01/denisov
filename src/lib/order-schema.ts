@@ -64,17 +64,24 @@ export const placeOrderSchema = z
 export const updateOrderStatusSchema = z.object({
   orderId: z.string().min(1),
   status: z.enum([
-    "new",
-    "confirmed",
-    "preparing",
-    "ready",
-    "delivering",
-    "completed",
-    "cancelled",
+    "Unconfirmed",
+    "WaitCooking",
+    "ReadyForCooking",
+    "CookingStarted",
+    "CookingCompleted",
+    "Waiting",
+    "OnWay",
+    "Delivered",
+    "Closed",
+    "Cancelled",
   ]),
   note: z.string().trim().max(255).optional(),
 });
 
 export const verifyOrderFulfillmentSchema = z.object({
   token: z.string().trim().min(8).max(64),
+});
+
+export const deleteOrderSchema = z.object({
+  orderId: z.string().trim().min(1).max(64),
 });

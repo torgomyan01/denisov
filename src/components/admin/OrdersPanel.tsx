@@ -1,9 +1,13 @@
 "use client";
 
 import { btnLine, fieldClass, orderBadgeClass } from "@/components/admin/styles";
+import { ConfirmModal, Field } from "@/components/admin/ui";
+import { X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { listOrdersAdminAction } from "@/actions/orders";
-import { Field } from "@/components/admin/ui";
+import {
+  deleteOrderAdminAction,
+  listOrdersAdminAction,
+} from "@/actions/orders";
 import {
   ORDER_STATUS_LABELS,
   type OrderPublic,
@@ -40,6 +44,8 @@ export const OrdersPanel = ({
 }: OrdersPanelProps) => {
   const [orders, setOrders] = useState<OrderPublic[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deleting, setDeleting] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<OrderPublic | null>(null);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<OrderStatus | "all">("all");
 
@@ -57,6 +63,10 @@ export const OrdersPanel = ({
 
   useEffect(() => {
     void load();
+    const timer = window.setInterval(() => {
+      void load();
+    }, 45_000);
+    return () => window.clearInterval(timer);
   }, [load]);
 
   const filtered = useMemo(() => {
@@ -73,20 +83,47 @@ export const OrdersPanel = ({
     });
   }, [orders, query, statusFilter]);
 
+  const confirmDelete = async () => {
+    if (!pendingDelete || deleting) return;
+    setDeleting(true);
+    const result = await deleteOrderAdminAction({ orderId: pendingDelete.id });
+    setDeleting(false);
+    if (!result.success) {
+      showToast(result.error, "error");
+      setPendingDelete(null);
+      return;
+    }
+    const removedId = pendingDelete.id;
+    setPendingDelete(null);
+    setOrders((prev) => prev.filter((order) => order.id !== removedId));
+    showToast("Заказ удалён");
+    try {
+      window.localStorage.setItem(
+        "denisov_admin_orders_bump",
+        String(Date.now()),
+      );
+    } catch {
+      /* ignore */
+    }
+    window.dispatchEvent(new Event("denisov-orders-changed"));
+    onOrdersChanged?.();
+  };
+
   return (
     <section className="animate-panel-in rounded-3xl border border-ink/12 bg-white/78 px-[1.35rem] pt-[1.35rem] pb-6 shadow-[0_14px_40px_rgba(33,30,25,0.045)] backdrop-blur-[10px] md:px-[1.85rem] md:pt-7 md:pb-[1.9rem]">
       <div className="mb-[1.1rem] flex flex-wrap items-start justify-between gap-4">
         <div>
           <h2 className="m-0 font-serif text-[clamp(1.55rem,2.4vw,1.95rem)] leading-[1.15] tracking-[0.02em]">Заказы</h2>
           <p className="mt-[0.4rem] max-w-[42rem] text-[0.92rem] leading-normal text-ink/48">
-            Нажмите на заказ, чтобы открыть полную карточку и сменить статус
+            Нажмите на заказ, чтобы открыть карточку. Статусы синхронизируются из
+            iiko
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
             className={btnLine}
-            disabled={loading || busy}
+            disabled={loading || busy || deleting}
             onClick={() => void load()}
           >
             Обновить
@@ -131,10 +168,10 @@ export const OrdersPanel = ({
       ) : (
         <ul className="m-0 grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-3 p-0 mt-5!">
           {filtered.map((order) => (
-            <li key={order.id}>
+            <li key={order.id} className="relative">
               <button
                 type="button"
-                className="w-full cursor-pointer rounded-xl border border-ink/10 bg-white px-[0.95rem] py-[0.85rem] text-left text-ink hover:border-clay/55 hover:shadow-[0_8px_22px_rgba(33,30,25,0.06)] [&_p]:mt-[0.15rem] [&_p]:text-[0.86rem]"
+                className="w-full cursor-pointer rounded-xl border border-ink/10 bg-white px-[0.95rem] py-[0.85rem] pr-10 text-left text-ink hover:border-clay/55 hover:shadow-[0_8px_22px_rgba(33,30,25,0.06)] [&_p]:mt-[0.15rem] [&_p]:text-[0.86rem]"
                 onClick={() => onOpenOrder(order.id)}
               >
                 <div className="mb-[0.35rem] flex items-center justify-between gap-2">
@@ -173,10 +210,37 @@ export const OrdersPanel = ({
                   </div>
                 ) : null}
               </button>
+              <button
+                type="button"
+                className="absolute top-2 right-2 inline-grid size-8 place-items-center rounded-lg border-0 bg-transparent text-ink/35 hover:bg-danger/10 hover:text-danger disabled:opacity-50"
+                aria-label={`Удалить заказ ${order.number}`}
+                disabled={busy || deleting}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setPendingDelete(order);
+                }}
+              >
+                <X size={16} strokeWidth={2} aria-hidden="true" />
+              </button>
             </li>
           ))}
         </ul>
       )}
+
+      <ConfirmModal
+        open={Boolean(pendingDelete)}
+        title="Удалить заказ?"
+        message={
+          pendingDelete
+            ? `Заказ ${pendingDelete.number} будет удалён с сайта безвозвратно. В iiko он останется без изменений.`
+            : ""
+        }
+        confirmLabel={deleting ? "Удаление…" : "Удалить"}
+        onCancel={() => {
+          if (!deleting) setPendingDelete(null);
+        }}
+        onConfirm={() => void confirmDelete()}
+      />
     </section>
   );
 };

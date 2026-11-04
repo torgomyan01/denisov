@@ -12,15 +12,13 @@ import {
   saveCustomerCart,
 } from "@/lib/customer-cart";
 import {
+  deleteOrderSchema,
   placeOrderSchema,
-  updateOrderStatusSchema,
   verifyOrderFulfillmentSchema,
 } from "@/lib/order-schema";
 import {
-  canFulfillOrderByQr,
   generateFulfillmentToken,
   generateOrderNumber,
-  nextOrderStatuses,
   parseFulfillmentQrPayload,
   rubFromPriceString,
   toOrderPublic,
@@ -32,9 +30,16 @@ import {
   isPointInDeliveryZone,
 } from "@/lib/delivery-pricing";
 import { createDefaultDeliverySettings } from "@/lib/delivery-defaults";
+import { isIikoConfigured } from "@/lib/iiko/config";
+import {
+  createIikoDeliveryOrder,
+  isIikoProductId,
+  type IikoCreateModifier,
+} from "@/lib/iiko/create-delivery";
+import { loadIikoDefaultModifiersByProductId } from "@/lib/iiko/menu";
+import { syncOpenOrdersFromIiko } from "@/lib/iiko/sync-status";
 import { prisma } from "@/lib/prisma";
 import { getSite } from "@/lib/site";
-import { notifyAdminsNewOrder } from "@/lib/telegram";
 import { notifyCustomerOrderStatus } from "@/lib/web-push";
 import type { ActionResult } from "@/types/site";
 
@@ -43,11 +48,7 @@ const orderInclude = {
   statusLogs: { orderBy: { createdAt: "asc" as const } },
 } as const;
 
-/**
- * Keep customer push/Telegram alive after the Server Action response (prod).
- * Must await registering `after()` — a floating `import().then(after)` races the
- * action return and never schedules work under `next start` (admin path awaits).
- */
+/** Keep Web Push alive after the Server Action response (prod). */
 const scheduleCustomerOrderStatusNotify = async (input: {
   customerId: string | null | undefined;
   status: OrderStatus;
@@ -57,8 +58,6 @@ const scheduleCustomerOrderStatusNotify = async (input: {
 }): Promise<void> => {
   try {
     const { after } = await import("next/server");
-    // Same as admin new-order: register after(), start work without tying the
-    // after-callback return to the full gateway RTT (PM2 process stays alive).
     after(() => {
       void notifyCustomerOrderStatus(input);
     });
@@ -186,16 +185,39 @@ export const placeOrderAction = async (
       };
     }
 
-    const itemsData = cart.items.map((line) => ({
-      productId: line.id,
-      name: line.name.slice(0, 255),
-      price: String(line.price ?? "").slice(0, 64),
-      image: String(line.image ?? "").slice(0, 500),
-      categoryId: String(line.categoryId ?? "").slice(0, 64),
-      categoryName: String(line.categoryName ?? "").slice(0, 255),
-      qty: Math.max(1, Math.min(99, line.qty)),
-      lineTotalRub: rubFromPriceString(line.price, line.qty),
-    }));
+    const itemsData = cart.items.map((line) => {
+      const modifiers = (line.modifiers || []).map((mod) => ({
+        groupId: mod.groupId,
+        groupName: mod.groupName || "",
+        productId: mod.productId,
+        name: mod.name || "",
+        amount: Math.max(1, Math.min(99, mod.amount || 1)),
+      }));
+      return {
+        productId: line.id,
+        name: line.name.slice(0, 255),
+        price: String(line.price ?? "").slice(0, 64),
+        image: String(line.image ?? "").slice(0, 500),
+        categoryId: String(line.categoryId ?? "").slice(0, 64),
+        categoryName: String(line.categoryName ?? "").slice(0, 255),
+        qty: Math.max(1, Math.min(99, line.qty)),
+        lineTotalRub: rubFromPriceString(line.price, line.qty),
+        modifiersJson: JSON.stringify(modifiers).slice(0, 2000),
+        modifiers,
+      };
+    });
+
+    const iikoEnabled = isIikoConfigured();
+    if (iikoEnabled) {
+      for (const line of itemsData) {
+        if (!isIikoProductId(line.productId)) {
+          return {
+            success: false,
+            error: `«${line.name}» без корректного iiko productId`,
+          };
+        }
+      }
+    }
 
     const itemsSubtotal = itemsData.reduce(
       (sum, row) => sum + row.lineTotalRub,
@@ -249,7 +271,7 @@ export const placeOrderAction = async (
           customerPhone: customerPhone.slice(0, 32),
           customerEmail: (customer.email ?? "").slice(0, 255),
           fulfillmentMode: cart.fulfillmentMode,
-          status: "new",
+          status: "Unconfirmed",
           paymentStatus: "paid",
           paymentMethod: "card_test",
           totalRub,
@@ -275,10 +297,14 @@ export const placeOrderAction = async (
           paidAt: now,
           fulfillmentToken,
           statusUpdatedAt: now,
-          items: { create: itemsData },
+          items: {
+            create: itemsData.map(
+              ({ modifiers: _mods, ...row }) => row,
+            ),
+          },
           statusLogs: {
             create: {
-              status: "new",
+              status: "Unconfirmed",
               note: "Заказ оформлен (тестовая оплата)",
             },
           },
@@ -288,6 +314,91 @@ export const placeOrderAction = async (
 
       return created;
     });
+
+    let orderWithIiko = order;
+
+    if (iikoEnabled) {
+      const defaultModifiersByProduct =
+        await loadIikoDefaultModifiersByProductId();
+      const iikoResult = await createIikoDeliveryOrder({
+        orderNumber: order.number,
+        customerName: order.customerName,
+        customerPhone: order.customerPhone,
+        customerEmail: order.customerEmail,
+        fulfillmentMode: order.fulfillmentMode,
+        comment: order.comment,
+        utensils: order.utensils,
+        totalRub: order.totalRub,
+        deliveryFeeRub: order.deliveryFeeRub,
+        paymentStatus: order.paymentStatus,
+        timeMode: order.timeMode,
+        scheduledAt: order.scheduledAt,
+        deliveryAddress: order.deliveryAddress,
+        deliveryApartment: order.deliveryApartment,
+        deliveryEntrance: order.deliveryEntrance,
+        deliveryFloor: order.deliveryFloor,
+        deliveryIntercom: order.deliveryIntercom,
+        deliveryCourierComment: order.deliveryCourierComment,
+        deliveryLat: order.deliveryLat,
+        deliveryLng: order.deliveryLng,
+        items: itemsData.map((line) => {
+          const fromCart: IikoCreateModifier[] = (line.modifiers || []).map(
+            (mod) => ({
+              productId: mod.productId,
+              productGroupId: mod.groupId,
+              amount: mod.amount,
+              name: mod.name,
+            }),
+          );
+          const defaults = defaultModifiersByProduct.get(line.productId) || [];
+          const fallback: IikoCreateModifier[] = defaults.map((mod) => ({
+            productId: mod.productId,
+            productGroupId: mod.productGroupId,
+            amount: mod.amount,
+            name: mod.name,
+          }));
+          const modifiers = fromCart.length ? fromCart : fallback;
+          return {
+            productId: line.productId,
+            name: line.name,
+            iikoProductId: line.productId,
+            price: line.price,
+            qty: line.qty,
+            ...(modifiers.length ? { modifiers } : {}),
+          };
+        }),
+      });
+
+      orderWithIiko = await prisma.order.update({
+        where: { id: order.id },
+        data: iikoResult.ok
+          ? {
+              iikoOrderId: iikoResult.iikoOrderId,
+              iikoCorrelationId: iikoResult.correlationId || null,
+              iikoCreationStatus: iikoResult.creationStatus,
+              iikoSyncError: "",
+              statusLogs: {
+                create: {
+                  status: order.status,
+                  note: `Отправлено в iiko (${iikoResult.creationStatus})`,
+                },
+              },
+            }
+          : {
+              iikoOrderId: iikoResult.iikoOrderId || null,
+              iikoCorrelationId: iikoResult.correlationId || null,
+              iikoCreationStatus: iikoResult.creationStatus || "Error",
+              iikoSyncError: iikoResult.error.slice(0, 500),
+              statusLogs: {
+                create: {
+                  status: order.status,
+                  note: `iiko: ${iikoResult.error}`.slice(0, 255),
+                },
+              },
+            },
+        include: orderInclude,
+      });
+    }
 
     if (cart.fulfillmentMode === "delivery") {
       await prisma.customer.update({
@@ -307,17 +418,7 @@ export const placeOrderAction = async (
       clearCartItemsKeepingFulfillment(cart),
     );
 
-    const orderPublic = toOrderPublic(order);
-    // Do not await Telegram here: VPS→gateway can hang and slow checkout.
-    // after() keeps work alive after the response without blocking the client.
-    try {
-      const { after } = await import("next/server");
-      after(() => {
-        void notifyAdminsNewOrder(orderPublic);
-      });
-    } catch {
-      void notifyAdminsNewOrder(orderPublic);
-    }
+    const orderPublic = toOrderPublic(orderWithIiko);
 
     revalidatePath("/");
     revalidatePath("/admin");
@@ -333,11 +434,208 @@ export const placeOrderAction = async (
   }
 };
 
+const notifySyncedStatusChanges = async (
+  syncResults: Awaited<ReturnType<typeof syncOpenOrdersFromIiko>>,
+): Promise<void> => {
+  for (const row of syncResults) {
+    if (!row.statusChanged) continue;
+    await scheduleCustomerOrderStatusNotify({
+      customerId: row.customerId,
+      status: row.status,
+      orderId: row.orderId,
+      orderNumber: row.orderNumber,
+      fulfillmentMode: row.fulfillmentMode,
+    });
+  }
+};
+
+/** Pull open-order statuses from iiko into the local DB (admin / customer views). */
+export const syncOrdersFromIikoAction = async (input?: {
+  orderId?: string;
+}): Promise<ActionResult<{ updated: number }>> => {
+  try {
+    await requireAuth();
+    if (!isIikoConfigured()) {
+      return { success: true, data: { updated: 0 } };
+    }
+    const syncResults = await syncOpenOrdersFromIiko(
+      input?.orderId ? { localOrderIds: [input.orderId] } : undefined,
+    );
+    await notifySyncedStatusChanges(syncResults);
+    const updated = syncResults.filter((row) => row.changed).length;
+    if (updated > 0) {
+      revalidatePath("/admin");
+      revalidatePath("/profile/orders");
+    }
+    return { success: true, data: { updated } };
+  } catch {
+    return { success: false, error: "Не удалось синхронизировать статусы iiko" };
+  }
+};
+
+/** Resend a local order to iiko if create previously failed. */
+export const retryIikoOrderSyncAction = async (
+  orderId: string,
+): Promise<ActionResult<OrderPublic>> => {
+  try {
+    await requireAuth();
+    if (!isIikoConfigured()) {
+      return { success: false, error: "iiko не настроен" };
+    }
+    if (!orderId?.trim()) {
+      return { success: false, error: "Заказ не найден" };
+    }
+
+    const existing = await prisma.order.findUnique({
+      where: { id: orderId },
+      include: orderInclude,
+    });
+    if (!existing) {
+      return { success: false, error: "Заказ не найден" };
+    }
+    if (existing.iikoOrderId && existing.iikoCreationStatus === "Success") {
+      return { success: true, data: toOrderPublic(existing) };
+    }
+
+    for (const line of existing.items) {
+      if (!isIikoProductId(line.productId)) {
+        return {
+          success: false,
+          error: `«${line.name}» без корректного iiko productId`,
+        };
+      }
+    }
+
+    const defaultModifiersByProduct =
+      await loadIikoDefaultModifiersByProductId();
+    const parseStoredModifiers = (
+      raw: string | null | undefined,
+    ): IikoCreateModifier[] => {
+      if (!raw?.trim()) return [];
+      try {
+        const parsed: unknown = JSON.parse(raw);
+        if (!Array.isArray(parsed)) return [];
+        const out: IikoCreateModifier[] = [];
+        for (const row of parsed) {
+          if (!row || typeof row !== "object") continue;
+          const r = row as Record<string, unknown>;
+          const productId = typeof r.productId === "string" ? r.productId : "";
+          const groupId =
+            typeof r.groupId === "string"
+              ? r.groupId
+              : typeof r.productGroupId === "string"
+                ? r.productGroupId
+                : "";
+          if (!productId || !groupId) continue;
+          out.push({
+            productId,
+            productGroupId: groupId,
+            amount:
+              typeof r.amount === "number" && Number.isFinite(r.amount)
+                ? Math.max(1, Math.round(r.amount))
+                : 1,
+            name: typeof r.name === "string" ? r.name : "",
+          });
+        }
+        return out;
+      } catch {
+        return [];
+      }
+    };
+    const iikoResult = await createIikoDeliveryOrder({
+      orderNumber: existing.number,
+      customerName: existing.customerName,
+      customerPhone: existing.customerPhone,
+      customerEmail: existing.customerEmail,
+      fulfillmentMode: existing.fulfillmentMode,
+      comment: existing.comment,
+      utensils: existing.utensils,
+      totalRub: existing.totalRub,
+      deliveryFeeRub: existing.deliveryFeeRub,
+      paymentStatus: existing.paymentStatus as "pending" | "paid" | "failed",
+      timeMode: existing.timeMode,
+      scheduledAt: existing.scheduledAt,
+      deliveryAddress: existing.deliveryAddress,
+      deliveryApartment: existing.deliveryApartment,
+      deliveryEntrance: existing.deliveryEntrance,
+      deliveryFloor: existing.deliveryFloor,
+      deliveryIntercom: existing.deliveryIntercom,
+      deliveryCourierComment: existing.deliveryCourierComment,
+      deliveryLat: existing.deliveryLat,
+      deliveryLng: existing.deliveryLng,
+      items: existing.items.map((line) => {
+        const stored = parseStoredModifiers(
+          "modifiersJson" in line
+            ? String((line as { modifiersJson?: string }).modifiersJson ?? "")
+            : "",
+        );
+        const defaults = defaultModifiersByProduct.get(line.productId) || [];
+        const fallback: IikoCreateModifier[] = defaults.map((mod) => ({
+          productId: mod.productId,
+          productGroupId: mod.productGroupId,
+          amount: mod.amount,
+          name: mod.name,
+        }));
+        const modifiers = stored.length ? stored : fallback;
+        return {
+          productId: line.productId,
+          name: line.name,
+          iikoProductId: line.productId,
+          price: line.price,
+          qty: line.qty,
+          ...(modifiers.length ? { modifiers } : {}),
+        };
+      }),
+    });
+
+    const updated = await prisma.order.update({
+      where: { id: existing.id },
+      data: iikoResult.ok
+        ? {
+            iikoOrderId: iikoResult.iikoOrderId,
+            iikoCorrelationId: iikoResult.correlationId || null,
+            iikoCreationStatus: iikoResult.creationStatus,
+            iikoSyncError: "",
+            statusLogs: {
+              create: {
+                status: existing.status,
+                note: `Повторно отправлено в iiko (${iikoResult.creationStatus})`,
+              },
+            },
+          }
+        : {
+            iikoOrderId: iikoResult.iikoOrderId || existing.iikoOrderId,
+            iikoCorrelationId:
+              iikoResult.correlationId || existing.iikoCorrelationId,
+            iikoCreationStatus: iikoResult.creationStatus || "Error",
+            iikoSyncError: iikoResult.error.slice(0, 500),
+            statusLogs: {
+              create: {
+                status: existing.status,
+                note: `iiko retry: ${iikoResult.error}`.slice(0, 255),
+              },
+            },
+          },
+      include: orderInclude,
+    });
+
+    revalidatePath("/admin");
+    revalidatePath(`/admin/orders/${existing.id}`);
+    return { success: true, data: toOrderPublic(updated) };
+  } catch {
+    return { success: false, error: "Не удалось отправить заказ в iiko" };
+  }
+};
+
 export const listOrdersAdminAction = async (): Promise<
   ActionResult<OrderPublic[]>
 > => {
   try {
     await requireAuth();
+    if (isIikoConfigured()) {
+      const syncResults = await syncOpenOrdersFromIiko();
+      await notifySyncedStatusChanges(syncResults);
+    }
     const rows = await prisma.order.findMany({
       include: orderInclude,
       orderBy: { createdAt: "desc" },
@@ -356,6 +654,25 @@ export const listMyOrdersAction = async (): Promise<
     const customer = await getCustomer();
     if (!customer) {
       return { success: false, error: "Войдите в аккаунт" };
+    }
+    if (isIikoConfigured()) {
+      const open = await prisma.order.findMany({
+        where: {
+          customerId: customer.id,
+          iikoOrderId: { not: null },
+          status: { notIn: ["Closed", "Cancelled"] },
+        },
+        select: { id: true },
+        take: 30,
+      });
+      if (open.length) {
+        const syncResults = await syncOpenOrdersFromIiko({
+          localOrderIds: open.map((row) => row.id),
+        });
+        await notifySyncedStatusChanges(
+          syncResults.filter((row) => row.customerId === customer.id),
+        );
+      }
     }
     const rows = await prisma.order.findMany({
       where: { customerId: customer.id },
@@ -377,6 +694,14 @@ export const getMyOrderAction = async (
     if (!orderId?.trim()) {
       return { success: false, error: "Заказ не найден" };
     }
+    if (isIikoConfigured()) {
+      const syncResults = await syncOpenOrdersFromIiko({
+        localOrderIds: [orderId],
+      });
+      await notifySyncedStatusChanges(
+        syncResults.filter((row) => row.customerId === customer.id),
+      );
+    }
     const row = await prisma.order.findFirst({
       where: { id: orderId, customerId: customer.id },
       include: orderInclude,
@@ -396,7 +721,7 @@ export const countNewOrdersAdminAction = async (): Promise<
   try {
     await requireAuth();
     const count = await prisma.order.count({
-      where: { status: "new" },
+      where: { status: "Unconfirmed" },
     });
     return { success: true, data: { count } };
   } catch {
@@ -412,6 +737,12 @@ export const getOrderAdminAction = async (
     if (!orderId?.trim()) {
       return { success: false, error: "Заказ не найден" };
     }
+    if (isIikoConfigured()) {
+      const syncResults = await syncOpenOrdersFromIiko({
+        localOrderIds: [orderId],
+      });
+      await notifySyncedStatusChanges(syncResults);
+    }
     const row = await prisma.order.findUnique({
       where: { id: orderId },
       include: orderInclude,
@@ -425,78 +756,46 @@ export const getOrderAdminAction = async (
   }
 };
 
+/** Statuses are driven by iiko — manual admin changes are disabled. */
 export const updateOrderStatusAction = async (
-  input: unknown,
+  _input: unknown,
 ): Promise<ActionResult<OrderPublic>> => {
+  return {
+    success: false,
+    error: "Статус меняется только в iiko. Обновите заказ — подтянем оттуда.",
+  };
+};
+
+/** Removes the order from the site DB only — does not cancel it in iiko. */
+export const deleteOrderAdminAction = async (
+  input: unknown,
+): Promise<ActionResult<{ id: string }>> => {
   try {
     await requireAuth();
-    const parsed = updateOrderStatusSchema.safeParse(input);
+    const parsed = deleteOrderSchema.safeParse(input);
     if (!parsed.success) {
       return {
         success: false,
-        error: parsed.error.issues[0]?.message ?? "Некорректный статус",
+        error: parsed.error.issues[0]?.message ?? "Некорректные данные",
       };
     }
 
     const existing = await prisma.order.findUnique({
       where: { id: parsed.data.orderId },
+      select: { id: true },
     });
     if (!existing) {
       return { success: false, error: "Заказ не найден" };
     }
 
-    const next = parsed.data.status as OrderStatus;
-    // Final handover («Выдан») only via QR scan page.
-    if (next === "completed") {
-      return {
-        success: false,
-        error: "Выдачу подтверждайте сканером QR",
-      };
-    }
-
-    const allowed = nextOrderStatuses(
-      existing.status as OrderStatus,
-      existing.fulfillmentMode,
-    );
-    if (!allowed.includes(next)) {
-      return {
-        success: false,
-        error: "Этот статус недоступен на текущем этапе",
-      };
-    }
-
-    const now = new Date();
-    const updated = await prisma.order.update({
-      where: { id: existing.id },
-      data: {
-        status: next,
-        statusUpdatedAt: now,
-        statusLogs: {
-          create: {
-            status: next,
-            note: (parsed.data.note ?? "").slice(0, 255),
-          },
-        },
-      },
-      include: orderInclude,
-    });
+    await prisma.order.delete({ where: { id: existing.id } });
 
     revalidatePath("/admin");
-    revalidatePath(`/admin/orders/${existing.id}`);
+    revalidatePath("/profile");
     revalidatePath("/profile/orders");
-    revalidatePath(`/profile/orders/${existing.id}`);
-
-    await scheduleCustomerOrderStatusNotify({
-      customerId: updated.customerId,
-      status: next,
-      orderId: updated.id,
-      orderNumber: updated.number,
-      fulfillmentMode: updated.fulfillmentMode,
-    });
-
-    return { success: true, data: toOrderPublic(updated) };
+    return { success: true, data: { id: existing.id } };
   } catch {
-    return { success: false, error: "Не удалось обновить статус" };
+    return { success: false, error: "Не удалось удалить заказ" };
   }
 };
 
@@ -554,12 +853,15 @@ export const lookupOrderByFulfillmentTokenAction = async (
   }
 };
 
-/** Confirm handover after staff/courier reviewed the order on the scan page. */
+/**
+ * QR lookup remains available; closing status must come from iiko.
+ * Kept for courier/admin to verify the right bag without mutating status.
+ */
 export const verifyOrderFulfillmentAction = async (
   input: unknown,
 ): Promise<ActionResult<OrderPublic>> => {
   try {
-    const actor = await requireFulfillmentActor();
+    await requireFulfillmentActor();
     const parsed = verifyOrderFulfillmentSchema.safeParse(input);
     if (!parsed.success) {
       return {
@@ -581,70 +883,28 @@ export const verifyOrderFulfillmentAction = async (
       return { success: false, error: "Заказ по этому QR не найден" };
     }
 
-    if (existing.status === "completed") {
-      return { success: true, data: toOrderPublic(existing) };
+    if (existing.iikoOrderId && isIikoConfigured()) {
+      const syncResults = await syncOpenOrdersFromIiko({
+        localOrderIds: [existing.id],
+      });
+      await notifySyncedStatusChanges(syncResults);
+      const refreshed = await prisma.order.findUnique({
+        where: { id: existing.id },
+        include: orderInclude,
+      });
+      if (refreshed) {
+        return { success: true, data: toOrderPublic(refreshed) };
+      }
     }
 
-    if (existing.status === "cancelled") {
-      return { success: false, error: "Заказ отменён — выдача невозможна" };
-    }
-
-    if (
-      !canFulfillOrderByQr(
-        existing.status as OrderStatus,
-        existing.fulfillmentMode,
-      )
-    ) {
-      return {
-        success: false,
-        error:
-          existing.fulfillmentMode === "pickup"
-            ? "Заказ ещё не готов к выдаче"
-            : "Заказ ещё не готов к передаче курьеру / клиенту",
-      };
-    }
-
-    const note =
-      actor.kind === "courier"
-        ? `Выдача подтверждена курьером${actor.customer.name ? ` (${actor.customer.name})` : ""} по QR`
-        : "Выдача подтверждена по QR";
-
-    const now = new Date();
-    const updated = await prisma.order.update({
-      where: { id: existing.id },
-      data: {
-        status: "completed",
-        fulfilledAt: now,
-        statusUpdatedAt: now,
-        statusLogs: {
-          create: {
-            status: "completed",
-            note,
-          },
-        },
-      },
-      include: orderInclude,
-    });
-
-    revalidatePath("/admin");
-    revalidatePath(`/admin/orders/${existing.id}`);
-    revalidatePath("/profile/courier");
-    revalidatePath("/profile/orders");
-    revalidatePath(`/profile/orders/${existing.id}`);
-
-    await scheduleCustomerOrderStatusNotify({
-      customerId: updated.customerId,
-      status: "completed",
-      orderId: updated.id,
-      orderNumber: updated.number,
-      fulfillmentMode: updated.fulfillmentMode,
-    });
-
-    return { success: true, data: toOrderPublic(updated) };
+    return {
+      success: true,
+      data: toOrderPublic(existing),
+    };
   } catch (error) {
     if (error instanceof Error && error.message === "Unauthorized") {
       return { success: false, error: "Требуется вход курьера или админа" };
     }
-    return { success: false, error: "Не удалось подтвердить выдачу" };
+    return { success: false, error: "Не удалось проверить заказ" };
   }
 };

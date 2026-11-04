@@ -30,7 +30,6 @@ export type CustomerPublic = {
   role: CustomerRole;
   hasYandex: boolean;
   isCourier: boolean;
-  telegramLinked: boolean;
 };
 
 const hashToken = (token: string): string =>
@@ -55,7 +54,6 @@ export const toCustomerPublic = (customer: {
   fulfillmentMode?: FulfillmentMode | null;
   role?: CustomerRole | null;
   yandexId: string | null;
-  telegramChatId?: string | null;
 }): CustomerPublic => {
   const role: CustomerRole =
     customer.role === "courier" ? "courier" : "customer";
@@ -91,7 +89,6 @@ export const toCustomerPublic = (customer: {
     role,
     hasYandex: Boolean(customer.yandexId),
     isCourier: role === "courier",
-    telegramLinked: Boolean(customer.telegramChatId?.trim()),
   };
 };
 

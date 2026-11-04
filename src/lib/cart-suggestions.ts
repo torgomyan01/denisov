@@ -234,11 +234,13 @@ const toProduct = (
   if (!item.id || !item.name?.trim()) return null;
   return {
     id: item.id,
+    lineKey: item.id,
     name: item.name,
     price: item.price ?? "",
     image: item.image ?? "",
     categoryId: category.id,
     categoryName: category.name,
+    modifiers: [],
   };
 };
 
@@ -346,11 +348,13 @@ export const getSuggestedProducts = (
     roleSeen.set(row.role, used + 1);
     picked.push({
       id: row.id,
+      lineKey: row.lineKey || row.id,
       name: row.name,
       price: row.price,
       image: row.image,
       categoryId: row.categoryId,
       categoryName: row.categoryName,
+      modifiers: row.modifiers || [],
     });
     if (picked.length >= limit) break;
   }
@@ -362,11 +366,13 @@ export const getSuggestedProducts = (
       if (pickedIds.has(row.id)) continue;
       picked.push({
         id: row.id,
+        lineKey: row.lineKey || row.id,
         name: row.name,
         price: row.price,
         image: row.image,
         categoryId: row.categoryId,
         categoryName: row.categoryName,
+        modifiers: row.modifiers || [],
       });
       if (picked.length >= limit) break;
     }

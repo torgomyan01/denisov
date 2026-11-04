@@ -100,11 +100,11 @@ model Dish {
   @@index([isActive, sortOrder])
 }
 
+/// Legacy local menu (unused). Site menu comes from iiko + IikoMenuOverride.
 model MenuCategory {
   id            String     @id @default(cuid())
   sortOrder     Int        @default(0)
   name          String     @default("") @db.VarChar(255)
-  /// HH:MM — empty means always available for delivery cart
   availableFrom String     @default("") @db.VarChar(8)
   availableTo   String     @default("") @db.VarChar(8)
   isActive      Boolean    @default(true)
@@ -116,6 +116,7 @@ model MenuCategory {
   @@index([isActive, sortOrder])
 }
 
+/// Legacy local menu items (unused).
 model MenuItem {
   id              String       @id @default(cuid())
   categoryId      String
@@ -126,7 +127,6 @@ model MenuItem {
   price           String       @default("") @db.VarChar(64)
   image           String       @default("") @db.VarChar(500)
   weight          String       @default("") @db.VarChar(64)
-  /// КБЖУ на 100 г
   kcal            Float?
   protein         Float?
   fat             Float?
@@ -135,12 +135,50 @@ model MenuItem {
   inStock         Boolean      @default(true)
   showInUpsell    Boolean      @default(false)
   upsellSortOrder Int          @default(0)
+  iikoProductId   String       @default("") @db.VarChar(64)
   isActive        Boolean      @default(true)
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
 
   @@index([categoryId, sortOrder])
   @@index([isActive])
+  @@index([showInDelivery, inStock])
+  @@index([showInUpsell, upsellSortOrder])
+}
+
+/// Local order + visibility for iiko menu categories (keyed by iiko group id).
+model IikoCategoryOverride {
+  iikoCategoryId String  @id @db.VarChar(64)
+  /// Lower = higher on site / in admin list
+  sortOrder      Int     @default(0)
+  showOnSite     Boolean @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([sortOrder])
+  @@index([showOnSite])
+}
+
+/// Local overrides / flags for iiko external-menu products (keyed by iiko productId).
+/// Empty name/description/price/weight/image → show value from iiko.
+model IikoMenuOverride {
+  iikoProductId   String   @id @db.VarChar(64)
+  name            String   @default("") @db.VarChar(255)
+  description     String   @default("") @db.Text
+  price           String   @default("") @db.VarChar(64)
+  image           String   @default("") @db.VarChar(500)
+  weight          String   @default("") @db.VarChar(64)
+  kcal            Float?
+  protein         Float?
+  fat             Float?
+  carbs           Float?
+  showInDelivery  Boolean  @default(true)
+  inStock         Boolean  @default(true)
+  showInUpsell    Boolean  @default(false)
+  upsellSortOrder Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
   @@index([showInDelivery, inStock])
   @@index([showInUpsell, upsellSortOrder])
 }
@@ -218,49 +256,16 @@ model Customer {
   pickupPointId    String?           @db.VarChar(64)
   /// How the guest prefers to receive orders
   fulfillmentMode  FulfillmentMode   @default(pickup)
-  /// Telegram chat id after bot link (order status notifications)
-  telegramChatId     String?           @unique @db.VarChar(64)
-  telegramUsername   String?           @db.VarChar(64)
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
   sessions           CustomerSession[]
   cart               CustomerCart?
   orders             Order[]
   pushSubscriptions  PushSubscription[]
-  telegramLinkTokens TelegramLinkToken[]
 
   @@index([phone])
   @@index([email])
   @@index([role])
-}
-
-/// One-time deep-link token: t.me/Bot?start=TOKEN → bind chat to customer
-model TelegramLinkToken {
-  id         String   @id @default(cuid())
-  token      String   @unique @db.VarChar(64)
-  customerId String
-  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  expiresAt  DateTime
-  createdAt  DateTime @default(now())
-
-  @@index([customerId])
-  @@index([expiresAt])
-}
-
-/// Staff Telegram chats that receive NEW order alerts (same cafe bot).
-model StaffTelegramRecipient {
-  id        String   @id @default(cuid())
-  /// Telegram chat id (user or group), e.g. 809580214 or -100…
-  chatId    String   @unique @db.VarChar(64)
-  /// Display name, e.g. Иван
-  name      String   @db.VarChar(120)
-  /// Role / position, e.g. Админ, Менеджер
-  title     String   @default("") @db.VarChar(120)
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([isActive])
 }
 
 /// Browser Web Push subscription (one row per device / browser).
@@ -279,14 +284,18 @@ model PushSubscription {
   @@index([customerId])
 }
 
+/// Aligned 1:1 with iiko Cloud `DeliveryStatus`.
 enum OrderStatus {
-  new
-  confirmed
-  preparing
-  ready
-  delivering
-  completed
-  cancelled
+  Unconfirmed
+  WaitCooking
+  ReadyForCooking
+  CookingStarted
+  CookingCompleted
+  Waiting
+  OnWay
+  Delivered
+  Closed
+  Cancelled
 }
 
 enum PaymentStatus {
@@ -306,7 +315,7 @@ model Order {
   customerPhone       String          @default("") @db.VarChar(32)
   customerEmail       String          @default("") @db.VarChar(255)
   fulfillmentMode     FulfillmentMode @default(pickup)
-  status              OrderStatus     @default(new)
+  status              OrderStatus     @default(Unconfirmed)
   paymentStatus       PaymentStatus   @default(pending)
   /// card_test for now; real gateway later
   paymentMethod       String          @default("card_test") @db.VarChar(32)
@@ -335,6 +344,12 @@ model Order {
   /// Unique code encoded in customer QR for pickup / courier handover
   fulfillmentToken    String          @unique @db.VarChar(32)
   fulfilledAt         DateTime?
+  /// iiko Cloud delivery order id (UUID), set after /api/1/deliveries/create
+  iikoOrderId         String?         @unique @db.VarChar(64)
+  iikoCorrelationId   String?         @db.VarChar(64)
+  /// Success | InProgress | Error | skipped | pending
+  iikoCreationStatus  String          @default("") @db.VarChar(32)
+  iikoSyncError       String          @default("") @db.VarChar(500)
   statusUpdatedAt     DateTime        @default(now())
   createdAt           DateTime        @default(now())
   updatedAt           DateTime        @updatedAt
@@ -345,6 +360,7 @@ model Order {
   @@index([customerId, createdAt])
   @@index([createdAt])
   @@index([fulfillmentToken])
+  @@index([iikoOrderId])
 }
 
 model OrderItem {
@@ -360,6 +376,8 @@ model OrderItem {
   qty          Int    @default(1)
   /// Line total in rubles
   lineTotalRub Int    @default(0)
+  /// JSON: selected iiko modifiers [{groupId,productId,name,amount}]
+  modifiersJson String @default("[]") @db.VarChar(2000)
 
   @@index([orderId])
 }
@@ -400,14 +418,18 @@ model CustomerCartItem {
   cartId       String
   cart         CustomerCart @relation(fields: [cartId], references: [id], onDelete: Cascade)
   productId    String       @db.VarChar(64)
+  /// productId + modifier fingerprint (unique per cart row)
+  lineKey      String       @default("") @db.VarChar(255)
   name         String       @db.VarChar(255)
   price        String       @default("") @db.VarChar(64)
   image        String       @default("") @db.VarChar(500)
   categoryId   String       @default("") @db.VarChar(64)
   categoryName String       @default("") @db.VarChar(255)
   qty          Int          @default(1)
+  /// JSON: selected iiko modifiers
+  modifiersJson String      @default("[]") @db.VarChar(2000)
 
-  @@unique([cartId, productId])
+  @@unique([cartId, lineKey])
   @@index([cartId])
 }
 
