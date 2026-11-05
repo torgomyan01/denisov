@@ -218,15 +218,27 @@ export const AdminIikoMenuPanel = ({
     }
   };
 
-  const toggleCategoryOnSite = async (cat: MenuCategory, index: number) => {
+  const toggleCategoryOnSite = async (
+    cat: MenuCategory,
+    index: number,
+    nextShowOnSite: boolean,
+  ) => {
+    patchSite((draft) => {
+      const row = draft.menu.categories.find((c) => c.id === cat.id);
+      if (row) row.showOnSite = nextShowOnSite;
+    });
     setBusy(true);
     try {
       const result = await patchIikoCategoryFlagsAction({
         iikoCategoryId: cat.id,
-        showOnSite: cat.showOnSite === false,
+        showOnSite: nextShowOnSite,
         sortHint: index,
       });
       if (!result.success || !result.data) {
+        patchSite((draft) => {
+          const row = draft.menu.categories.find((c) => c.id === cat.id);
+          if (row) row.showOnSite = cat.showOnSite !== false;
+        });
         showToast(
           !result.success ? result.error : "Не обновлено",
           "error",
@@ -235,7 +247,7 @@ export const AdminIikoMenuPanel = ({
       }
       onSiteReload(result.data);
       showToast(
-        cat.showOnSite === false
+        nextShowOnSite
           ? "Категория снова на сайте"
           : "Категория скрыта с сайта",
       );
@@ -483,10 +495,11 @@ export const AdminIikoMenuPanel = ({
                         label="На сайте"
                         checked={onSite}
                         disabled={busy}
-                        onChange={() =>
+                        onChange={(next) =>
                           void toggleCategoryOnSite(
                             cat,
                             fullIndex >= 0 ? fullIndex : 0,
+                            next,
                           )
                         }
                       />

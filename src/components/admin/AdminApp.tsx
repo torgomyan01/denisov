@@ -205,6 +205,7 @@ const ensureMenu = (site: SiteData): SiteData => {
       name: cat.name ?? "",
       availableFrom: cat.availableFrom ?? "",
       availableTo: cat.availableTo ?? "",
+      showOnSite: cat.showOnSite !== false,
       items: Array.isArray(cat.items)
         ? cat.items.map((item) =>
             createDefaultMenuItem({
@@ -223,6 +224,9 @@ const ensureMenu = (site: SiteData): SiteData => {
               showInUpsell: Boolean(item.showInUpsell),
               upsellSortOrder: item.upsellSortOrder ?? 0,
               iikoProductId: item.iikoProductId ?? "",
+              modifierGroups: Array.isArray(item.modifierGroups)
+                ? item.modifierGroups
+                : [],
             }),
           )
         : [],
