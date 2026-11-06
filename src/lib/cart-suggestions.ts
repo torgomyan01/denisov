@@ -1,5 +1,5 @@
 import type { CartLine, CartProduct } from "@/store/cartSlice";
-import type { MenuCategory, SiteMenu } from "@/types/site";
+import type { MenuCategory, MenuItem, SiteMenu } from "@/types/site";
 
 export type CartSuggestionsResult = {
   products: CartProduct[];
@@ -7,6 +7,12 @@ export type CartSuggestionsResult = {
   title: string;
   kicker: string;
 };
+
+/** Same visibility rules as the public menu: category + item must be on site. */
+const isVisibleOnSite = (category: MenuCategory, item: MenuItem): boolean =>
+  category.showOnSite !== false &&
+  item.inStock !== false &&
+  item.showInDelivery !== false;
 
 type ItemRole =
   | "breakfast"
@@ -268,12 +274,7 @@ export const getSuggestedProducts = (
   const curated: Array<CartProduct & { order: number }> = [];
   for (const category of menu.categories) {
     for (const item of category.items || []) {
-      if (
-        !item.showInUpsell ||
-        item.inStock === false ||
-        item.showInDelivery === false
-      )
-        continue;
+      if (!item.showInUpsell || !isVisibleOnSite(category, item)) continue;
       if (inCart.has(item.id)) continue;
       const product = toProduct(item, category);
       if (!product) continue;
@@ -300,9 +301,10 @@ export const getSuggestedProducts = (
   const scored: ScoredProduct[] = [];
 
   for (const category of menu.categories) {
+    if (category.showOnSite === false) continue;
     const categoryRole = roleForCategory(category.name);
     for (const item of category.items || []) {
-      if (item.inStock === false || item.showInDelivery === false) continue;
+      if (!isVisibleOnSite(category, item)) continue;
       const product = toProduct(item, category);
       if (!product || inCart.has(product.id)) continue;
 
@@ -401,14 +403,9 @@ export const getRelatedMenuProducts = (
   const scored: ScoredProduct[] = [];
 
   for (const category of menu.categories) {
+    if (category.showOnSite === false) continue;
     for (const item of category.items || []) {
-      if (
-        exclude.has(item.id) ||
-        item.inStock === false ||
-        item.showInDelivery === false
-      ) {
-        continue;
-      }
+      if (exclude.has(item.id) || !isVisibleOnSite(category, item)) continue;
       const product = toProduct(item, category);
       if (!product) continue;
 

@@ -341,8 +341,6 @@ model Order {
   timeMode            String          @default("asap") @db.VarChar(16)
   scheduledAt         DateTime?
   paidAt              DateTime?
-  /// Unique code encoded in customer QR for pickup / courier handover
-  fulfillmentToken    String          @unique @db.VarChar(32)
   fulfilledAt         DateTime?
   /// iiko Cloud delivery order id (UUID), set after /api/1/deliveries/create
   iikoOrderId         String?         @unique @db.VarChar(64)
@@ -359,7 +357,6 @@ model Order {
   @@index([status, createdAt])
   @@index([customerId, createdAt])
   @@index([createdAt])
-  @@index([fulfillmentToken])
   @@index([iikoOrderId])
 }
 

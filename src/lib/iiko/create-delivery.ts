@@ -134,6 +134,11 @@ const buildComment = (input: IikoCreateOrderInput): string => {
   if (input.fulfillmentMode === "pickup") {
     parts.push("Самовывоз (сайт Денисов)");
   }
+  if (input.paymentStatus === "paid") {
+    parts.push("Оплата: онлайн");
+  } else {
+    parts.push("Оплата: при получении");
+  }
   if (input.deliveryCourierComment.trim()) {
     parts.push(`Курьеру: ${input.deliveryCourierComment.trim()}`);
   }

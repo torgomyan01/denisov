@@ -5,7 +5,6 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   LogOut,
   Package,
-  QrCode,
   ShoppingBag,
   UserRound,
 } from "lucide-react";
@@ -57,15 +56,6 @@ export const ProfileWorkspace = ({
         match: (path) => path === "/profile",
       },
     ];
-    if (customer.isCourier) {
-      items.push({
-        href: "/profile/courier",
-        label: "Доставка",
-        hint: "Сканер QR и выдача",
-        icon: QrCode,
-        match: (path) => path.startsWith("/profile/courier"),
-      });
-    }
     items.push(
       {
         href: "/profile/orders",
@@ -83,7 +73,7 @@ export const ProfileWorkspace = ({
       },
     );
     return items;
-  }, [customer.isCourier]);
+  }, []);
 
   const onLogout = async () => {
     if (busy) return;

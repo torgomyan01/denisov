@@ -1,8 +1,12 @@
 import { z } from "zod";
 import { persistedCartSchema } from "@/lib/customer-cart-schema";
 
+/** Checkout payment mode: prepaid card stub or pay on receipt. */
+export const checkoutPaymentMethodSchema = z.enum(["card", "on_receipt"]);
+export type CheckoutPaymentMethod = z.infer<typeof checkoutPaymentMethodSchema>;
+
 /** Test-card form — no real charge; format checks only. */
-export const testPaymentSchema = z.object({
+export const testCardFieldsSchema = z.object({
   cardNumber: z
     .string()
     .transform((v) => v.replace(/\s+/g, ""))
@@ -20,6 +24,18 @@ export const testPaymentSchema = z.object({
     .refine((v) => /^\d{3,4}$/.test(v), "CVC: 3 или 4 цифры"),
   cardHolder: z.string().trim().min(2, "Укажите имя на карте").max(80),
 });
+
+/** @deprecated use placeOrderPaymentSchema */
+export const testPaymentSchema = testCardFieldsSchema;
+
+export const placeOrderPaymentSchema = z.discriminatedUnion("method", [
+  testCardFieldsSchema.extend({
+    method: z.literal("card"),
+  }),
+  z.object({
+    method: z.literal("on_receipt"),
+  }),
+]);
 
 const optionalDoorField = (max: number) =>
   z
@@ -47,7 +63,7 @@ export const placeOrderSchema = z
     cart: persistedCartSchema,
     customerName: z.string().trim().min(1, "Укажите имя").max(255),
     customerPhone: z.string().trim().min(5).max(32),
-    payment: testPaymentSchema,
+    payment: placeOrderPaymentSchema,
     deliveryDetails: deliveryDetailsSchema.optional(),
   })
   .superRefine((data, ctx) => {
@@ -76,10 +92,6 @@ export const updateOrderStatusSchema = z.object({
     "Cancelled",
   ]),
   note: z.string().trim().max(255).optional(),
-});
-
-export const verifyOrderFulfillmentSchema = z.object({
-  token: z.string().trim().min(8).max(64),
 });
 
 export const deleteOrderSchema = z.object({

@@ -1,25 +1,15 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { getSession, requireAuth } from "@/lib/auth";
-import {
-  getCustomer,
-  requireCustomer,
-  type CustomerPublic,
-} from "@/lib/customer-auth";
+import { requireAuth } from "@/lib/auth";
+import { getCustomer, requireCustomer } from "@/lib/customer-auth";
 import {
   clearCartItemsKeepingFulfillment,
   saveCustomerCart,
 } from "@/lib/customer-cart";
+import { deleteOrderSchema, placeOrderSchema } from "@/lib/order-schema";
 import {
-  deleteOrderSchema,
-  placeOrderSchema,
-  verifyOrderFulfillmentSchema,
-} from "@/lib/order-schema";
-import {
-  generateFulfillmentToken,
   generateOrderNumber,
-  parseFulfillmentQrPayload,
   rubFromPriceString,
   toOrderPublic,
   type OrderPublic,
@@ -113,8 +103,9 @@ export const placeOrderAction = async (
       return { success: false, error: "Выберите время получения" };
     }
 
-    // Test payment stub — accept any well-formed card; no charge.
-    void payment;
+    const isPrepaid = payment.method === "card";
+    // Prepaid card is still a test stub — accept any well-formed card; no charge.
+    if (isPrepaid) void payment;
 
     const site = await getSite();
     const deliverySettings =
@@ -253,16 +244,6 @@ export const placeOrderAction = async (
         number = generateOrderNumber();
       }
 
-      let fulfillmentToken = generateFulfillmentToken();
-      for (let i = 0; i < 5; i += 1) {
-        const clash = await tx.order.findUnique({
-          where: { fulfillmentToken },
-          select: { id: true },
-        });
-        if (!clash) break;
-        fulfillmentToken = generateFulfillmentToken();
-      }
-
       const created = await tx.order.create({
         data: {
           number,
@@ -272,8 +253,8 @@ export const placeOrderAction = async (
           customerEmail: (customer.email ?? "").slice(0, 255),
           fulfillmentMode: cart.fulfillmentMode,
           status: "Unconfirmed",
-          paymentStatus: "paid",
-          paymentMethod: "card_test",
+          paymentStatus: isPrepaid ? "paid" : "pending",
+          paymentMethod: isPrepaid ? "card_test" : "on_receipt",
           totalRub,
           deliveryFeeRub,
           utensils: cart.utensils,
@@ -294,8 +275,7 @@ export const placeOrderAction = async (
             scheduledAt && !Number.isNaN(scheduledAt.getTime())
               ? scheduledAt
               : null,
-          paidAt: now,
-          fulfillmentToken,
+          paidAt: isPrepaid ? now : null,
           statusUpdatedAt: now,
           items: {
             create: itemsData.map(
@@ -305,7 +285,9 @@ export const placeOrderAction = async (
           statusLogs: {
             create: {
               status: "Unconfirmed",
-              note: "Заказ оформлен (тестовая оплата)",
+              note: isPrepaid
+                ? "Заказ оформлен (оплата онлайн, тест)"
+                : "Заказ оформлен (оплата при получении)",
             },
           },
         },
@@ -796,115 +778,5 @@ export const deleteOrderAdminAction = async (
     return { success: true, data: { id: existing.id } };
   } catch {
     return { success: false, error: "Не удалось удалить заказ" };
-  }
-};
-
-const resolveFulfillmentToken = (raw: string): string | null => {
-  const parsed = parseFulfillmentQrPayload(raw);
-  if (parsed) return parsed;
-  const compact = raw.trim().toUpperCase().replace(/[\s·._-]+/g, "");
-  return /^[A-F0-9]{16}$/.test(compact) ? compact : null;
-};
-
-type FulfillmentActor =
-  | { kind: "admin" }
-  | { kind: "courier"; customer: CustomerPublic };
-
-const requireFulfillmentActor = async (): Promise<FulfillmentActor> => {
-  if (await getSession()) return { kind: "admin" };
-  const customer = await getCustomer();
-  if (customer?.isCourier) return { kind: "courier", customer };
-  throw new Error("Unauthorized");
-};
-
-/** Lookup order by customer QR — does not change status. */
-export const lookupOrderByFulfillmentTokenAction = async (
-  input: unknown,
-): Promise<ActionResult<OrderPublic>> => {
-  try {
-    await requireFulfillmentActor();
-    const parsed = verifyOrderFulfillmentSchema.safeParse(input);
-    if (!parsed.success) {
-      return {
-        success: false,
-        error: parsed.error.issues[0]?.message ?? "Некорректный QR-код",
-      };
-    }
-
-    const token = resolveFulfillmentToken(parsed.data.token);
-    if (!token) {
-      return { success: false, error: "Не удалось прочитать код из QR" };
-    }
-
-    const existing = await prisma.order.findUnique({
-      where: { fulfillmentToken: token },
-      include: orderInclude,
-    });
-    if (!existing) {
-      return { success: false, error: "Заказ по этому QR не найден" };
-    }
-
-    return { success: true, data: toOrderPublic(existing) };
-  } catch (error) {
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return { success: false, error: "Требуется вход курьера или админа" };
-    }
-    return { success: false, error: "Не удалось найти заказ" };
-  }
-};
-
-/**
- * QR lookup remains available; closing status must come from iiko.
- * Kept for courier/admin to verify the right bag without mutating status.
- */
-export const verifyOrderFulfillmentAction = async (
-  input: unknown,
-): Promise<ActionResult<OrderPublic>> => {
-  try {
-    await requireFulfillmentActor();
-    const parsed = verifyOrderFulfillmentSchema.safeParse(input);
-    if (!parsed.success) {
-      return {
-        success: false,
-        error: parsed.error.issues[0]?.message ?? "Некорректный QR-код",
-      };
-    }
-
-    const token = resolveFulfillmentToken(parsed.data.token);
-    if (!token) {
-      return { success: false, error: "Не удалось прочитать код из QR" };
-    }
-
-    const existing = await prisma.order.findUnique({
-      where: { fulfillmentToken: token },
-      include: orderInclude,
-    });
-    if (!existing) {
-      return { success: false, error: "Заказ по этому QR не найден" };
-    }
-
-    if (existing.iikoOrderId && isIikoConfigured()) {
-      const syncResults = await syncOpenOrdersFromIiko({
-        localOrderIds: [existing.id],
-      });
-      await notifySyncedStatusChanges(syncResults);
-      const refreshed = await prisma.order.findUnique({
-        where: { id: existing.id },
-        include: orderInclude,
-      });
-      if (refreshed) {
-        return { success: true, data: toOrderPublic(refreshed) };
-      }
-    }
-
-    return {
-      success: true,
-      data: toOrderPublic(existing),
-    };
-  } catch (error) {
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return { success: false, error: "Требуется вход курьера или админа" };
-    }
-    return { success: false, error: "Не удалось проверить заказ" };
   }
 };

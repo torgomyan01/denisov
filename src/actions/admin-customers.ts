@@ -228,8 +228,6 @@ export const updateCustomerAction = async (
     revalidatePath("/admin");
     revalidatePath("/auth");
     revalidatePath("/profile");
-    revalidatePath("/profile/courier");
-
     return { success: true, data: toRow(updated) };
   } catch (error) {
     const message =

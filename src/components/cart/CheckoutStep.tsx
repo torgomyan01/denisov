@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Banknote,
   ChevronLeft,
   CreditCard,
   Lock,
@@ -25,6 +26,7 @@ import {
   formatCartNutritionLine,
 } from "@/lib/cart-nutrition";
 import { formatPrice } from "@/lib/format";
+import type { CheckoutPaymentMethod } from "@/lib/order-schema";
 import { formatPhoneDisplay } from "@/lib/phone";
 import type { OrderPublic } from "@/lib/orders";
 import type { CustomerPublic } from "@/lib/customer-auth";
@@ -53,6 +55,14 @@ const labelClass =
   "flex flex-col gap-[0.35rem] text-[0.72rem] tracking-[0.1em] text-ink/50 uppercase";
 const inputClass =
   "rounded-xl border border-ink/12 bg-white/88 px-[0.85rem] py-[0.72rem] text-[0.95rem] leading-[1.3] font-medium tracking-normal text-ink normal-case transition-[border-color,box-shadow] duration-200 focus:border-clay/55 focus:shadow-[0_0_0_3px_rgba(156,107,74,0.12)] focus:outline-none";
+
+const payOptionClass = (active: boolean): string =>
+  [
+    "flex w-full cursor-pointer items-start gap-3 rounded-xl border px-3 py-[0.75rem] text-left transition-[border-color,background-color,box-shadow] duration-200",
+    active
+      ? "border-clay/55 bg-clay/[0.07] shadow-[0_0_0_3px_rgba(156,107,74,0.1)]"
+      : "border-ink/10 bg-white/70 hover:border-ink/22",
+  ].join(" ");
 
 const enterStyle = (index: number): CSSProperties =>
   ({ "--i": index }) as CSSProperties;
@@ -105,6 +115,8 @@ export const CheckoutStep = ({
   const [courierComment, setCourierComment] = useState(
     customer.deliveryCourierComment ?? "",
   );
+  const [payMethod, setPayMethod] =
+    useState<CheckoutPaymentMethod>("on_receipt");
   const [cardNumber, setCardNumber] = useState("");
   const [expiry, setExpiry] = useState("");
   const [cvc, setCvc] = useState("");
@@ -133,24 +145,30 @@ export const CheckoutStep = ({
     setBusy(true);
     setError("");
     try {
+      const payment =
+        payMethod === "card"
+          ? {
+              method: "card" as const,
+              cardNumber,
+              expiry,
+              cvc,
+              cardHolder,
+            }
+          : { method: "on_receipt" as const };
+
       const result = await placeOrderAction({
         cart: cartSnapshot(cartState),
         customerName: name.trim(),
         customerPhone: customer.phone,
-        payment: {
-          cardNumber,
-          expiry,
-          cvc,
-          cardHolder,
-        },
+        payment,
         ...(isDelivery
           ? {
               deliveryDetails: {
                 apartment: apartment.trim(),
                 entrance: entrance.trim(),
                 floor: floor.trim(),
-                intercom: intercom.trim(),
                 courierComment: courierComment.trim(),
+                intercom: intercom.trim(),
               },
             }
           : {}),
@@ -164,6 +182,11 @@ export const CheckoutStep = ({
       setBusy(false);
     }
   };
+
+  const submitLabel =
+    payMethod === "card"
+      ? `Оплатить ${formatPrice(String(total))}`
+      : `Оформить · ${formatPrice(String(total))}`;
 
   return (
     <form
@@ -202,7 +225,7 @@ export const CheckoutStep = ({
         <p className={cartKicker}>Оформление</p>
         <h3 className={cartCheckoutTitle}>Подтверждение заказа</h3>
         <p className="mt-[0.35rem] text-[0.88rem] leading-[1.4] text-ink/55">
-          Проверьте данные и завершите тестовую оплату
+          Выберите способ оплаты и проверьте данные
         </p>
       </header>
 
@@ -387,7 +410,7 @@ export const CheckoutStep = ({
           </div>
         ) : null}
         <div className="mt-1 flex items-baseline justify-between border-t border-dashed border-ink/14 pt-[0.65rem] text-[0.92rem]">
-          <span>Итого к оплате</span>
+          <span>Итого</span>
           <strong className="font-serif text-[1.35rem] font-semibold text-ink">
             {formatPrice(String(total))}
           </strong>
@@ -397,111 +420,178 @@ export const CheckoutStep = ({
       <section
         className={`${cardClass} ${cartCheckoutEnter}`}
         style={enterStyle(isDelivery ? 4 : 3)}
-        aria-label="Оплата"
+        aria-label="Способ оплаты"
       >
         <div className="flex items-center gap-[0.7rem]">
           <span className={cardIconClass} aria-hidden="true">
-            <CreditCard size={16} strokeWidth={2} className={cartIcon} />
+            <Banknote size={16} strokeWidth={2} className={cartIcon} />
           </span>
           <div>
             <strong className="block text-[0.95rem] leading-[1.25] font-[650] text-ink">
-              Банковская карта
+              Способ оплаты
             </strong>
             <span className="text-[0.78rem] leading-[1.35] text-ink/52">
-              Тестовый режим — списания не будет
+              При получении или картой сейчас
             </span>
           </div>
         </div>
 
         <div
-          className="relative min-h-[132px] overflow-hidden rounded-2xl bg-[radial-gradient(120%_90%_at_100%_0%,rgba(156,107,74,0.45),transparent_55%),linear-gradient(145deg,#2a261f_0%,#1a1713_55%,#3a2a20_100%)] px-[1.05rem] pt-4 pb-[0.95rem] text-[#f7f1e6] shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] before:absolute before:-top-[40%] before:-left-[20%] before:size-40 before:animate-pay-glow before:rounded-full before:bg-white/6 before:content-[''] motion-reduce:before:animate-none"
-          aria-hidden="true"
+          className="flex flex-col gap-2"
+          role="radiogroup"
+          aria-label="Способ оплаты"
         >
-          <div className="h-6 w-[34px] rounded-[5px] bg-[linear-gradient(135deg,#d8c29a,#b89563_45%,#e7d4ad)] shadow-[inset_0_0_0_1px_rgba(0,0,0,0.12)]" />
-          <p className="mt-[0.7rem] text-[10px] leading-none font-[650] tracking-[0.16em] uppercase opacity-70">
-            Denisov · Test
-          </p>
-          <p className="mt-[0.85rem] font-serif text-[1.05rem] leading-[1.2] font-medium tracking-[0.12em] tabular-nums">
-            {previewNumber}
-          </p>
-          <div className="mt-[0.85rem] flex justify-between gap-3 text-[10px] leading-none font-[650] tracking-[0.1em] uppercase opacity-78">
-            <span className="max-w-[60%] overflow-hidden text-ellipsis whitespace-nowrap">
-              {cardHolder.trim() || "ИМЯ НА КАРТЕ"}
+          <button
+            type="button"
+            role="radio"
+            aria-checked={payMethod === "on_receipt"}
+            className={payOptionClass(payMethod === "on_receipt")}
+            onClick={() => setPayMethod("on_receipt")}
+          >
+            <span className={cardIconClass} aria-hidden="true">
+              <Banknote size={16} strokeWidth={2} className={cartIcon} />
             </span>
-            <span className="max-w-[60%] overflow-hidden text-ellipsis whitespace-nowrap">
-              {expiry || "MM/YY"}
+            <span className="min-w-0">
+              <strong className="block text-[0.92rem] leading-[1.25] font-[650] text-ink">
+                При получении
+              </strong>
+              <span className="mt-[0.15rem] block text-[0.78rem] leading-[1.35] text-ink/55">
+                Наличными или картой курьеру / в точке самовывоза
+              </span>
             </span>
-          </div>
+          </button>
+          <button
+            type="button"
+            role="radio"
+            aria-checked={payMethod === "card"}
+            className={payOptionClass(payMethod === "card")}
+            onClick={() => setPayMethod("card")}
+          >
+            <span className={cardIconClass} aria-hidden="true">
+              <CreditCard size={16} strokeWidth={2} className={cartIcon} />
+            </span>
+            <span className="min-w-0">
+              <strong className="block text-[0.92rem] leading-[1.25] font-[650] text-ink">
+                Онлайн картой
+              </strong>
+              <span className="mt-[0.15rem] block text-[0.78rem] leading-[1.35] text-ink/55">
+                Тестовый режим — списания не будет
+              </span>
+            </span>
+          </button>
         </div>
+      </section>
 
-        <label className={labelClass}>
-          Номер карты
-          <input
-            type="text"
-            className={inputClass}
-            inputMode="numeric"
-            autoComplete="cc-number"
-            placeholder="4242 4242 4242 4242"
-            value={cardNumber}
-            onChange={(e) => setCardNumber(formatCardNumber(e.target.value))}
-            required
-          />
-        </label>
+      {payMethod === "card" ? (
+        <section
+          className={`${cardClass} ${cartCheckoutEnter}`}
+          style={enterStyle(isDelivery ? 5 : 4)}
+          aria-label="Банковская карта"
+        >
+          <div className="flex items-center gap-[0.7rem]">
+            <span className={cardIconClass} aria-hidden="true">
+              <CreditCard size={16} strokeWidth={2} className={cartIcon} />
+            </span>
+            <div>
+              <strong className="block text-[0.95rem] leading-[1.25] font-[650] text-ink">
+                Банковская карта
+              </strong>
+              <span className="text-[0.78rem] leading-[1.35] text-ink/52">
+                Тестовый режим — списания не будет
+              </span>
+            </div>
+          </div>
 
-        <div className="grid grid-cols-2 gap-[0.65rem]">
+          <div
+            className="relative min-h-[132px] overflow-hidden rounded-2xl bg-[radial-gradient(120%_90%_at_100%_0%,rgba(156,107,74,0.45),transparent_55%),linear-gradient(145deg,#2a261f_0%,#1a1713_55%,#3a2a20_100%)] px-[1.05rem] pt-4 pb-[0.95rem] text-[#f7f1e6] shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] before:absolute before:-top-[40%] before:-left-[20%] before:size-40 before:animate-pay-glow before:rounded-full before:bg-white/6 before:content-[''] motion-reduce:before:animate-none"
+            aria-hidden="true"
+          >
+            <div className="h-6 w-[34px] rounded-[5px] bg-[linear-gradient(135deg,#d8c29a,#b89563_45%,#e7d4ad)] shadow-[inset_0_0_0_1px_rgba(0,0,0,0.12)]" />
+            <p className="mt-[0.7rem] text-[10px] leading-none font-[650] tracking-[0.16em] uppercase opacity-70">
+              Denisov · Test
+            </p>
+            <p className="mt-[0.85rem] font-serif text-[1.05rem] leading-[1.2] font-medium tracking-[0.12em] tabular-nums">
+              {previewNumber}
+            </p>
+            <div className="mt-[0.85rem] flex justify-between gap-3 text-[10px] leading-none font-[650] tracking-[0.1em] uppercase opacity-78">
+              <span className="max-w-[60%] overflow-hidden text-ellipsis whitespace-nowrap">
+                {cardHolder.trim() || "ИМЯ НА КАРТЕ"}
+              </span>
+              <span className="max-w-[60%] overflow-hidden text-ellipsis whitespace-nowrap">
+                {expiry || "MM/YY"}
+              </span>
+            </div>
+          </div>
+
           <label className={labelClass}>
-            Срок
+            Номер карты
             <input
               type="text"
               className={inputClass}
               inputMode="numeric"
-              autoComplete="cc-exp"
-              placeholder="MM/YY"
-              value={expiry}
-              onChange={(e) => setExpiry(formatExpiry(e.target.value))}
+              autoComplete="cc-number"
+              placeholder="4242 4242 4242 4242"
+              value={cardNumber}
+              onChange={(e) => setCardNumber(formatCardNumber(e.target.value))}
               required
             />
           </label>
+
+          <div className="grid grid-cols-2 gap-[0.65rem]">
+            <label className={labelClass}>
+              Срок
+              <input
+                type="text"
+                className={inputClass}
+                inputMode="numeric"
+                autoComplete="cc-exp"
+                placeholder="MM/YY"
+                value={expiry}
+                onChange={(e) => setExpiry(formatExpiry(e.target.value))}
+                required
+              />
+            </label>
+            <label className={labelClass}>
+              CVC
+              <input
+                type="password"
+                className={inputClass}
+                inputMode="numeric"
+                autoComplete="cc-csc"
+                placeholder="123"
+                value={cvc}
+                onChange={(e) =>
+                  setCvc(e.target.value.replace(/\D/g, "").slice(0, 4))
+                }
+                required
+              />
+            </label>
+          </div>
+
           <label className={labelClass}>
-            CVC
+            Имя на карте
             <input
-              type="password"
+              type="text"
               className={inputClass}
-              inputMode="numeric"
-              autoComplete="cc-csc"
-              placeholder="123"
-              value={cvc}
-              onChange={(e) =>
-                setCvc(e.target.value.replace(/\D/g, "").slice(0, 4))
-              }
+              autoComplete="cc-name"
+              value={cardHolder}
+              onChange={(e) => setCardHolder(e.target.value)}
               required
+              maxLength={80}
             />
           </label>
-        </div>
 
-        <label className={labelClass}>
-          Имя на карте
-          <input
-            type="text"
-            className={inputClass}
-            autoComplete="cc-name"
-            value={cardHolder}
-            onChange={(e) => setCardHolder(e.target.value)}
-            required
-            maxLength={80}
-          />
-        </label>
-
-        <p className="flex items-center gap-[0.4rem] text-[0.78rem] leading-[1.35] text-ink/50">
-          <Lock
-            size={14}
-            strokeWidth={2}
-            className={cartIcon}
-            aria-hidden="true"
-          />
-          Данные только для теста. Реальную оплату подключим позже.
-        </p>
-      </section>
+          <p className="flex items-center gap-[0.4rem] text-[0.78rem] leading-[1.35] text-ink/50">
+            <Lock
+              size={14}
+              strokeWidth={2}
+              className={cartIcon}
+              aria-hidden="true"
+            />
+            Данные только для теста. Реальную оплату подключим позже.
+          </p>
+        </section>
+      ) : null}
 
       {error ? (
         <p
@@ -518,7 +608,7 @@ export const CheckoutStep = ({
         disabled={busy || !items.length}
       >
         <span className="relative z-1">
-          {busy ? "Оформляем…" : `Оплатить ${formatPrice(String(total))}`}
+          {busy ? "Оформляем…" : submitLabel}
         </span>
         {busy ? (
           <span

@@ -209,8 +209,7 @@ export const UsersPanel = ({ busy, setBusy, showToast }: UsersPanelProps) => {
         <div>
           <h2 className="m-0 font-serif text-[clamp(1.55rem,2.4vw,1.95rem)] leading-[1.15] tracking-[0.02em]">Пользователи</h2>
           <p className="mt-[0.4rem] max-w-[42rem] text-[0.92rem] leading-normal text-ink/48">
-            Клиенты и курьеры. Курьер входит в личный кабинет и выдаёт заказы по
-            QR.
+            Клиенты сайта и пользователи с ролью курьера.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -402,8 +401,8 @@ export const UsersPanel = ({ busy, setBusy, showToast }: UsersPanelProps) => {
                     <span>
                       <strong className="block text-[0.95rem]">Курьер</strong>
                       <span className="mt-[0.15rem] block text-[0.82rem] text-ink/55">
-                        Доступ к разделу «Доставка» в личном кабинете — сканер QR
-                        и выдача заказа клиенту.
+                        Роль для будущих сценариев доставки (отдельный кабинет
+                        пока отключён).
                       </span>
                     </span>
                   </label>
@@ -495,7 +494,8 @@ export const UsersPanel = ({ busy, setBusy, showToast }: UsersPanelProps) => {
                 <span>
                   <strong className="block text-[0.95rem]">Курьер</strong>
                   <span className="mt-[0.15rem] block text-[0.82rem] text-ink/55">
-                    Может сканировать QR и подтверждать выдачу заказа клиенту.
+                    Роль для будущих сценариев доставки (отдельный кабинет пока
+                    отключён).
                   </span>
                 </span>
               </label>

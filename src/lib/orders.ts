@@ -71,6 +71,17 @@ export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
   failed: "Ошибка оплаты",
 };
 
+/** Stored on Order.paymentMethod */
+export type OrderPaymentMethod = "card_test" | "on_receipt" | string;
+
+export const PAYMENT_METHOD_LABELS: Record<string, string> = {
+  card_test: "Онлайн картой (тест)",
+  on_receipt: "При получении",
+};
+
+export const paymentMethodLabel = (method: string): string =>
+  PAYMENT_METHOD_LABELS[method] || method || "—";
+
 /** Allowed next statuses from current (by fulfillment), iiko-aligned. */
 export const nextOrderStatuses = (
   status: OrderStatus,
@@ -105,37 +116,6 @@ export const nextOrderStatuses = (
 
 export const generateOrderNumber = (): string =>
   `D-${randomBytes(3).toString("hex").toUpperCase()}`;
-
-/** Opaque handoff code shown as customer QR (pickup desk / courier). */
-export const generateFulfillmentToken = (): string =>
-  randomBytes(8).toString("hex").toUpperCase();
-
-export const FULFILLMENT_QR_PREFIX = "DN1.";
-
-export const encodeFulfillmentQrPayload = (token: string): string =>
-  `${FULFILLMENT_QR_PREFIX}${token.trim().toUpperCase()}`;
-
-export const parseFulfillmentQrPayload = (raw: string): string | null => {
-  const compact = String(raw ?? "")
-    .trim()
-    .toUpperCase()
-    .replace(/[\s·._-]+/g, "");
-  if (!compact) return null;
-  const body = compact.startsWith("DN1") ? compact.slice(3) : compact;
-  return /^[A-F0-9]{16}$/.test(body) ? body : null;
-};
-
-/** When staff/courier may scan QR to close the order (iiko → Closed). */
-export const canFulfillOrderByQr = (
-  status: OrderStatus,
-  fulfillmentMode: FulfillmentMode,
-): boolean => {
-  if (status === "Closed" || status === "Cancelled") return false;
-  if (fulfillmentMode === "pickup") {
-    return status === "Waiting" || status === "CookingCompleted";
-  }
-  return status === "OnWay" || status === "Delivered" || status === "Waiting";
-};
 
 export const rubFromPriceString = (price: string, qty: number): number =>
   Math.round(parsePriceNumber(price) * Math.max(1, qty));
@@ -188,7 +168,6 @@ export type OrderPublic = {
   timeMode: string;
   scheduledAt: string | null;
   paidAt: string | null;
-  fulfillmentToken: string;
   fulfilledAt: string | null;
   iikoOrderId: string | null;
   iikoCreationStatus: string;
@@ -228,7 +207,6 @@ export const toOrderPublic = (row: {
   timeMode: string;
   scheduledAt: Date | null;
   paidAt: Date | null;
-  fulfillmentToken: string;
   fulfilledAt: Date | null;
   iikoOrderId?: string | null;
   iikoCreationStatus?: string | null;
@@ -281,7 +259,6 @@ export const toOrderPublic = (row: {
   timeMode: row.timeMode,
   scheduledAt: row.scheduledAt ? row.scheduledAt.toISOString() : null,
   paidAt: row.paidAt ? row.paidAt.toISOString() : null,
-  fulfillmentToken: row.fulfillmentToken,
   fulfilledAt: row.fulfilledAt ? row.fulfilledAt.toISOString() : null,
   iikoOrderId: row.iikoOrderId ?? null,
   iikoCreationStatus: row.iikoCreationStatus?.trim() || "",

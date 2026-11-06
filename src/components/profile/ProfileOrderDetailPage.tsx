@@ -4,7 +4,6 @@ import { ChevronLeft, Clock3 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { getMyOrderAction } from "@/actions/orders";
-import { OrderFulfillmentQr } from "@/components/orders/OrderFulfillmentQr";
 import {
   profileBack,
   profileBadge,
@@ -25,7 +24,11 @@ import {
   customerOrderFlow,
   getCustomerOrderStatusView,
 } from "@/lib/order-customer";
-import type { OrderPublic } from "@/lib/orders";
+import {
+  PAYMENT_STATUS_LABELS,
+  paymentMethodLabel,
+  type OrderPublic,
+} from "@/lib/orders";
 
 const itemsBlockClass = "mt-5 border-t border-ink/10 pt-4";
 
@@ -181,17 +184,6 @@ export const ProfileOrderDetailPage = ({
         </ol>
       ) : null}
 
-      {order.fulfillmentToken ? (
-        <section>
-          <OrderFulfillmentQr
-            token={order.fulfillmentToken}
-            orderNumber={order.number}
-            fulfillmentMode={order.fulfillmentMode}
-            status={order.status}
-          />
-        </section>
-      ) : null}
-
       <section className={itemsBlockClass}>
         <h3 className={profileBlockTitle}>Состав</h3>
         <ul className="mt-[0.65rem] flex flex-col gap-[0.65rem]">
@@ -227,6 +219,11 @@ export const ProfileOrderDetailPage = ({
             {order.totalRub} ₽
           </strong>
         </div>
+        <p className="mt-2 text-[0.82rem] leading-[1.4] text-ink/55">
+          {paymentMethodLabel(order.paymentMethod)}
+          {" · "}
+          {PAYMENT_STATUS_LABELS[order.paymentStatus]}
+        </p>
       </section>
 
       {order.statusLogs.length ? (

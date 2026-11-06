@@ -71,7 +71,6 @@ import { DndProvider, SortableItem } from "@/components/admin/dnd";
 import { OrderDetailPanel } from "@/components/admin/OrderDetailPage";
 import { OrdersPanel } from "@/components/admin/OrdersPanel";
 import { IikoOrdersPanel } from "@/components/admin/IikoOrdersPanel";
-import { OrderScanPanel } from "@/components/admin/OrderScanPage";
 import { PickupPointsPanel } from "@/components/admin/PickupPointsPanel";
 import { AdminDocsPanel } from "@/components/admin/AdminDocsPanel";
 import { UsersPanel } from "@/components/admin/UsersPanel";
@@ -95,7 +94,6 @@ const TABS = [
   "pickup",
   "orders",
   "iiko-orders",
-  "fulfillment",
   "users",
   "docs",
 ] as const;
@@ -109,7 +107,6 @@ const TAB_LABELS: Record<TabId, string> = {
   pickup: "Самовывоз",
   orders: "Заказы",
   "iiko-orders": "Заказы iiko",
-  fulfillment: "Выдача по QR",
   users: "Пользователи",
   docs: "Инструкции",
 };
@@ -122,9 +119,8 @@ const TAB_HINTS: Record<TabId, string> = {
   pickup: "Точки самовывоза: название, телефон, адрес и карта",
   orders: "Заказы клиентов: статусы от кухни до выдачи",
   "iiko-orders": "Все доставки из iiko Cloud за день",
-  fulfillment: "Сканер QR клиента — проверка и подтверждение выдачи",
   users: "Клиенты сайта: список, создание и редактирование",
-  docs: "Руководство по сайту, заказам, QR и push",
+  docs: "Руководство по сайту, заказам и push",
 };
 
 /** Top-level collapsible groups — add new sections here as the admin grows. */
@@ -153,7 +149,6 @@ const NAV_GROUPS: readonly NavGroup[] = [
 
 /** Tabs shown outside collapsible groups (e.g. Users). */
 const NAV_STANDALONE: readonly TabId[] = [
-  "fulfillment",
   "pickup",
   "orders",
   "iiko-orders",
@@ -1429,13 +1424,6 @@ export default function AdminApp() {
 
                 {tab === "iiko-orders" ? (
                   <IikoOrdersPanel busy={busy} showToast={showToast} />
-                ) : null}
-
-                {tab === "fulfillment" ? (
-                  <OrderScanPanel
-                    busy={busy}
-                    onOrdersChanged={refreshNewOrdersCount}
-                  />
                 ) : null}
 
                 {tab === "users" ? (

@@ -19,6 +19,7 @@ import {
   ORDER_STATUS_HINTS,
   ORDER_STATUS_LABELS,
   PAYMENT_STATUS_LABELS,
+  paymentMethodLabel,
   type OrderPublic,
 } from "@/lib/orders";
 import { formatPhoneDisplay } from "@/lib/phone";
@@ -306,11 +307,7 @@ export const OrderDetailPanel = ({
           <p className="font-sans text-[1.05rem]! font-[650]! leading-[1.3]! text-ink">
             {PAYMENT_STATUS_LABELS[order.paymentStatus]}
           </p>
-          <p>
-            {order.paymentMethod === "card_test"
-              ? "Тестовая карта"
-              : order.paymentMethod}
-          </p>
+          <p>{paymentMethodLabel(order.paymentMethod)}</p>
           {order.paidAt ? <p>Оплачен: {formatWhen(order.paidAt)}</p> : null}
           <p className="mt-[0.65rem]! font-serif text-[1.45rem]! font-semibold">
             {order.totalRub} ₽

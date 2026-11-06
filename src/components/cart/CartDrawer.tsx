@@ -36,7 +36,6 @@ import {
 import { AddressSuggestField } from "@/components/cart/AddressSuggestField";
 import { DeliveryMapModal } from "@/components/cart/DeliveryMapModal";
 import { PickupPointPickerModal } from "@/components/cart/PickupPointPickerModal";
-import { OrderFulfillmentQr } from "@/components/orders/OrderFulfillmentQr";
 import {
   ASAP_LABEL,
   CHANGE_TIME_LABEL,
@@ -381,16 +380,11 @@ export const CartDrawer = ({
                   № {placedOrder.number}
                 </p>
                 <p className="mx-auto mt-[0.15rem] mb-3 max-w-[32ch] text-[0.9rem] leading-[1.45] text-ink/65">
-                  Заказ отправлен на кухню. Сохраните QR — по нему выдадут заказ
-                  на точке или курьер при доставке.
+                  {placedOrder.paymentStatus === "pending"
+                    ? "Заказ принят. Оплата при получении — наличными или картой."
+                    : "Заказ оплачен и отправлен на кухню."}{" "}
+                  Статус можно смотреть в личном кабинете.
                 </p>
-                <OrderFulfillmentQr
-                  token={placedOrder.fulfillmentToken}
-                  orderNumber={placedOrder.number}
-                  fulfillmentMode={placedOrder.fulfillmentMode}
-                  status={placedOrder.status}
-                  className="mt-[0.35rem] mb-[0.85rem] w-full"
-                />
                 <button
                   type="button"
                   className={cartCheckoutSubmitButton}

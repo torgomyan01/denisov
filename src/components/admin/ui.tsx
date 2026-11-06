@@ -17,7 +17,6 @@ import {
   MapPin,
   Menu,
   PanelTop,
-  QrCode,
   ShoppingBag,
   Upload,
   Users,
@@ -337,8 +336,6 @@ export const IconNav = ({ name }: { name: string }) => {
       return <ShoppingBag {...props} />;
     case "iiko-orders":
       return <Cloud {...props} />;
-    case "fulfillment":
-      return <QrCode {...props} />;
     case "users":
       return <Users {...props} />;
     case "docs":

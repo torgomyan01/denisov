@@ -184,7 +184,7 @@ export const AdminDocsPanel = () => {
             onKeyDown={(e) => {
               if (e.key === "Enter") expandAllMatches();
             }}
-            placeholder="Поиск: заказ, QR, push, сохранить…"
+            placeholder="Поиск: заказ, меню, push, сохранить…"
             className="w-full rounded-full border border-ink/12 bg-paper/80 py-2.5 pr-4 pl-10 text-[0.92rem] text-ink outline-none placeholder:text-ink/35 focus:border-clay/45 focus:shadow-[0_0_0_3px_rgba(156,107,74,0.12)]"
           />
         </label>

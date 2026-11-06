@@ -30,7 +30,6 @@
   --animate-mp-hero: mpHeroIn 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
   --animate-mp-modal: mpModalIn 0.35s ease both;
   --animate-mp-figure: mpModalFigure 0.45s ease both;
-  --animate-qr-shimmer: orderQrShimmer 1.2s ease-in-out infinite;
   --animate-auth-orb: authOrb 12s ease-in-out infinite;
   --animate-auth-rise: authRise 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
   --animate-auth-line: authLine 0.6s ease both;
@@ -308,14 +307,6 @@ body {
   to {
     opacity: 1;
     transform: none;
-  }
-}
-@keyframes orderQrShimmer {
-  0% {
-    background-position: 100% 0;
-  }
-  100% {
-    background-position: -100% 0;
   }
 }
 @keyframes authOrb {

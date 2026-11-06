@@ -2,27 +2,15 @@
 
 import { btnDark, btnLine } from "@/components/admin/styles";
 import { ChevronDown, Download, Printer, Tag } from "lucide-react";
-import QRCode from "qrcode";
 import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  encodeFulfillmentQrPayload,
-  type OrderPublic,
-} from "@/lib/orders";
+import type { OrderPublic } from "@/lib/orders";
 
 type OrderPrintLabelProps = {
   order: OrderPublic;
 };
 
 const LABEL_W = 320;
-const LABEL_H = 440;
-const QR_SIZE = 180;
-
-const formatTokenChunks = (token: string): string => {
-  const t = token.replace(/\s/g, "").toUpperCase();
-  const parts: string[] = [];
-  for (let i = 0; i < t.length; i += 4) parts.push(t.slice(i, i + 4));
-  return parts.join(" · ");
-};
+const LABEL_H = 280;
 
 const wrapText = (
   ctx: CanvasRenderingContext2D,
@@ -50,7 +38,7 @@ const wrapText = (
 export const OrderPrintLabel = ({ order }: OrderPrintLabelProps) => {
   const previewRef = useRef<HTMLCanvasElement | null>(null);
   const [open, setOpen] = useState(false);
-  const [qrUrl, setQrUrl] = useState("");
+  const [ready, setReady] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -73,7 +61,7 @@ export const OrderPrintLabel = ({ order }: OrderPrintLabelProps) => {
     order.fulfillmentMode === "delivery" ? "Доставка" : "Самовывоз";
 
   const drawLabel = useCallback(
-    async (target: HTMLCanvasElement, qrDataUrl: string) => {
+    async (target: HTMLCanvasElement) => {
       await document.fonts.ready;
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
       target.width = Math.round(LABEL_W * dpr);
@@ -95,97 +83,69 @@ export const OrderPrintLabel = ({ order }: OrderPrintLabelProps) => {
       ctx.fillStyle = "#211e19";
       ctx.font = "700 26px 'EB Garamond', Georgia, serif";
       ctx.textAlign = "center";
-      ctx.fillText("ДЕНИСОВ", LABEL_W / 2, 40);
+      ctx.fillText("ДЕНИСОВ", LABEL_W / 2, 44);
 
       ctx.fillStyle = "#9c6b4a";
       ctx.font = "650 10px 'Ysabeau', system-ui, sans-serif";
-      ctx.fillText("К А Ф Е", LABEL_W / 2, 58);
+      ctx.fillText("К А Ф Е", LABEL_W / 2, 62);
 
-      const qrPad = 10;
-      const qrBox = QR_SIZE + qrPad * 2;
-      const qrX = (LABEL_W - qrBox) / 2;
-      const qrY = 70;
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(qrX, qrY, qrBox, qrBox);
-      ctx.strokeStyle = "rgba(33, 30, 25, 0.1)";
-      ctx.lineWidth = 1;
-      ctx.strokeRect(qrX, qrY, qrBox, qrBox);
-
-      const qrImg = new Image();
-      await new Promise<void>((resolve, reject) => {
-        qrImg.onload = () => resolve();
-        qrImg.onerror = () => reject(new Error("Не удалось загрузить QR"));
-        qrImg.src = qrDataUrl;
-      });
-      ctx.drawImage(qrImg, qrX + qrPad, qrY + qrPad, QR_SIZE, QR_SIZE);
-
-      let y = qrY + qrBox + 22;
-      ctx.fillStyle = "#9c6b4a";
-      ctx.font = "650 11px ui-monospace, SFMono-Regular, Menlo, monospace";
-      ctx.fillText(formatTokenChunks(order.fulfillmentToken), LABEL_W / 2, y);
-
-      y += 16;
+      let y = 92;
       ctx.strokeStyle = "rgba(156, 107, 74, 0.3)";
       ctx.beginPath();
       ctx.moveTo(36, y);
       ctx.lineTo(LABEL_W - 36, y);
       ctx.stroke();
 
-      y += 26;
+      y += 36;
       ctx.fillStyle = "#211e19";
-      ctx.font = "700 22px 'EB Garamond', Georgia, serif";
+      ctx.font = "700 28px 'EB Garamond', Georgia, serif";
       ctx.fillText(order.number, LABEL_W / 2, y);
 
-      y += 18;
+      y += 22;
       ctx.fillStyle = "#9c6b4a";
-      ctx.font = "650 11px 'Ysabeau', system-ui, sans-serif";
+      ctx.font = "650 12px 'Ysabeau', system-ui, sans-serif";
       ctx.fillText(modeLabel.toUpperCase(), LABEL_W / 2, y);
 
-      y += 20;
+      y += 26;
       ctx.fillStyle = "#211e19";
-      ctx.font = "650 14px 'Ysabeau', system-ui, sans-serif";
+      ctx.font = "650 15px 'Ysabeau', system-ui, sans-serif";
       ctx.fillText(order.customerName || "Клиент", LABEL_W / 2, y);
 
-      y += 20;
+      y += 24;
       ctx.fillStyle = "rgba(33, 30, 25, 0.78)";
-      ctx.font = "500 12px 'Ysabeau', system-ui, sans-serif";
-      const lines = wrapText(ctx, destination, LABEL_W - 48).slice(0, 2);
+      ctx.font = "500 13px 'Ysabeau', system-ui, sans-serif";
+      const lines = wrapText(ctx, destination, LABEL_W - 48).slice(0, 3);
       for (const line of lines) {
         ctx.fillText(line, LABEL_W / 2, y);
-        y += 16;
+        y += 18;
       }
 
       ctx.fillStyle = "rgba(156, 107, 74, 0.65)";
       ctx.font = "italic 12px 'EB Garamond', Georgia, serif";
       ctx.fillText("Денисов", LABEL_W / 2, LABEL_H - 22);
     },
-    [destination, modeLabel, order.customerName, order.fulfillmentToken, order.number],
+    [destination, modeLabel, order.customerName, order.number],
   );
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      setReady(false);
+      return;
+    }
     let cancelled = false;
     setError("");
+    setReady(false);
     void (async () => {
       try {
-        const url = await QRCode.toDataURL(
-          encodeFulfillmentQrPayload(order.fulfillmentToken),
-          {
-            width: QR_SIZE * 2,
-            margin: 1,
-            errorCorrectionLevel: "M",
-            color: { dark: "#211e19", light: "#ffffff" },
-          },
-        );
-        if (cancelled) return;
-        setQrUrl(url);
-        // Wait a frame so canvas is mounted after expand
         await new Promise<void>((r) => {
           window.requestAnimationFrame(() => r());
         });
         if (cancelled) return;
         const canvas = previewRef.current;
-        if (canvas) await drawLabel(canvas, url);
+        if (canvas) {
+          await drawLabel(canvas);
+          if (!cancelled) setReady(true);
+        }
       } catch {
         if (!cancelled) setError("Не удалось собрать этикетку");
       }
@@ -193,12 +153,11 @@ export const OrderPrintLabel = ({ order }: OrderPrintLabelProps) => {
     return () => {
       cancelled = true;
     };
-  }, [drawLabel, open, order.fulfillmentToken]);
+  }, [drawLabel, open]);
 
   const withFreshCanvas = async (): Promise<HTMLCanvasElement> => {
-    if (!qrUrl) throw new Error("QR ещё не готов");
     const canvas = document.createElement("canvas");
-    await drawLabel(canvas, qrUrl);
+    await drawLabel(canvas);
     return canvas;
   };
 
@@ -268,8 +227,6 @@ export const OrderPrintLabel = ({ order }: OrderPrintLabelProps) => {
           doc.body.style.margin = "0";
           doc.body.style.background = "#fff";
 
-          // Build DOM in the iframe realm — do not use parent
-          // `instanceof HTMLImageElement` (cross-window always fails).
           const img = doc.createElement("img");
           img.alt = title;
           img.style.display = "block";
@@ -333,7 +290,7 @@ export const OrderPrintLabel = ({ order }: OrderPrintLabelProps) => {
               Этикетка
             </span>
             <span className="mt-[0.2rem] block text-[0.95rem] text-ink/70">
-              QR для наклейки на заказ — печать или скачать
+              Номер и адрес заказа — печать или скачать
             </span>
           </span>
         </span>
@@ -360,7 +317,7 @@ export const OrderPrintLabel = ({ order }: OrderPrintLabelProps) => {
               <button
                 type="button"
                 className={btnDark}
-                disabled={busy || !qrUrl}
+                disabled={busy || !ready}
                 onClick={() => void downloadPng()}
               >
                 <Download size={15} strokeWidth={2} aria-hidden="true" />
@@ -369,7 +326,7 @@ export const OrderPrintLabel = ({ order }: OrderPrintLabelProps) => {
               <button
                 type="button"
                 className={btnLine}
-                disabled={busy || !qrUrl}
+                disabled={busy || !ready}
                 onClick={() => void printLabel()}
               >
                 <Printer size={15} strokeWidth={2} aria-hidden="true" />
