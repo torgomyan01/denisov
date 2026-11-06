@@ -8,12 +8,16 @@ import {
   parseOptionalFloat,
   parseZonePolygon,
 } from "@/lib/delivery-defaults";
+import {
+  listActiveDeliveryZones,
+  migrateLegacyDeliveryPolygonIfNeeded,
+} from "@/lib/delivery-zones";
 import { loadMergedIikoMenu } from "@/lib/iiko/site-menu";
 import { prisma } from "@/lib/prisma";
 import { normalizeHeaderLogoMode } from "@/lib/format";
 import { isTempId } from "@/lib/ids";
 import { siteDataSchema } from "@/lib/site-schema";
-import type { DeliverySettings, MenuItem, SiteData } from "@/types/site";
+import type { DeliverySettings, DeliveryZone, MenuItem, SiteData } from "@/types/site";
 
 const createId = (): string => `c${randomBytes(12).toString("hex")}`;
 
@@ -71,22 +75,27 @@ const mapMenuItem = (item: {
       : [],
   });
 
-const mapDeliveryRow = (row: {
-  bannerDesktop: string;
-  bannerMobile: string;
-  title: string;
-  subtitle: string;
-  ordersEnabled: boolean;
-  minOrderAmount: number;
-  deliveryFee: number;
-  freeDeliveryFrom: number;
-  zoneMode: string;
-  zoneRadiusKm: number;
-  zoneCenterLat: number | null;
-  zoneCenterLng: number | null;
-  zonePolygonJson: string;
-} | null): DeliverySettings => {
-  if (!row) return createDefaultDeliverySettings();
+const mapDeliveryRow = (
+  row: {
+    bannerDesktop: string;
+    bannerMobile: string;
+    title: string;
+    subtitle: string;
+    ordersEnabled: boolean;
+    minOrderAmount: number;
+    deliveryFee: number;
+    freeDeliveryFrom: number;
+    zoneMode: string;
+    zoneRadiusKm: number;
+    zoneCenterLat: number | null;
+    zoneCenterLng: number | null;
+    zonePolygonJson: string;
+  } | null,
+  zones: DeliveryZone[] = [],
+): DeliverySettings => {
+  if (!row) {
+    return { ...createDefaultDeliverySettings(), zones };
+  }
   let polygon: Array<[number, number]> = [];
   try {
     polygon = parseZonePolygon(JSON.parse(row.zonePolygonJson || "[]"));
@@ -102,6 +111,7 @@ const mapDeliveryRow = (row: {
     minOrderAmount: parseNonNegInt(row.minOrderAmount, 0),
     deliveryFee: parseNonNegInt(row.deliveryFee, 0),
     freeDeliveryFrom: parseNonNegInt(row.freeDeliveryFrom, 0),
+    zones,
     zoneMode: normalizeZoneMode(row.zoneMode),
     zoneRadiusKm:
       Number.isFinite(row.zoneRadiusKm) && row.zoneRadiusKm >= 0
@@ -135,6 +145,7 @@ export const normalizeSite = (raw: unknown): SiteData => {
   parsed.delivery = {
     ...createDefaultDeliverySettings(),
     ...parsed.delivery,
+    zones: Array.isArray(parsed.delivery?.zones) ? parsed.delivery.zones : [],
     zoneMode: normalizeZoneMode(parsed.delivery?.zoneMode),
     zonePolygon: parseZonePolygon(parsed.delivery?.zonePolygon ?? []),
     zoneCenterLat: parseOptionalFloat(parsed.delivery?.zoneCenterLat),
@@ -147,6 +158,8 @@ export const normalizeSite = (raw: unknown): SiteData => {
 };
 
 export const getSite = async (): Promise<SiteData> => {
+  await migrateLegacyDeliveryPolygonIfNeeded();
+
   const [
     settings,
     meta,
@@ -173,6 +186,14 @@ export const getSite = async (): Promise<SiteData> => {
     prisma.deliverySettings.findUnique({ where: { id: "main" } }),
     loadMergedIikoMenu(),
   ]);
+
+  // Zones table may be missing until `prisma db push`; don't break the whole site.
+  let deliveryZones: Awaited<ReturnType<typeof listActiveDeliveryZones>> = [];
+  try {
+    deliveryZones = await listActiveDeliveryZones();
+  } catch {
+    deliveryZones = [];
+  }
 
   if (!meta || !hero || !about || !contacts || !footer || !brand || !settings) {
     throw new Error("Site content is not seeded. Run: npm run db:seed");
@@ -240,7 +261,7 @@ export const getSite = async (): Promise<SiteData> => {
       note: settings.menuNote,
       categories: iikoMenu.categories,
     },
-    delivery: mapDeliveryRow(deliveryRow),
+    delivery: mapDeliveryRow(deliveryRow, deliveryZones),
     menuPdf: settings.menuPdf ?? undefined,
   };
 

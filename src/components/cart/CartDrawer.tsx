@@ -119,8 +119,16 @@ export const CartDrawer = ({
   const count = cartItemCount(items);
   const subtotal = cartSubtotal(items);
   const totals = useMemo(
-    () => calcDeliveryTotals(delivery, subtotal, fulfillmentMode),
-    [delivery, subtotal, fulfillmentMode],
+    () =>
+      calcDeliveryTotals(
+        delivery,
+        subtotal,
+        fulfillmentMode,
+        deliveryLat != null && deliveryLng != null
+          ? { lat: deliveryLat, lng: deliveryLng }
+          : null,
+      ),
+    [delivery, subtotal, fulfillmentMode, deliveryLat, deliveryLng],
   );
   const inZone =
     fulfillmentMode !== "delivery" ||
@@ -904,7 +912,7 @@ export const CartDrawer = ({
               deliveryLng != null &&
               !inZone ? (
                 <p className="mb-3 rounded-[12px] border border-danger/20 bg-danger/6 px-3 py-2 text-[0.85rem] text-danger">
-                  Сюда пока не доставляем, можно забрать самовывозом.
+                  В эту зону доставки нет — выберите другой адрес или самовывоз.
                 </p>
               ) : null}
               <div className="mb-2 flex items-baseline justify-between text-[0.9rem] text-ink/55">
@@ -913,7 +921,12 @@ export const CartDrawer = ({
               </div>
               {fulfillmentMode === "delivery" ? (
                 <div className="mb-2 flex items-baseline justify-between text-[0.9rem] text-ink/55">
-                  <span>Доставка</span>
+                  <span>
+                    Доставка
+                    {totals.matchedZone
+                      ? ` · ${totals.matchedZone.name}`
+                      : ""}
+                  </span>
                   <span>
                     {totals.deliveryFeeRub > 0
                       ? formatPrice(String(totals.deliveryFeeRub))
@@ -985,6 +998,7 @@ export const CartDrawer = ({
         open={mapModalOpen}
         initialLat={deliveryLat}
         initialLng={deliveryLng}
+        delivery={delivery}
         onClose={() => setMapModalOpen(false)}
         onSave={(data) => {
           dispatch(setDeliveryLocation(data));

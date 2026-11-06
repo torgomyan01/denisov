@@ -18,6 +18,7 @@ import {
   Menu,
   PanelTop,
   ShoppingBag,
+  Truck,
   Upload,
   Users,
 } from "lucide-react";
@@ -330,6 +331,8 @@ export const IconNav = ({ name }: { name: string }) => {
       return <Mail {...props} />;
     case "menu":
       return <Menu {...props} />;
+    case "delivery":
+      return <Truck {...props} />;
     case "pickup":
       return <MapPin {...props} />;
     case "orders":

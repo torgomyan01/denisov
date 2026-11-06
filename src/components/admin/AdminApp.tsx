@@ -71,6 +71,7 @@ import { DndProvider, SortableItem } from "@/components/admin/dnd";
 import { OrderDetailPanel } from "@/components/admin/OrderDetailPage";
 import { OrdersPanel } from "@/components/admin/OrdersPanel";
 import { IikoOrdersPanel } from "@/components/admin/IikoOrdersPanel";
+import { DeliveryPanel } from "@/components/admin/DeliveryPanel";
 import { PickupPointsPanel } from "@/components/admin/PickupPointsPanel";
 import { AdminDocsPanel } from "@/components/admin/AdminDocsPanel";
 import { UsersPanel } from "@/components/admin/UsersPanel";
@@ -91,6 +92,7 @@ const TABS = [
   "about",
   "contacts",
   "menu",
+  "delivery",
   "pickup",
   "orders",
   "iiko-orders",
@@ -104,6 +106,7 @@ const TAB_LABELS: Record<TabId, string> = {
   about: "О кафе",
   contacts: "Контакты",
   menu: "Меню",
+  delivery: "Доставка",
   pickup: "Самовывоз",
   orders: "Заказы",
   "iiko-orders": "Заказы iiko",
@@ -116,6 +119,7 @@ const TAB_HINTS: Record<TabId, string> = {
   about: "Тексты и три ключевые цифры",
   contacts: "Телефон, адрес, SEO и футер",
   menu: "Категории, позиции, доставка и допродажа",
+  delivery: "Зоны на карте, цены доставки и приём заказов",
   pickup: "Точки самовывоза: название, телефон, адрес и карта",
   orders: "Заказы клиентов: статусы от кухни до выдачи",
   "iiko-orders": "Все доставки из iiko Cloud за день",
@@ -149,6 +153,7 @@ const NAV_GROUPS: readonly NavGroup[] = [
 
 /** Tabs shown outside collapsible groups (e.g. Users). */
 const NAV_STANDALONE: readonly TabId[] = [
+  "delivery",
   "pickup",
   "orders",
   "iiko-orders",
@@ -1393,6 +1398,14 @@ export default function AdminApp() {
                     showToast={showToast}
                     patchSite={patchSite}
                     onSiteReload={applySavedSite}
+                  />
+                ) : null}
+
+                {tab === "delivery" ? (
+                  <DeliveryPanel
+                    busy={busy}
+                    setBusy={setBusy}
+                    showToast={showToast}
                   />
                 ) : null}
 

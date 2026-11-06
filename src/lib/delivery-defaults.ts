@@ -18,6 +18,7 @@ export const createDefaultDeliverySettings = (): DeliverySettings => ({
   minOrderAmount: 0,
   deliveryFee: 0,
   freeDeliveryFrom: 0,
+  zones: [],
   zoneMode: "radius",
   zoneRadiusKm: 5,
   zoneCenterLat: null,

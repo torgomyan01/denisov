@@ -2,7 +2,7 @@
 
 import { Check, MapPin, X } from "lucide-react";
 import dynamic from "next/dynamic";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   cartCloseButton,
@@ -12,6 +12,12 @@ import {
 } from "@/components/cart/cart-styles";
 import type { MapPickerChange } from "@/components/maps/MapPicker";
 import { MapPickerLoading } from "@/components/maps/MapPickerLoading";
+import {
+  findDeliveryZoneForPoint,
+  isPointInDeliveryZone,
+} from "@/lib/delivery-pricing";
+import { formatPrice } from "@/lib/format";
+import type { DeliverySettings } from "@/types/site";
 
 const MODAL_MAP_HEIGHT = "h-[min(52vh,420px)] max-[640px]:h-[min(48vh,340px)]";
 
@@ -34,18 +40,25 @@ type DeliveryMapModalProps = {
   open: boolean;
   initialLat: number | null;
   initialLng: number | null;
+  delivery: DeliverySettings;
   onClose: () => void;
-  onSave: (data: { lat: number; lng: number }) => void;
+  onSave: (data: {
+    lat: number;
+    lng: number;
+    address?: string;
+  }) => void;
 };
 
 export const DeliveryMapModal = ({
   open,
   initialLat,
   initialLng,
+  delivery,
   onClose,
   onSave,
 }: DeliveryMapModalProps) => {
   const [draft, setDraft] = useState<MapPickerChange | null>(null);
+  const [outside, setOutside] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -56,10 +69,12 @@ export const DeliveryMapModal = ({
       Number.isFinite(initialLng)
     ) {
       setDraft({ lat: initialLat, lng: initialLng });
+      setOutside(!isPointInDeliveryZone(delivery, initialLat, initialLng));
     } else {
       setDraft(null);
+      setOutside(false);
     }
-  }, [open, initialLat, initialLng]);
+  }, [open, initialLat, initialLng, delivery]);
 
   useEffect(() => {
     if (!open) return;
@@ -73,12 +88,19 @@ export const DeliveryMapModal = ({
     return () => window.removeEventListener("keydown", onKey, true);
   }, [open, onClose]);
 
+  const matchedZone = useMemo(() => {
+    if (!draft) return null;
+    return findDeliveryZoneForPoint(delivery.zones, draft.lat, draft.lng);
+  }, [delivery.zones, draft]);
+
   if (!open || typeof document === "undefined") return null;
 
   const canSave =
     draft != null &&
     Number.isFinite(draft.lat) &&
-    Number.isFinite(draft.lng);
+    Number.isFinite(draft.lng) &&
+    !outside &&
+    isPointInDeliveryZone(delivery, draft.lat, draft.lng);
 
   return createPortal(
     <div
@@ -124,8 +146,15 @@ export const DeliveryMapModal = ({
             lat={draft?.lat ?? null}
             lng={draft?.lng ?? null}
             heightClassName={MODAL_MAP_HEIGHT}
-            hint="Кликните по карте или перетащите маркер. Затем нажмите «Сохранить»."
-            onChange={setDraft}
+            reverseGeocode
+            delivery={delivery}
+            hint="Отметьте адрес внутри цветной зоны доставки."
+            onOutsideZone={() => setOutside(true)}
+            onInsideZone={() => setOutside(false)}
+            onChange={(next) => {
+              setDraft(next);
+              setOutside(false);
+            }}
           />
           <p className={cartDeliveryAddress(canSave)}>
             {canSave ? (
@@ -136,7 +165,17 @@ export const DeliveryMapModal = ({
                   className={cartIcon}
                   aria-hidden="true"
                 />
-                Место отмечено на карте
+                {draft?.address?.trim() || "Место отмечено на карте"}
+              </>
+            ) : outside ? (
+              <>
+                <MapPin
+                  size={14}
+                  strokeWidth={2}
+                  className={cartIcon}
+                  aria-hidden="true"
+                />
+                Вне зоны доставки — выберите точку внутри контура
               </>
             ) : (
               <>
@@ -150,6 +189,17 @@ export const DeliveryMapModal = ({
               </>
             )}
           </p>
+          {matchedZone ? (
+            <p className="rounded-xl bg-olive-soft/12 px-3 py-[0.55rem] text-[0.82rem] leading-[1.35] text-ink/72">
+              Зона «{matchedZone.name}» · доставка{" "}
+              {matchedZone.deliveryFee > 0
+                ? formatPrice(String(matchedZone.deliveryFee))
+                : "бесплатно"}
+              {matchedZone.freeDeliveryFrom > 0
+                ? ` (бесплатно от ${formatPrice(String(matchedZone.freeDeliveryFrom))})`
+                : ""}
+            </p>
+          ) : null}
         </div>
 
         <footer className="flex justify-end gap-[0.55rem] border-t border-ink/8 bg-paper/95 px-[1.15rem] pt-[0.85rem] pb-[1.1rem]">
@@ -165,8 +215,12 @@ export const DeliveryMapModal = ({
             className={`${footButton} border-0 bg-ink text-paper enabled:hover:bg-clay`}
             disabled={!canSave}
             onClick={() => {
-              if (!draft) return;
-              onSave({ lat: draft.lat, lng: draft.lng });
+              if (!draft || !canSave) return;
+              onSave({
+                lat: draft.lat,
+                lng: draft.lng,
+                address: draft.address || draft.fullAddress,
+              });
             }}
           >
             Сохранить

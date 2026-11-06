@@ -121,17 +121,32 @@ export interface SiteMenu {
 
 export type DeliveryZoneMode = "radius" | "polygon";
 
+export interface DeliveryZone {
+  id: string;
+  name: string;
+  color: string;
+  polygon: Array<[number, number]>;
+  deliveryFee: number;
+  freeDeliveryFrom: number;
+  minOrderAmount: number;
+  sortOrder: number;
+}
+
 export interface DeliverySettings {
   bannerDesktop: string;
   bannerMobile: string;
   title: string;
   subtitle: string;
   ordersEnabled: boolean;
-  /** Min cart ₽ for delivery; 0 = no minimum */
+  /** Fallback min cart ₽; 0 = no minimum */
   minOrderAmount: number;
+  /** Fallback fee when multi-zones are empty */
   deliveryFee: number;
-  /** Free delivery from this cart ₽; 0 = disabled */
+  /** Fallback free-from when multi-zones are empty */
   freeDeliveryFrom: number;
+  /** Drawn coverage zones with per-zone pricing (preferred). */
+  zones: DeliveryZone[];
+  /** Legacy single zone — used only when `zones` is empty */
   zoneMode: DeliveryZoneMode;
   zoneRadiusKm: number;
   zoneCenterLat: number | null;

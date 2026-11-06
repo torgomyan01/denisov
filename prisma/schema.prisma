@@ -183,7 +183,7 @@ model IikoMenuOverride {
   @@index([showInUpsell, upsellSortOrder])
 }
 
-/// Singleton delivery section settings (banner, fees, zone, orders toggle).
+/// Singleton delivery section settings (banner, fees, legacy zone, orders toggle).
 model DeliverySettings {
   id               String   @id @default("main")
   bannerDesktop    String   @default("") @db.VarChar(500)
@@ -191,20 +191,42 @@ model DeliverySettings {
   title            String   @default("Доставка из Денисова") @db.VarChar(255)
   subtitle         String   @default("") @db.VarChar(500)
   ordersEnabled    Boolean  @default(true)
-  /// Min cart total for delivery orders (₽). 0 = no minimum.
+  /// Fallback min cart ₽ when no multi-zones (or zone min is 0).
   minOrderAmount   Int      @default(0)
+  /// Fallback fee when multi-zones are not configured.
   deliveryFee      Int      @default(0)
-  /// Free delivery from this cart total (₽). 0 = threshold disabled.
+  /// Fallback free-from threshold when multi-zones are not configured.
   freeDeliveryFrom Int      @default(0)
-  /// radius | polygon
+  /// Legacy: radius | polygon (used only if DeliveryZone rows are empty)
   zoneMode         String   @default("radius") @db.VarChar(16)
   zoneRadiusKm     Float    @default(5)
   zoneCenterLat    Float?
   zoneCenterLng    Float?
-  /// JSON array of [lat, lng] rings for polygon mode
+  /// Legacy single polygon JSON [lat, lng][]
   zonePolygonJson  String   @default("[]") @db.Text
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
+}
+
+/// Admin-drawn delivery coverage polygons with per-zone pricing.
+model DeliveryZone {
+  id               String   @id @default(cuid())
+  name             String   @db.VarChar(120)
+  /// Stroke / fill brand color (#RRGGBB)
+  color            String   @default("#9C6B4A") @db.VarChar(16)
+  /// JSON array of [lat, lng] ring (closed or open)
+  polygonJson      String   @db.Text
+  deliveryFee      Int      @default(0)
+  /// Free delivery from this cart total (₽). 0 = disabled for the zone.
+  freeDeliveryFrom Int      @default(0)
+  /// Min cart ₽ for this zone. 0 = use DeliverySettings.minOrderAmount.
+  minOrderAmount   Int      @default(0)
+  sortOrder        Int      @default(0)
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([isActive, sortOrder])
 }
 
 model AdminSession {

@@ -172,7 +172,8 @@ export const placeOrderAction = async (
     ) {
       return {
         success: false,
-        error: "Сюда пока не доставляем, можно забрать самовывозом",
+        error:
+          "В эту зону доставки нет — выберите адрес внутри зоны или самовывоз",
       };
     }
 
@@ -218,11 +219,14 @@ export const placeOrderAction = async (
       deliverySettings,
       itemsSubtotal,
       cart.fulfillmentMode,
+      cart.deliveryLat != null && cart.deliveryLng != null
+        ? { lat: cart.deliveryLat, lng: cart.deliveryLng }
+        : null,
     );
     if (cart.fulfillmentMode === "delivery" && !totals.meetsMinimum) {
       return {
         success: false,
-        error: `Минимальная сумма доставки — ${deliverySettings.minOrderAmount} ₽ (ещё ${totals.minRemainingRub} ₽)`,
+        error: `Минимальная сумма доставки — ${totals.minOrderAmount} ₽ (ещё ${totals.minRemainingRub} ₽)`,
       };
     }
     const totalRub = totals.totalRub;

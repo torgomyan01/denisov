@@ -31,10 +31,12 @@ import {
   setFulfillmentMode as setCartFulfillmentMode,
   setPickupPointId as setCartPickupPointId,
 } from "@/store/cartSlice";
+import type { DeliverySettings } from "@/types/site";
 
 interface ProfilePageProps {
   customer: CustomerPublic;
   pickupPoints: PickupPointPublic[];
+  delivery: DeliverySettings;
 }
 
 const formatBirthday = (iso: string | null): string => {
@@ -120,6 +122,7 @@ type LogisticsSnapshot = {
 export const ProfilePage = ({
   customer: initial,
   pickupPoints,
+  delivery,
 }: ProfilePageProps) => {
   const router = useRouter();
   const dispatch = useAppDispatch();
@@ -711,6 +714,7 @@ export const ProfilePage = ({
         open={mapOpen}
         initialLat={editLat}
         initialLng={editLng}
+        delivery={delivery}
         onClose={() => setMapOpen(false)}
         onSave={applyMapPoint}
       />

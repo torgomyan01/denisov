@@ -49,6 +49,17 @@ const menuCategorySchema = z.object({
   items: z.array(menuItemSchema),
 });
 
+const deliveryZoneSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  color: z.string().default("#9C6B4A"),
+  polygon: z.array(z.tuple([z.number(), z.number()])).default([]),
+  deliveryFee: z.number().int().min(0).default(0),
+  freeDeliveryFrom: z.number().int().min(0).default(0),
+  minOrderAmount: z.number().int().min(0).default(0),
+  sortOrder: z.number().int().min(0).default(0),
+});
+
 const deliverySettingsSchema = z.object({
   bannerDesktop: z.string().default(""),
   bannerMobile: z.string().default(""),
@@ -58,6 +69,7 @@ const deliverySettingsSchema = z.object({
   minOrderAmount: z.number().int().min(0).default(0),
   deliveryFee: z.number().int().min(0).default(0),
   freeDeliveryFrom: z.number().int().min(0).default(0),
+  zones: z.array(deliveryZoneSchema).default([]),
   zoneMode: z.enum(["radius", "polygon"]).default("radius"),
   zoneRadiusKm: z.number().min(0).default(5),
   zoneCenterLat: z.union([z.number(), z.null()]).default(null),
@@ -140,6 +152,7 @@ export const siteDataSchema = z.object({
     minOrderAmount: 0,
     deliveryFee: 0,
     freeDeliveryFrom: 0,
+    zones: [],
     zoneMode: "radius",
     zoneRadiusKm: 5,
     zoneCenterLat: null,
