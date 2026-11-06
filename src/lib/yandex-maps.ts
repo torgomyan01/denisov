@@ -69,7 +69,11 @@ export type YMapsApi = {
   Placemark: new (
     coords: YMapsCoords,
     properties?: Record<string, unknown>,
-    options?: { draggable?: boolean; preset?: string },
+    options?: {
+      draggable?: boolean;
+      preset?: string;
+      iconColor?: string;
+    },
   ) => YMapsPlacemark;
   Polygon: new (
     coordinates: YMapsCoords[][],
