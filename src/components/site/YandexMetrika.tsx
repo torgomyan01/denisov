@@ -3,19 +3,7 @@
 import Script from "next/script";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-
-declare global {
-  interface Window {
-    ym?: (
-      id: number,
-      method: string,
-      ...args: Array<string | Record<string, unknown>>,
-    ) => void;
-  }
-}
-
-/** Public counter id from Metrika dashboard (visible in the page script anyway). */
-const COUNTER_ID = 114148645;
+import { YANDEX_METRIKA_ID } from "@/lib/yandex-metrika";
 
 /**
  * Yandex.Metrika for App Router SPA:
@@ -30,12 +18,10 @@ export const YandexMetrika = () => {
   const url = pathname + (query ? `?${query}` : "");
 
   useEffect(() => {
-    if (!ready || !Number.isFinite(COUNTER_ID) || COUNTER_ID <= 0) return;
+    if (!ready) return;
     if (pathname.startsWith("/admin")) return;
-    window.ym?.(COUNTER_ID, "hit", url);
+    window.ym?.(YANDEX_METRIKA_ID, "hit", url);
   }, [ready, pathname, url]);
-
-  if (!Number.isFinite(COUNTER_ID) || COUNTER_ID <= 0) return null;
 
   return (
     <>
@@ -52,9 +38,9 @@ export const YandexMetrika = () => {
     if (document.scripts[j].src === r) { return; }
   }
   k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
-})(window, document, 'script', 'https://mc.yandex.ru/metrika/tag.js?id=${COUNTER_ID}', 'ym');
+})(window, document, 'script', 'https://mc.yandex.ru/metrika/tag.js?id=${YANDEX_METRIKA_ID}', 'ym');
 
-ym(${COUNTER_ID}, 'init', {
+ym(${YANDEX_METRIKA_ID}, 'init', {
   defer: true,
   ssr: true,
   webvisor: true,
@@ -71,7 +57,7 @@ ym(${COUNTER_ID}, 'init', {
         <div>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={`https://mc.yandex.ru/watch/${COUNTER_ID}`}
+            src={`https://mc.yandex.ru/watch/${YANDEX_METRIKA_ID}`}
             style={{ position: "absolute", left: "-9999px" }}
             alt=""
           />

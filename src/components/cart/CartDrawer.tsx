@@ -57,6 +57,7 @@ import {
   isPointInDeliveryZone,
 } from "@/lib/delivery-pricing";
 import type { PickupPointPublic } from "@/lib/pickup-points";
+import { METRIKA_GOALS, reachMetrikaGoal } from "@/lib/yandex-metrika";
 import type { DeliverySettings } from "@/types/site";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
@@ -269,6 +270,10 @@ export const CartDrawer = ({
   };
 
   const onOrderSuccess = (order: OrderPublic) => {
+    reachMetrikaGoal(METRIKA_GOALS.orderSuccess, {
+      order_id: order.id,
+      order_number: order.number,
+    });
     dispatch(clearCart());
     setPlacedOrder(order);
     setStep("success");

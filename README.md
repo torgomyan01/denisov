@@ -83,6 +83,10 @@ SITE_URL="http://localhost:3000"
 
 Счётчик в `YandexMetrika` (id `114148645`). Для SPA: `defer` + `hit` при смене маршрута; `/admin` не учитывается.
 
+Цели (JavaScript-событие):
+- `add_to_cart` — любое добавление в корзину
+- `order_success` — успешное оформление заказа
+
 ### Яндекс.Карты (точки самовывоза в админке)
 
 1. [developer.tech.yandex.ru](https://developer.tech.yandex.ru/services/) → создай ключ **JavaScript API и HTTP Геокодер**.
