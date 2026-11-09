@@ -75,6 +75,7 @@ import { DeliveryPanel } from "@/components/admin/DeliveryPanel";
 import { PickupPointsPanel } from "@/components/admin/PickupPointsPanel";
 import { AdminDocsPanel } from "@/components/admin/AdminDocsPanel";
 import { UsersPanel } from "@/components/admin/UsersPanel";
+import { AnalyticsPanel } from "@/components/admin/AnalyticsPanel";
 import { AdminIikoMenuPanel } from "@/components/admin/AdminIikoMenuPanel";
 import {
   createDefaultDeliverySettings,
@@ -96,6 +97,7 @@ const TABS = [
   "pickup",
   "orders",
   "iiko-orders",
+  "analytics",
   "users",
   "docs",
 ] as const;
@@ -110,6 +112,7 @@ const TAB_LABELS: Record<TabId, string> = {
   pickup: "Самовывоз",
   orders: "Заказы",
   "iiko-orders": "Заказы iiko",
+  analytics: "Аналитика",
   users: "Пользователи",
   docs: "Инструкции",
 };
@@ -123,6 +126,7 @@ const TAB_HINTS: Record<TabId, string> = {
   pickup: "Точки самовывоза: название, телефон, адрес и карта",
   orders: "Заказы клиентов: статусы от кухни до выдачи",
   "iiko-orders": "Все доставки из iiko Cloud за день",
+  analytics: "Выручка, клиенты, топ блюд и движение заказов",
   users: "Клиенты сайта: список, создание и редактирование",
   docs: "Руководство по сайту, заказам и push",
 };
@@ -157,6 +161,7 @@ const NAV_STANDALONE: readonly TabId[] = [
   "pickup",
   "orders",
   "iiko-orders",
+  "analytics",
   "users",
   "docs",
 ];
@@ -614,7 +619,7 @@ export default function AdminApp() {
     menuTarget?: { categoryId: string; itemId: string },
   ) => {
     if (file.size > MAX_UPLOAD_BYTES) {
-      showToast(formatUploadLimitError(), "error");
+      showToast(formatUploadLimitError(file.size), "error");
       return;
     }
     if (file.size <= 0) {
@@ -1437,6 +1442,10 @@ export default function AdminApp() {
 
                 {tab === "iiko-orders" ? (
                   <IikoOrdersPanel busy={busy} showToast={showToast} />
+                ) : null}
+
+                {tab === "analytics" ? (
+                  <AnalyticsPanel showToast={showToast} />
                 ) : null}
 
                 {tab === "users" ? (

@@ -9,6 +9,7 @@ import {
 } from "@/components/admin/styles";
 import {
   BookOpen,
+  ChartColumn,
   Cloud,
   Info,
   LayoutTemplate,
@@ -339,6 +340,8 @@ export const IconNav = ({ name }: { name: string }) => {
       return <ShoppingBag {...props} />;
     case "iiko-orders":
       return <Cloud {...props} />;
+    case "analytics":
+      return <ChartColumn {...props} />;
     case "users":
       return <Users {...props} />;
     case "docs":

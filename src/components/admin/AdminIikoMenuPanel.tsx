@@ -358,16 +358,50 @@ export const AdminIikoMenuPanel = ({
   );
 
   const uploadImage = async (productId: string, file: File) => {
-    if (file.size > MAX_UPLOAD_BYTES) {
-      showToast(formatUploadLimitError(), "error");
+    if (!file || file.size <= 0) {
+      showToast("Файл пустой. Выберите другое фото.", "error");
       return;
     }
+    if (file.size > MAX_UPLOAD_BYTES) {
+      showToast(formatUploadLimitError(file.size), "error");
+      return;
+    }
+
+    const looksLikeImage =
+      file.type.startsWith("image/") ||
+      /\.(jpe?g|png|webp|gif|heic|heif)$/i.test(file.name);
+    if (!looksLikeImage) {
+      showToast(
+        "Нужен файл изображения (JPG, PNG или WebP). Выберите другое фото.",
+        "error",
+      );
+      return;
+    }
+
     setBusy(true);
     try {
-      const compressed = await compressProductImageForUpload(file);
+      let uploadFile = file;
+      try {
+        uploadFile = await compressProductImageForUpload(file);
+      } catch {
+        showToast(
+          "Не удалось обработать фото. Выберите другое изображение.",
+          "error",
+        );
+        return;
+      }
+
+      if (uploadFile.size > MAX_UPLOAD_BYTES) {
+        showToast(
+          `После обработки файл всё ещё больше ${MAX_UPLOAD_LABEL}. Выберите другое фото.`,
+          "error",
+        );
+        return;
+      }
+
       const fd = new FormData();
       fd.append("iikoProductId", productId);
-      fd.append("file", compressed, compressed.name || file.name);
+      fd.append("file", uploadFile, uploadFile.name || file.name);
       const result = await uploadIikoMenuImageAction(fd);
       if (!result.success || !result.data) {
         showToast(
@@ -387,6 +421,8 @@ export const AdminIikoMenuPanel = ({
           : prev,
       );
       showToast("Фото загружено");
+    } catch {
+      showToast("Не удалось загрузить фото. Выберите другое изображение.", "error");
     } finally {
       setBusy(false);
     }
