@@ -79,6 +79,10 @@ SITE_URL="http://localhost:3000"
 
 8. Перезапусти `npm run dev`. Кнопка «Войти с Яндекс ID» на `/auth` заработает.
 
+### Яндекс.Метрика
+
+Счётчик в `YandexMetrika` (id `114148645`). Для SPA: `defer` + `hit` при смене маршрута; `/admin` не учитывается.
+
 ### Яндекс.Карты (точки самовывоза в админке)
 
 1. [developer.tech.yandex.ru](https://developer.tech.yandex.ru/services/) → создай ключ **JavaScript API и HTTP Геокодер**.

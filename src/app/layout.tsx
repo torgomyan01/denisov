@@ -1,7 +1,9 @@
 import type { Metadata, Viewport } from "next";
+import { Suspense } from "react";
 import { SiteCart } from "@/components/cart/SiteCart";
 import { StoreProvider } from "@/components/cart/StoreProvider";
 import { CookieConsentBanner } from "@/components/site/CookieConsentBanner";
+import { YandexMetrika } from "@/components/site/YandexMetrika";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -30,6 +32,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           {children}
           <SiteCart />
           <CookieConsentBanner />
+          <Suspense fallback={null}>
+            <YandexMetrika />
+          </Suspense>
         </StoreProvider>
       </body>
     </html>
