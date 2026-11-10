@@ -1,8 +1,10 @@
 "use client";
 
 import {
+  getIikoMenuCacheMetaAction,
   patchIikoCategoryFlagsAction,
   patchIikoMenuFlagsAction,
+  refreshIikoMenuCacheAction,
   reorderIikoCategoriesAction,
   upsertIikoMenuOverrideAction,
   uploadIikoMenuImageAction,
@@ -15,6 +17,7 @@ import {
   cx,
 } from "@/components/admin/styles";
 import { Field, ToggleField } from "@/components/admin/ui";
+import type { IikoCatalogCacheMeta } from "@/lib/iiko/catalog-cache";
 import { compressProductImageForUpload } from "@/lib/compress-image-client";
 import {
   formatUploadLimitError,
@@ -23,7 +26,22 @@ import {
 } from "@/lib/upload-limits";
 import type { MenuCategory, MenuItem, SiteData } from "@/types/site";
 import { ChevronDown } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+
+const formatCacheWhen = (iso: string | null): string => {
+  if (!iso) return "ещё нет";
+  try {
+    return new Date(iso).toLocaleString("ru-RU", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return iso;
+  }
+};
 
 /** Compact inline switch for product cards — label + tiny track only. */
 const MiniSwitch = ({
@@ -99,6 +117,39 @@ export const AdminIikoMenuPanel = ({
   patchSite,
   onSiteReload,
 }: Props) => {
+  const [cacheMeta, setCacheMeta] = useState<IikoCatalogCacheMeta | null>(null);
+  const [refreshingCache, setRefreshingCache] = useState(false);
+
+  const loadCacheMeta = useCallback(async () => {
+    const result = await getIikoMenuCacheMetaAction();
+    if (result.success && result.data) setCacheMeta(result.data);
+  }, []);
+
+  useEffect(() => {
+    void loadCacheMeta();
+  }, [loadCacheMeta]);
+
+  const refreshFromIiko = async () => {
+    if (busy || refreshingCache) return;
+    setRefreshingCache(true);
+    setBusy(true);
+    try {
+      const result = await refreshIikoMenuCacheAction();
+      if (!result.success || !result.data) {
+        showToast(
+          result.success ? "Ошибка обновления" : result.error,
+          "error",
+        );
+        return;
+      }
+      onSiteReload(result.data.site);
+      await loadCacheMeta();
+      showToast("Меню обновлено из iiko и сохранено в кэш");
+    } finally {
+      setRefreshingCache(false);
+      setBusy(false);
+    }
+  };
   const [filter, setFilter] = useState("");
   /** Explicitly opened category ids. Closed by default (accordion). */
   const [openCatIds, setOpenCatIds] = useState<string[]>([]);
@@ -431,15 +482,34 @@ export const AdminIikoMenuPanel = ({
   return (
     <>
       <section className="animate-panel-in rounded-3xl border border-ink/12 bg-white/78 px-[1.35rem] pt-[1.35rem] pb-6 shadow-[0_14px_40px_rgba(33,30,25,0.045)] backdrop-blur-[10px] md:px-[1.85rem] md:pt-7 md:pb-[1.9rem]">
-        <div className="mb-[1.1rem]">
-          <h2 className="m-0 font-serif text-[clamp(1.55rem,2.4vw,1.95rem)] leading-[1.15] tracking-[0.02em]">
-            Меню (iiko)
-          </h2>
-          <p className="mt-[0.4rem] max-w-[46rem] text-[0.92rem] leading-normal text-ink/48">
-            {categories.length} категорий · {itemCount} позиций из iiko.
-            Пустые поля в карточке = значение из iiko. Заполненные в админке —
-            приоритетнее. Фото: своё или из iiko.
-          </p>
+        <div className="mb-[1.1rem] flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h2 className="m-0 font-serif text-[clamp(1.55rem,2.4vw,1.95rem)] leading-[1.15] tracking-[0.02em]">
+              Меню (iiko)
+            </h2>
+            <p className="mt-[0.4rem] max-w-[46rem] text-[0.92rem] leading-normal text-ink/48">
+              {categories.length} категорий · {itemCount} позиций.
+              Сайт и админка читают дневной кэш — iiko дергаем не чаще раза в
+              сутки (или вручную). Пустые поля в карточке = из кэша iiko;
+              заполненные в админке приоритетнее.
+            </p>
+            <p className="mt-2 text-[12px] text-ink/45">
+              Кэш:{" "}
+              {cacheMeta?.hasCache
+                ? `${formatCacheWhen(cacheMeta.fetchedAt)}${
+                    cacheMeta.isFresh ? " · актуален сегодня" : " · устарел"
+                  } · ${cacheMeta.items} поз.`
+                : "ещё не создан — нажмите «Обновить из iiko»"}
+            </p>
+          </div>
+          <button
+            type="button"
+            className={btnLine}
+            disabled={busy || refreshingCache}
+            onClick={() => void refreshFromIiko()}
+          >
+            {refreshingCache ? "Обновляем…" : "Обновить из iiko"}
+          </button>
         </div>
         <hr className="mb-5 h-px border-0 bg-[linear-gradient(90deg,transparent,rgba(156,107,74,0.45),transparent)]" />
 
@@ -476,7 +546,8 @@ export const AdminIikoMenuPanel = ({
 
         {!categories.length ? (
           <p className="mt-8 text-sm text-ink/55">
-            Нет позиций из iiko. Проверьте API-ключи и внешнее меню «Сайт».
+            Нет позиций в кэше. Нажмите «Обновить из iiko» или проверьте
+            API-ключи и внешнее меню «Сайт».
           </p>
         ) : (
           <>

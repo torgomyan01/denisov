@@ -25,7 +25,7 @@ import {
   buildCartLineKey,
   menuItemNeedsModifierChoice,
 } from "@/lib/menu-modifiers";
-import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { useAppDispatch, useAppSelector, useClientReady } from "@/store/hooks";
 import {
   addToCartQuiet,
   decrementQty,
@@ -62,14 +62,16 @@ const slugify = (name: string, i: number): string => {
 
 export const MenuPageView = ({ site, customer }: MenuPageProps) => {
   const dispatch = useAppDispatch();
+  const clientReady = useClientReady();
   const cartItems = useAppSelector((s) => s.cart.items);
   const qtyById = useMemo(() => {
     const map = new Map<string, number>();
+    if (!clientReady) return map;
     for (const line of cartItems) {
       map.set(line.id, (map.get(line.id) ?? 0) + line.qty);
     }
     return map;
-  }, [cartItems]);
+  }, [cartItems, clientReady]);
   const [modifierTarget, setModifierTarget] = useState<{
     item: MenuItem;
     category: MenuCategory;

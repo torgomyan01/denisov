@@ -3,7 +3,7 @@
 import { ShoppingBag } from "lucide-react";
 import { cartIcon } from "@/components/cart/cart-styles";
 import { formatPrice } from "@/lib/format";
-import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { useAppDispatch, useAppSelector, useClientReady } from "@/store/hooks";
 import {
   cartItemCount,
   cartSubtotal,
@@ -12,9 +12,10 @@ import {
 
 export const CartFab = () => {
   const dispatch = useAppDispatch();
+  const clientReady = useClientReady();
   const items = useAppSelector((s) => s.cart.items);
-  const count = cartItemCount(items);
-  const total = cartSubtotal(items);
+  const count = clientReady ? cartItemCount(items) : 0;
+  const total = clientReady ? cartSubtotal(items) : 0;
   const isOpen = useAppSelector((s) => s.cart.isOpen);
 
   if (isOpen) return null;

@@ -4,6 +4,11 @@ import { randomBytes } from "crypto";
 import { extname } from "path";
 import { revalidatePath } from "next/cache";
 import { requireAuth } from "@/lib/auth";
+import {
+  getIikoCatalog,
+  getIikoCatalogCacheMeta,
+  type IikoCatalogCacheMeta,
+} from "@/lib/iiko/catalog-cache";
 import { iikoMenuOverrideSchema } from "@/lib/iiko-override-schema";
 import { optimizeImageUpload } from "@/lib/image";
 import { prisma } from "@/lib/prisma";
@@ -303,6 +308,45 @@ export const uploadIikoMenuImageAction = async (
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Не удалось загрузить фото";
+    return { success: false, error: message };
+  }
+};
+
+export const getIikoMenuCacheMetaAction = async (): Promise<
+  ActionResult<IikoCatalogCacheMeta>
+> => {
+  try {
+    await requireAuth();
+    const meta = await getIikoCatalogCacheMeta();
+    return { success: true, data: meta };
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Не удалось прочитать кэш меню";
+    return { success: false, error: message };
+  }
+};
+
+/** Force pull from iiko and rewrite the daily DB cache. */
+export const refreshIikoMenuCacheAction = async (): Promise<
+  ActionResult<{ site: SiteData; fetchedAt: string }>
+> => {
+  try {
+    await requireAuth();
+    const result = await getIikoCatalog({ force: true });
+    if (!result.ok) {
+      return { success: false, error: result.error };
+    }
+    revalidateMenuPaths();
+    const site = await getSite();
+    return {
+      success: true,
+      data: { site, fetchedAt: result.fetchedAt },
+    };
+  } catch (error) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Не удалось обновить меню из iiko";
     return { success: false, error: message };
   }
 };

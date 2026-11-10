@@ -288,20 +288,3 @@ export const fetchIikoCatalog = async (): Promise<
     return { ok: false, error: message };
   }
 };
-
-/** Map productId → default required modifiers from the live iiko catalog. */
-export const loadIikoDefaultModifiersByProductId = async (): Promise<
-  Map<string, IikoDefaultModifier[]>
-> => {
-  const result = await fetchIikoCatalog();
-  const map = new Map<string, IikoDefaultModifier[]>();
-  if (!result.ok) return map;
-  for (const category of result.catalog.categories) {
-    for (const item of category.items) {
-      if (item.productId && item.defaultModifiers.length) {
-        map.set(item.productId, item.defaultModifiers);
-      }
-    }
-  }
-  return map;
-};

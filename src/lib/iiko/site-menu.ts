@@ -2,7 +2,8 @@ import {
   createDefaultMenuCategory,
   createDefaultMenuItem,
 } from "@/lib/delivery-defaults";
-import { fetchIikoCatalog, type IikoCatalog } from "@/lib/iiko/menu";
+import { getIikoCatalog } from "@/lib/iiko/catalog-cache";
+import type { IikoCatalog } from "@/lib/iiko/menu";
 import { prisma } from "@/lib/prisma";
 import type { MenuCategory, MenuItem, SiteMenu } from "@/types/site";
 
@@ -10,6 +11,10 @@ export type IikoMenuLoadResult = {
   categories: SiteMenu["categories"];
   catalog: IikoCatalog | null;
   error: string | null;
+  /** ISO time of the catalog snapshot used (cache or live). */
+  catalogFetchedAt: string | null;
+  catalogFromCache: boolean;
+  catalogStale: boolean;
 };
 
 const formatIikoPrice = (price: number | null): string => {
@@ -73,9 +78,16 @@ const mergeItem = (
   });
 
 export const loadMergedIikoMenu = async (): Promise<IikoMenuLoadResult> => {
-  const fetched = await fetchIikoCatalog();
+  const fetched = await getIikoCatalog();
   if (!fetched.ok) {
-    return { categories: [], catalog: null, error: fetched.error };
+    return {
+      categories: [],
+      catalog: null,
+      error: fetched.error,
+      catalogFetchedAt: null,
+      catalogFromCache: false,
+      catalogStale: false,
+    };
   }
 
   const [itemOverrides, categoryOverrides] = await Promise.all([
@@ -112,5 +124,12 @@ export const loadMergedIikoMenu = async (): Promise<IikoMenuLoadResult> => {
 
   const categories: MenuCategory[] = withSort.map(({ _sort: _, ...cat }) => cat);
 
-  return { categories, catalog: fetched.catalog, error: null };
+  return {
+    categories,
+    catalog: fetched.catalog,
+    error: null,
+    catalogFetchedAt: fetched.fetchedAt,
+    catalogFromCache: fetched.source === "cache",
+    catalogStale: fetched.stale,
+  };
 };

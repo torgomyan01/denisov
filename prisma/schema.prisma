@@ -159,6 +159,18 @@ model IikoCategoryOverride {
   @@index([showOnSite])
 }
 
+/// Daily snapshot of iiko external menu (full catalog JSON). Refreshed at most once/day.
+model IikoMenuCache {
+  id          String   @id @default("main")
+  menuId      String   @default("") @db.VarChar(64)
+  menuName    String   @default("") @db.VarChar(255)
+  /// Serialized IikoCatalog
+  payloadJson String   @db.LongText
+  fetchedAt   DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
 /// Local overrides / flags for iiko external-menu products (keyed by iiko productId).
 /// Empty name/description/price/weight/image → show value from iiko.
 model IikoMenuOverride {

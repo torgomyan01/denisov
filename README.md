@@ -137,7 +137,7 @@ VAPID_SUBJECT="mailto:hello@cafedenisov.ru"
 
 ### iiko Cloud (создание заказа)
 
-При оформлении заказа на сайте заказ пишется в нашу БД и сразу уходит в iiko (`/api/1/deliveries/create`). Меню остаётся у нас; у каждой позиции в админке нужен **iiko productId** (UUID из iiko).
+При оформлении заказа на сайте заказ пишется в нашу БД и сразу уходит в iiko (`/api/1/deliveries/create`). Каталог меню кэшируется в БД (`IikoMenuCache`) и обновляется из iiko не чаще **раза в сутки** (МСК); сайт и админка читают кэш. Ручное обновление: админка → Меню → «Обновить из iiko».
 
 1. [Developer Portal](https://public-api.iikoweb.ru/portal) → приложение → `appId` + `clientSecret` (секрет показывается один раз).
 2. iikoWeb → Integrations → API Keys → `apiKey`.

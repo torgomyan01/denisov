@@ -26,7 +26,7 @@ import {
   isIikoProductId,
   type IikoCreateModifier,
 } from "@/lib/iiko/create-delivery";
-import { loadIikoDefaultModifiersByProductId } from "@/lib/iiko/menu";
+import { loadIikoDefaultModifiersByProductId } from "@/lib/iiko/catalog-cache";
 import { syncOpenOrdersFromIiko } from "@/lib/iiko/sync-status";
 import { prisma } from "@/lib/prisma";
 import { getSite } from "@/lib/site";

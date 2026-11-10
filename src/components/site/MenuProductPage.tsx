@@ -25,7 +25,11 @@ import {
   menuItemNeedsModifierChoice,
 } from "@/lib/menu-modifiers";
 import { menuItemSlug } from "@/lib/menu-slug";
-import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import {
+  useAppDispatch,
+  useAppSelector,
+  useClientReady,
+} from "@/store/hooks";
 import {
   addToCartQuiet,
   decrementQty,
@@ -62,12 +66,14 @@ export const MenuProductPage = ({
   customer,
 }: MenuProductPageProps) => {
   const dispatch = useAppDispatch();
+  const clientReady = useClientReady();
   const cartItems = useAppSelector((s) => s.cart.items);
-  const lineQty = useAppSelector((s) =>
+  const lineQtyRaw = useAppSelector((s) =>
     s.cart.items
       .filter((row) => row.id === item.id)
       .reduce((sum, row) => sum + row.qty, 0),
   );
+  const lineQty = clientReady ? lineQtyRaw : 0;
 
   const [addQty, setAddQty] = useState(1);
   const [modifierOpen, setModifierOpen] = useState(false);
@@ -396,9 +402,11 @@ export const MenuProductPage = ({
             <div className="grid grid-cols-2 gap-3 min-[900px]:grid-cols-4 min-[900px]:gap-5">
               {related.map((product) => {
                 const href = `/menu/${menuItemSlug(product)}`;
-                const qty = cartItems
-                  .filter((row) => row.id === product.id)
-                  .reduce((sum, row) => sum + row.qty, 0);
+                const qty = clientReady
+                  ? cartItems
+                      .filter((row) => row.id === product.id)
+                      .reduce((sum, row) => sum + row.qty, 0)
+                  : 0;
                 const relatedCategory =
                   site.menu.categories.find((cat) =>
                     cat.items.some((row) => row.id === product.id),
