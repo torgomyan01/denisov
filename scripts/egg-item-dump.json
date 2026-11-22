@@ -1,0 +1,46 @@
+{
+  "category": "Дополнительно",
+  "item": {
+    "productId": "3b78a6df-f2cb-4d1d-b9de-99e5563b345e",
+    "name": "Яйцо куриное 1 шт",
+    "sizePrices": [
+      {
+        "sizeName": "",
+        "isDefault": true,
+        "price": 50,
+        "weight": 60,
+        "nutritions": {
+          "fats": 3.9,
+          "proteins": 5.85,
+          "carbs": 0.4,
+          "energy": 60.1
+        },
+        "sku": "00496",
+        "menuItemSizeId": "903deeaf-d68a-4265-861c-c97fe8c34499"
+      }
+    ],
+    "modifierGroups": [
+      {
+        "name": "для завтрака:",
+        "id": "86652e95-ad68-4e7d-9a1f-ef8af6fb35db",
+        "restrictions": {
+          "minQuantity": 1,
+          "maxQuantity": 1
+        },
+        "items": [
+          {
+            "id": "cc67b6b0-5313-4874-ab0c-0758b8b7af16"
+          },
+          {
+            "id": "19a53ad4-65c7-4ed5-b026-e16fc15d3692"
+          },
+          {
+            "id": "60d53118-3e93-4076-9b31-073c1a5e2f35"
+          }
+        ],
+        "sku": "0042"
+      }
+    ],
+    "menuItemId": "e6476449-bf68-4d61-9854-3a6d8422680c"
+  }
+}

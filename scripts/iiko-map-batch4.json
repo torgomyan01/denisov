@@ -1,0 +1,42 @@
+[
+  {
+    "productId": "b9124601-5172-41df-af63-82fc4581067a",
+    "name": "Пирожок с форелью и судаком",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-pirozhok-fish.jpg"
+  },
+  {
+    "productId": "196d71ec-864b-4ffc-8e4b-c16de31fbc84",
+    "name": "Слойка с кардамоном",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-sloyka.jpg"
+  },
+  {
+    "productId": "e2e48c31-b191-44d1-84ba-cd56bae8d18a",
+    "name": "Малосольные огурцы",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-cucumbers.jpg"
+  },
+  {
+    "productId": "d8ae6f96-1278-4d75-a722-068c92432157",
+    "name": "Маринованные томаты черри",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-cherry-tomatoes.jpg"
+  },
+  {
+    "productId": "b7a0977c-9048-4f9d-bc2a-2732720c0b93",
+    "name": "Паштет из печени цыплёнка  на бриоши",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-pate.jpg"
+  },
+  {
+    "productId": "b4a17a0a-93a8-4fd7-902a-03b8be3675f0",
+    "name": "Форель слабой соли с ялтинским луком и лимоном",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-trout-salted.jpg"
+  },
+  {
+    "productId": "1662e72d-744b-43e2-a69d-7dd844b62f58",
+    "name": "Хлеб с ароматным маслом",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-bread-butter.jpg"
+  },
+  {
+    "productId": "58c386a6-ab53-4602-b1a7-c98a24e06126",
+    "name": "Холодец из бычьих хвостов с хреном и горчицей",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-kholodets.jpg"
+  }
+]

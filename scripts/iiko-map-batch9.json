@@ -1,0 +1,42 @@
+[
+  {
+    "productId": "82df115f-e7a1-484f-be72-d0dbbbc85da5",
+    "name": "Морс Облепиха",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-mors-oblepikha.jpg"
+  },
+  {
+    "productId": "7028e54b-c7d3-4fa6-8798-1218f5d39a0c",
+    "name": "Стакан воды",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-water-glass.jpg"
+  },
+  {
+    "productId": "0c290d18-83ff-4bde-a2d5-aa3f0c841456",
+    "name": "Фреш  апельсин",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-fresh-orange.jpg"
+  },
+  {
+    "productId": "b551162e-93f3-4bb7-88c6-26cf14db3be3",
+    "name": "Фреш грейпфрут",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-fresh-grapefruit.jpg"
+  },
+  {
+    "productId": "1fba9855-a962-4d4e-89a9-1903ef0f1989",
+    "name": "Фреш цитрусовый микс",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-fresh-citrus.jpg"
+  },
+  {
+    "productId": "a472fda7-0e6e-4349-b352-c639f46856be",
+    "name": "Вишневое пиво, Бельгия, 250 мл",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-beer-cherry.jpg"
+  },
+  {
+    "productId": "088b4a8e-2d0b-4d8d-bfdc-504c945eed97",
+    "name": "Светлое нефильтрованное, пшеничное,Германия, 500 мл",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-beer-wheat.jpg"
+  },
+  {
+    "productId": "9a2da268-3c97-4def-a9a6-12bb5e628b90",
+    "name": "Светлое фильтрованное, лагер,Германия, 500 мл",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-beer-lager.jpg"
+  }
+]

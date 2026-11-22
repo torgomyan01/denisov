@@ -1,0 +1,42 @@
+[
+  {
+    "productId": "12058e9f-97fe-414b-87e0-66b08c47719d",
+    "name": "Мята 5 гр",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-mint.jpg"
+  },
+  {
+    "productId": "804f966d-cdb3-4f73-9079-fec394c32017",
+    "name": "Окорок Тамбовский 50 гр",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-okorok.jpg"
+  },
+  {
+    "productId": "3963dfdf-38a4-47bc-b9c6-b403b073d468",
+    "name": "Сахар ванильный 6 гр",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-vanilla-sugar.jpg"
+  },
+  {
+    "productId": "5452f79b-61f3-4ffc-9f20-bd1745a29fe9",
+    "name": "Сливки 10%  30 мл",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-cream.jpg"
+  },
+  {
+    "productId": "885f2579-85bc-42fd-8251-6584fbf7f885",
+    "name": "Сметана 30 гр",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-smetana.jpg"
+  },
+  {
+    "productId": "139df594-e14d-4a28-9d36-8518a0ad53f1",
+    "name": "Стакан молока 150 мл",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-milk-150.jpg"
+  },
+  {
+    "productId": "34a1f73f-6cb6-4122-99b7-8819c0878799",
+    "name": "Тартин 55 гр",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-tartine-55.jpg"
+  },
+  {
+    "productId": "538bd005-4de4-40fd-96c9-8c226c1c9855",
+    "name": "Хлеб Бородинский 55 гр",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-borodinsky-55.jpg"
+  }
+]

@@ -1,0 +1,42 @@
+[
+  {
+    "productId": "bb36eddc-a08e-4001-9cd8-c90a2c874ed2",
+    "name": "Чай с малиновым вареньем и сушками",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-tea-raspberry.jpg"
+  },
+  {
+    "productId": "71185603-931d-4d73-b933-96addd49bca9",
+    "name": "Чай с облепихой и имбирем",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-tea-oblepikha.jpg"
+  },
+  {
+    "productId": "b143ebe0-5dd7-407d-8cfd-f5cab5cf1c61",
+    "name": "Эспрессо",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-espresso.jpg"
+  },
+  {
+    "productId": "99b05f7f-1a79-4a2d-965a-52f1c1066363",
+    "name": "Ягодный фильтр",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-berry-filter.jpg"
+  },
+  {
+    "productId": "ca4a35f5-8c0a-4cee-bb7a-9317f373a517",
+    "name": "Газированная вода S. Pellegrino 0,7",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-pellegrino.jpg"
+  },
+  {
+    "productId": "d04bef32-48e9-4d89-99ce-cffbcc4a79e8",
+    "name": "Лимонад Малина-базилик",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-lemonade.jpg"
+  },
+  {
+    "productId": "2df3df84-1fb1-4034-b7c4-2d71ee0ceccc",
+    "name": "Минеральная вода без газа Evian 0,5",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-evian.jpg"
+  },
+  {
+    "productId": "2eba3591-4f73-4fd6-9ed8-37f53894f3f8",
+    "name": "Морс Клюква-брусника",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-mors-cranberry.jpg"
+  }
+]

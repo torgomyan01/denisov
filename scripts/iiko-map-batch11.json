@@ -1,0 +1,42 @@
+[
+  {
+    "productId": "fe1ade1e-9d02-47aa-ae78-ac65e32a9529",
+    "name": "Багет из спельты и кукурузы 55 гр",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-baguette-55.jpg"
+  },
+  {
+    "productId": "8bf8e19b-0b31-46a1-8c5e-c75f5531d0ff",
+    "name": "Варенье малиновое 50 гр",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-jam-raspberry.jpg"
+  },
+  {
+    "productId": "f735c616-fcb1-40ac-aa13-7736c400bf36",
+    "name": "Лимон 30 гр",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-lemon.jpg"
+  },
+  {
+    "productId": "80b10632-dd74-46e6-a000-c9ddb718fe95",
+    "name": "Лосось 30 гр",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-salmon-addon.jpg"
+  },
+  {
+    "productId": "64ef4da5-dd2a-4894-bb8b-e62f9ae3f965",
+    "name": "Масло сливочное 20 гр",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-butter.jpg"
+  },
+  {
+    "productId": "fbfd341a-5913-4190-899e-d9115e99e590",
+    "name": "Мёд 30 гр",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-honey.jpg"
+  },
+  {
+    "productId": "73620296-aae3-4f8c-9a22-05ee3a6ab1b3",
+    "name": "Молоко 30 мл",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-milk-30.jpg"
+  },
+  {
+    "productId": "72e7a7c8-288c-4718-8e77-40fe4878b027",
+    "name": "Молоко безлактозное 30 мл",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-milk-lf-30.jpg"
+  }
+]

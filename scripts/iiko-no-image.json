@@ -1,0 +1,685 @@
+{
+  "total": 101,
+  "withoutImage": 97,
+  "items": [
+    {
+      "productId": "73620296-aae3-4f8c-9a22-05ee3a6ab1b3",
+      "name": "Молоко 30 мл",
+      "category": "Дополнительно",
+      "price": 50,
+      "hasImage": false
+    },
+    {
+      "productId": "12058e9f-97fe-414b-87e0-66b08c47719d",
+      "name": "Мята 5 гр",
+      "category": "Дополнительно",
+      "price": 50,
+      "hasImage": false
+    },
+    {
+      "productId": "538bd005-4de4-40fd-96c9-8c226c1c9855",
+      "name": "Хлеб Бородинский 55 гр",
+      "category": "Дополнительно",
+      "price": 150,
+      "hasImage": false
+    },
+    {
+      "productId": "64ef4da5-dd2a-4894-bb8b-e62f9ae3f965",
+      "name": "Масло сливочное 20 гр",
+      "category": "Дополнительно",
+      "price": 100,
+      "hasImage": false
+    },
+    {
+      "productId": "72e7a7c8-288c-4718-8e77-40fe4878b027",
+      "name": "Молоко безлактозное 30 мл",
+      "category": "Дополнительно",
+      "price": 50,
+      "hasImage": false
+    },
+    {
+      "productId": "fbfd341a-5913-4190-899e-d9115e99e590",
+      "name": "Мёд 30 гр",
+      "category": "Дополнительно",
+      "price": 50,
+      "hasImage": false
+    },
+    {
+      "productId": "34a1f73f-6cb6-4122-99b7-8819c0878799",
+      "name": "Тартин 55 гр",
+      "category": "Дополнительно",
+      "price": 150,
+      "hasImage": false
+    },
+    {
+      "productId": "8bf8e19b-0b31-46a1-8c5e-c75f5531d0ff",
+      "name": "Варенье малиновое 50 гр",
+      "category": "Дополнительно",
+      "price": 190,
+      "hasImage": false
+    },
+    {
+      "productId": "80b10632-dd74-46e6-a000-c9ddb718fe95",
+      "name": "Лосось 30 гр",
+      "category": "Дополнительно",
+      "price": 300,
+      "hasImage": false
+    },
+    {
+      "productId": "804f966d-cdb3-4f73-9079-fec394c32017",
+      "name": "Окорок Тамбовский 50 гр",
+      "category": "Дополнительно",
+      "price": 200,
+      "hasImage": false
+    },
+    {
+      "productId": "fe1ade1e-9d02-47aa-ae78-ac65e32a9529",
+      "name": "Багет из спельты и кукурузы 55 гр",
+      "category": "Дополнительно",
+      "price": 150,
+      "hasImage": false
+    },
+    {
+      "productId": "3963dfdf-38a4-47bc-b9c6-b403b073d468",
+      "name": "Сахар ванильный 6 гр",
+      "category": "Дополнительно",
+      "price": 30,
+      "hasImage": false
+    },
+    {
+      "productId": "5452f79b-61f3-4ffc-9f20-bd1745a29fe9",
+      "name": "Сливки 10%  30 мл",
+      "category": "Дополнительно",
+      "price": 50,
+      "hasImage": false
+    },
+    {
+      "productId": "885f2579-85bc-42fd-8251-6584fbf7f885",
+      "name": "Сметана 30 гр",
+      "category": "Дополнительно",
+      "price": 100,
+      "hasImage": false
+    },
+    {
+      "productId": "f735c616-fcb1-40ac-aa13-7736c400bf36",
+      "name": "Лимон 30 гр",
+      "category": "Дополнительно",
+      "price": 50,
+      "hasImage": false
+    },
+    {
+      "productId": "139df594-e14d-4a28-9d36-8518a0ad53f1",
+      "name": "Стакан молока 150 мл",
+      "category": "Дополнительно",
+      "price": 100,
+      "hasImage": false
+    },
+    {
+      "productId": "3b78a6df-f2cb-4d1d-b9de-99e5563b345e",
+      "name": "Яйцо куриное 1 шт",
+      "category": "Дополнительно",
+      "price": 50,
+      "hasImage": false
+    },
+    {
+      "productId": "1ff0dbfc-2f76-4aa3-8fb8-b0abcbd579e3",
+      "name": "Мимоза с форелью",
+      "category": "Салаты",
+      "price": 650,
+      "hasImage": false
+    },
+    {
+      "productId": "6c1d4be2-7844-4d20-89c0-c3113f7ac9ac",
+      "name": "Тёплый салат с хрустящим цыпленком",
+      "category": "Салаты",
+      "price": 690,
+      "hasImage": false
+    },
+    {
+      "productId": "91b392c6-2106-4699-8215-de31f9dc3e25",
+      "name": "Зеленый салат из редиса, огурца и зелени со сметаной",
+      "category": "Салаты",
+      "price": 550,
+      "hasImage": false
+    },
+    {
+      "productId": "b1d5ac11-f1f0-4e82-b7dd-adf1f29d8eb2",
+      "name": "Винегрет из печеных овощей с балтийской килькой",
+      "category": "Салаты",
+      "price": 490,
+      "hasImage": false
+    },
+    {
+      "productId": "89c7d875-190f-4a5c-8797-3b68c56c31e5",
+      "name": "Пирожок с капустой",
+      "category": "Выпечка",
+      "price": 210,
+      "hasImage": false
+    },
+    {
+      "productId": "57fc0bc1-5e6c-4f7a-bbaa-f89015a6e3c5",
+      "name": "Пирожок с говяжьей щекой",
+      "category": "Выпечка",
+      "price": 350,
+      "hasImage": false
+    },
+    {
+      "productId": "b9124601-5172-41df-af63-82fc4581067a",
+      "name": "Пирожок с форелью и судаком",
+      "category": "Выпечка",
+      "price": 350,
+      "hasImage": false
+    },
+    {
+      "productId": "fb89fa58-16bd-438d-b9f4-8203abe15597",
+      "name": "Пирожок с зеленым луком и яйцом",
+      "category": "Выпечка",
+      "price": 230,
+      "hasImage": false
+    },
+    {
+      "productId": "39e88e86-7afb-490f-9e53-6cd958bffd18",
+      "name": "Классический круассан",
+      "category": "Выпечка",
+      "price": 290,
+      "hasImage": false
+    },
+    {
+      "productId": "196d71ec-864b-4ffc-8e4b-c16de31fbc84",
+      "name": "Слойка с кардамоном",
+      "category": "Выпечка",
+      "price": 390,
+      "hasImage": false
+    },
+    {
+      "productId": "0ec484b4-3c7f-4e44-8777-f75127b91a90",
+      "name": "Греча",
+      "category": "Гарниры",
+      "price": 250,
+      "hasImage": false
+    },
+    {
+      "productId": "43d1ecb5-e6a5-4a0b-a551-4d3aa6f4f604",
+      "name": "Картофель по-деревенски",
+      "category": "Гарниры",
+      "price": 250,
+      "hasImage": false
+    },
+    {
+      "productId": "5161e442-ba64-47e3-af6c-aff4f90b1bc2",
+      "name": "Пюре картофельное 1 порция",
+      "category": "Гарниры",
+      "price": 250,
+      "hasImage": false
+    },
+    {
+      "productId": "7d849619-6428-4d7a-89f2-d0c63392a28d",
+      "name": "Паста ",
+      "category": "Гарниры",
+      "price": 250,
+      "hasImage": false
+    },
+    {
+      "productId": "aa2468d0-3e2c-40fd-b775-70ccbcaa2faf",
+      "name": "Ленинградские щи с говядиной",
+      "category": "Супы",
+      "price": 650,
+      "hasImage": false
+    },
+    {
+      "productId": "ea53084f-04ae-49cb-883a-c96ca877a9e2",
+      "name": "Борщ с говядиной и бородинским хлебом с грудинкой",
+      "category": "Супы",
+      "price": 650,
+      "hasImage": false
+    },
+    {
+      "productId": "cbcbdc88-cd1b-46c9-8722-b40c33cefa14",
+      "name": "Сливочный рыбный суп",
+      "category": "Супы",
+      "price": 650,
+      "hasImage": false
+    },
+    {
+      "productId": "d8ae6f96-1278-4d75-a722-068c92432157",
+      "name": "Маринованные томаты черри",
+      "category": "Закуски",
+      "price": 250,
+      "hasImage": false
+    },
+    {
+      "productId": "b7a0977c-9048-4f9d-bc2a-2732720c0b93",
+      "name": "Паштет из печени цыплёнка  на бриоши",
+      "category": "Закуски",
+      "price": 590,
+      "hasImage": false
+    },
+    {
+      "productId": "1662e72d-744b-43e2-a69d-7dd844b62f58",
+      "name": "Хлеб с ароматным маслом",
+      "category": "Закуски",
+      "price": 350,
+      "hasImage": false
+    },
+    {
+      "productId": "e2e48c31-b191-44d1-84ba-cd56bae8d18a",
+      "name": "Малосольные огурцы",
+      "category": "Закуски",
+      "price": 250,
+      "hasImage": false
+    },
+    {
+      "productId": "58c386a6-ab53-4602-b1a7-c98a24e06126",
+      "name": "Холодец из бычьих хвостов с хреном и горчицей",
+      "category": "Закуски",
+      "price": 490,
+      "hasImage": false
+    },
+    {
+      "productId": "b4a17a0a-93a8-4fd7-902a-03b8be3675f0",
+      "name": "Форель слабой соли с ялтинским луком и лимоном",
+      "category": "Закуски",
+      "price": 790,
+      "hasImage": false
+    },
+    {
+      "productId": "f2af33da-d062-4154-bc2c-8448c081bfab",
+      "name": "Швейцарский пан",
+      "category": "Десерты",
+      "price": 390,
+      "hasImage": false
+    },
+    {
+      "productId": "699fc465-1684-4efe-b01b-3899a22a6199",
+      "name": "Шоколадное печенье с пеканом",
+      "category": "Десерты",
+      "price": 250,
+      "hasImage": false
+    },
+    {
+      "productId": "1fa56469-7cbc-4bc1-8250-1d7591707852",
+      "name": "Макароны по-флотски",
+      "category": "Основное",
+      "price": 690,
+      "hasImage": false
+    },
+    {
+      "productId": "4741f6de-8997-4259-bfdf-8091839bf561",
+      "name": "Стейк Денвер из говядины с перечным соусом и картофелем",
+      "category": "Основное",
+      "price": 1390,
+      "hasImage": false
+    },
+    {
+      "productId": "1d099855-2cd7-49ed-afe8-c4ca61b0b0b3",
+      "name": "Томленая говяжья щека с пшеничной кашей и корнеплодами",
+      "category": "Основное",
+      "price": 950,
+      "hasImage": false
+    },
+    {
+      "productId": "1ca0fe55-6642-4e68-b4e0-e4659fe5b3c3",
+      "name": "Щучьи котлеты с картофельным пюре",
+      "category": "Основное",
+      "price": 890,
+      "hasImage": false
+    },
+    {
+      "productId": "fbd4efcc-2355-466d-866d-45cd41cdeb31",
+      "name": "Шницель куриный с белыми грибами",
+      "category": "Основное",
+      "price": 790,
+      "hasImage": false
+    },
+    {
+      "productId": "da856ad7-ea9a-410b-a21a-0ff2eb305c9d",
+      "name": "Ладожский судак с кабачками",
+      "category": "Основное",
+      "price": 990,
+      "hasImage": false
+    },
+    {
+      "productId": "a472fda7-0e6e-4349-b352-c639f46856be",
+      "name": "Вишневое пиво, Бельгия, 250 мл",
+      "category": "Пиво",
+      "price": 590,
+      "hasImage": false
+    },
+    {
+      "productId": "9a2da268-3c97-4def-a9a6-12bb5e628b90",
+      "name": "Светлое фильтрованное, лагер,Германия, 500 мл",
+      "category": "Пиво",
+      "price": 550,
+      "hasImage": false
+    },
+    {
+      "productId": "b2c969d0-b4ff-441a-9c96-e5f5083018f4",
+      "name": "Сидр Cornish Golden 0,5",
+      "category": "Пиво",
+      "price": 850,
+      "hasImage": false
+    },
+    {
+      "productId": "088b4a8e-2d0b-4d8d-bfdc-504c945eed97",
+      "name": "Светлое нефильтрованное, пшеничное,Германия, 500 мл",
+      "category": "Пиво",
+      "price": 650,
+      "hasImage": false
+    },
+    {
+      "productId": "19a5943b-6e8f-494b-a814-fbacd7a36ea5",
+      "name": "Тёмное пиво, стаут, Англия, 500 мл",
+      "category": "Пиво",
+      "price": 750,
+      "hasImage": false
+    },
+    {
+      "productId": "da17f887-9a93-4df5-8575-acdce747e27c",
+      "name": "Сидр Яблочный, Франция, 750 мл",
+      "category": "Пиво",
+      "price": 850,
+      "hasImage": false
+    },
+    {
+      "productId": "2df3df84-1fb1-4034-b7c4-2d71ee0ceccc",
+      "name": "Минеральная вода без газа Evian 0,5",
+      "category": "Напитки",
+      "price": 390,
+      "hasImage": false
+    },
+    {
+      "productId": "2eba3591-4f73-4fd6-9ed8-37f53894f3f8",
+      "name": "Морс Клюква-брусника",
+      "category": "Напитки",
+      "price": 290,
+      "hasImage": false
+    },
+    {
+      "productId": "7028e54b-c7d3-4fa6-8798-1218f5d39a0c",
+      "name": "Стакан воды",
+      "category": "Напитки",
+      "price": 0,
+      "hasImage": false
+    },
+    {
+      "productId": "b551162e-93f3-4bb7-88c6-26cf14db3be3",
+      "name": "Фреш грейпфрут",
+      "category": "Напитки",
+      "price": 390,
+      "hasImage": false
+    },
+    {
+      "productId": "d04bef32-48e9-4d89-99ce-cffbcc4a79e8",
+      "name": "Лимонад Малина-базилик",
+      "category": "Напитки",
+      "price": 350,
+      "hasImage": false
+    },
+    {
+      "productId": "82df115f-e7a1-484f-be72-d0dbbbc85da5",
+      "name": "Морс Облепиха",
+      "category": "Напитки",
+      "price": 290,
+      "hasImage": false
+    },
+    {
+      "productId": "1fba9855-a962-4d4e-89a9-1903ef0f1989",
+      "name": "Фреш цитрусовый микс",
+      "category": "Напитки",
+      "price": 390,
+      "hasImage": false
+    },
+    {
+      "productId": "ca4a35f5-8c0a-4cee-bb7a-9317f373a517",
+      "name": "Газированная вода S. Pellegrino 0,7",
+      "category": "Напитки",
+      "price": 650,
+      "hasImage": false
+    },
+    {
+      "productId": "0c290d18-83ff-4bde-a2d5-aa3f0c841456",
+      "name": "Фреш  апельсин",
+      "category": "Напитки",
+      "price": 390,
+      "hasImage": false
+    },
+    {
+      "productId": "42b56207-2400-4272-9c0a-487adf1ab9be",
+      "name": "Хлеб Тартин",
+      "category": "Хлеб с собой",
+      "price": 690,
+      "hasImage": false
+    },
+    {
+      "productId": "a4bd0bf5-1ab5-4f51-9d9f-015a5f030976",
+      "name": "Бриошь",
+      "category": "Хлеб с собой",
+      "price": 790,
+      "hasImage": false
+    },
+    {
+      "productId": "f293d877-78fa-43ec-841b-2db53d357bd8",
+      "name": "Хлеб Бородинский",
+      "category": "Хлеб с собой",
+      "price": 690,
+      "hasImage": false
+    },
+    {
+      "productId": "a9dc459f-3b95-4608-a579-1acf4a9a3def",
+      "name": "Багет из спельты и кукурузы",
+      "category": "Хлеб с собой",
+      "price": 350,
+      "hasImage": false
+    },
+    {
+      "productId": "3730a4de-bd98-452d-b95b-49bd9a367c27",
+      "name": "Хлеб Тартин 1/2",
+      "category": "Хлеб с собой",
+      "price": 350,
+      "hasImage": false
+    },
+    {
+      "productId": "67669e24-7f2a-4ad4-8c4a-29eba65999b0",
+      "name": "Капучино 0,3 на безлактозном",
+      "category": "Кофе и чай",
+      "price": 290,
+      "hasImage": false
+    },
+    {
+      "productId": "f1a137d3-6014-4f84-9ca0-98f935531a76",
+      "name": "Капучино 0,2",
+      "category": "Кофе и чай",
+      "price": 250,
+      "hasImage": false
+    },
+    {
+      "productId": "71185603-931d-4d73-b933-96addd49bca9",
+      "name": "Чай с облепихой и имбирем",
+      "category": "Кофе и чай",
+      "price": 450,
+      "hasImage": false
+    },
+    {
+      "productId": "b143ebe0-5dd7-407d-8cfd-f5cab5cf1c61",
+      "name": "Эспрессо",
+      "category": "Кофе и чай",
+      "price": 190,
+      "hasImage": false
+    },
+    {
+      "productId": "4a9e4260-09cb-4f2d-9a60-167aee98c1ab",
+      "name": "Айс Латте на безлактозном",
+      "category": "Кофе и чай",
+      "price": 290,
+      "hasImage": false
+    },
+    {
+      "productId": "9a14ad12-35e8-4a90-a688-81f9ab8e1069",
+      "name": "Капучино 0,2 на безлактозном",
+      "category": "Кофе и чай",
+      "price": 250,
+      "hasImage": false
+    },
+    {
+      "productId": "4368ffaa-53c5-41fb-ae8a-f6744c5a094e",
+      "name": "Флэт Уайт на безлактозном",
+      "category": "Кофе и чай",
+      "price": 290,
+      "hasImage": false
+    },
+    {
+      "productId": "011349da-8018-410f-a302-d4798156f29c",
+      "name": "Латте на безлактозном",
+      "category": "Кофе и чай",
+      "price": 290,
+      "hasImage": false
+    },
+    {
+      "productId": "7cd3236b-252f-44c1-a6cf-7754d9200a4d",
+      "name": "Чай (Большой чайник 900 мл)",
+      "category": "Кофе и чай",
+      "price": 490,
+      "hasImage": false
+    },
+    {
+      "productId": "c9634d3c-b74c-46f0-9ae2-704976eb5463",
+      "name": "Латте ",
+      "category": "Кофе и чай",
+      "price": 290,
+      "hasImage": false
+    },
+    {
+      "productId": "562395c1-561f-49f9-aaef-5278b94dad5a",
+      "name": "Чай (Малый чайник 600 мл)",
+      "category": "Кофе и чай",
+      "price": 390,
+      "hasImage": false
+    },
+    {
+      "productId": "99b05f7f-1a79-4a2d-965a-52f1c1066363",
+      "name": "Ягодный фильтр",
+      "category": "Кофе и чай",
+      "price": 300,
+      "hasImage": false
+    },
+    {
+      "productId": "bb36eddc-a08e-4001-9cd8-c90a2c874ed2",
+      "name": "Чай с малиновым вареньем и сушками",
+      "category": "Кофе и чай",
+      "price": 590,
+      "hasImage": false
+    },
+    {
+      "productId": "430b32ae-351e-4976-b058-6cd3c2d32202",
+      "name": "Айс Латте",
+      "category": "Кофе и чай",
+      "price": 290,
+      "hasImage": false
+    },
+    {
+      "productId": "e7d20207-14f1-4790-9f16-7276ff6437cd",
+      "name": "Флэт Уайт",
+      "category": "Кофе и чай",
+      "price": 290,
+      "hasImage": false
+    },
+    {
+      "productId": "b31edd16-cbde-413b-aa16-55f4916d0208",
+      "name": "Американо",
+      "category": "Кофе и чай",
+      "price": 190,
+      "hasImage": false
+    },
+    {
+      "productId": "f1f92547-cf50-4c67-b88c-d6c73fda8692",
+      "name": "Раф",
+      "category": "Кофе и чай",
+      "price": 350,
+      "hasImage": false
+    },
+    {
+      "productId": "ee9e30fa-2518-4ebe-9399-e01192b76ae3",
+      "name": "Фильтр кофе",
+      "category": "Кофе и чай",
+      "price": 250,
+      "hasImage": false
+    },
+    {
+      "productId": "26b68781-368e-4f4d-b460-5e8e427899ae",
+      "name": "Капучино 0,3",
+      "category": "Кофе и чай",
+      "price": 290,
+      "hasImage": false
+    },
+    {
+      "productId": "ad41e185-34f5-4bc4-b03e-748830ed22ef",
+      "name": "Драник с яйцом пашот,тамбовским окороком и соусом морне",
+      "category": "Завтраки",
+      "price": 650,
+      "hasImage": false
+    },
+    {
+      "productId": "078d7455-da7b-4a14-9a92-28b55e20336e",
+      "name": "Гречневая каша с пармезаном и яйцом пашот",
+      "category": "Завтраки",
+      "price": 550,
+      "hasImage": false
+    },
+    {
+      "productId": "ae0fd9b9-2ab5-4657-95b3-5ea0dfe9b25c",
+      "name": "Запеканка творожная",
+      "category": "Завтраки",
+      "price": 490,
+      "hasImage": false
+    },
+    {
+      "productId": "1a75cb34-c17c-44f4-a956-a2a1accc03ad",
+      "name": "Сырники с кремом из вареной сгущенки",
+      "category": "Завтраки",
+      "price": 590,
+      "hasImage": false
+    },
+    {
+      "productId": "9df17ee9-a4bf-431d-a4a7-df8b5bf34427",
+      "name": "Рисовая каша на молоке / на безлактозном с клубничным вареньем",
+      "category": "Завтраки",
+      "price": 350,
+      "hasImage": false
+    },
+    {
+      "productId": "4315c124-bc3f-4338-a430-3a53ec126d17",
+      "name": "Овсяная каша на молоке / на безлактозном с клубничным вареньем",
+      "category": "Завтраки",
+      "price": 350,
+      "hasImage": false
+    },
+    {
+      "productId": "e3f6a47a-c983-4671-89fd-45c00c6a0293",
+      "name": "Скрембл с тамбовским окороком",
+      "category": "Завтраки",
+      "price": 790,
+      "hasImage": false
+    },
+    {
+      "productId": "7bd79c56-7e86-43a6-8176-e4b0acc5e6f5",
+      "name": "Блины с мясом, грибами и зелёным луком",
+      "category": "Завтраки",
+      "price": 490,
+      "hasImage": false
+    },
+    {
+      "productId": "dba27b60-a5f2-47b1-8e24-fc1f52cb102a",
+      "name": "Деревенский завтрак",
+      "category": "Завтраки",
+      "price": 690,
+      "hasImage": false
+    },
+    {
+      "productId": "a23d5e61-9a3d-427a-960e-2cee6201093d",
+      "name": "Французский омлет с выдержанным сыром и соусом берблан",
+      "category": "Завтраки",
+      "price": 690,
+      "hasImage": false
+    }
+  ]
+}

@@ -1,0 +1,42 @@
+[
+  {
+    "productId": "1a75cb34-c17c-44f4-a956-a2a1accc03ad",
+    "name": "Сырники с кремом из вареной сгущенки",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-syrniki.jpg"
+  },
+  {
+    "productId": "a23d5e61-9a3d-427a-960e-2cee6201093d",
+    "name": "Французский омлет с выдержанным сыром и соусом берблан",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-omlet.jpg"
+  },
+  {
+    "productId": "da856ad7-ea9a-410b-a21a-0ff2eb305c9d",
+    "name": "Ладожский судак с кабачками",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-sudak.jpg"
+  },
+  {
+    "productId": "1fa56469-7cbc-4bc1-8250-1d7591707852",
+    "name": "Макароны по-флотски",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-makarony.jpg"
+  },
+  {
+    "productId": "4741f6de-8997-4259-bfdf-8091839bf561",
+    "name": "Стейк Денвер из говядины с перечным соусом и картофелем",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-steak.jpg"
+  },
+  {
+    "productId": "1d099855-2cd7-49ed-afe8-c4ca61b0b0b3",
+    "name": "Томленая говяжья щека с пшеничной кашей и корнеплодами",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-scheka.jpg"
+  },
+  {
+    "productId": "fbd4efcc-2355-466d-866d-45cd41cdeb31",
+    "name": "Шницель куриный с белыми грибами",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-kotlety.jpg"
+  },
+  {
+    "productId": "1ca0fe55-6642-4e68-b4e0-e4659fe5b3c3",
+    "name": "Щучьи котлеты с картофельным пюре",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-schnitzel.jpg"
+  }
+]

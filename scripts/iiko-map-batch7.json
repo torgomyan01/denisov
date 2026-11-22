@@ -1,0 +1,42 @@
+[
+  {
+    "productId": "c9634d3c-b74c-46f0-9ae2-704976eb5463",
+    "name": "Латте ",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-latte.jpg"
+  },
+  {
+    "productId": "011349da-8018-410f-a302-d4798156f29c",
+    "name": "Латте на безлактозном",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-latte-lf.jpg"
+  },
+  {
+    "productId": "f1f92547-cf50-4c67-b88c-d6c73fda8692",
+    "name": "Раф",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-raf.jpg"
+  },
+  {
+    "productId": "ee9e30fa-2518-4ebe-9399-e01192b76ae3",
+    "name": "Фильтр кофе",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-filter-coffee.jpg"
+  },
+  {
+    "productId": "e7d20207-14f1-4790-9f16-7276ff6437cd",
+    "name": "Флэт Уайт",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-flat-white.jpg"
+  },
+  {
+    "productId": "4368ffaa-53c5-41fb-ae8a-f6744c5a094e",
+    "name": "Флэт Уайт на безлактозном",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-flat-white-lf.jpg"
+  },
+  {
+    "productId": "7cd3236b-252f-44c1-a6cf-7754d9200a4d",
+    "name": "Чай (Большой чайник 900 мл)",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-tea-large.jpg"
+  },
+  {
+    "productId": "562395c1-561f-49f9-aaef-5278b94dad5a",
+    "name": "Чай (Малый чайник 600 мл)",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-tea-small.jpg"
+  }
+]

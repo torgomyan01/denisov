@@ -1,0 +1,375 @@
+[
+  {
+    "sku": "00565",
+    "id": "cc67b6b0-5313-4874-ab0c-0758b8b7af16",
+    "description": "",
+    "name": "-пашот",
+    "restrictions": {},
+    "isHidden": false,
+    "buttonImageUrl": "",
+    "weight": 0,
+    "measureUnitType": "GRAM",
+    "tags": [],
+    "sizePrices": [
+      {
+        "price": 0
+      }
+    ],
+    "productCategoryId": "3e3720fc-34bb-f558-01a0-f89249e6c911",
+    "paymentSubjectCode": "1"
+  },
+  {
+    "sku": "00567",
+    "id": "19a53ad4-65c7-4ed5-b026-e16fc15d3692",
+    "description": "",
+    "name": "-в крутую",
+    "restrictions": {},
+    "isHidden": false,
+    "buttonImageUrl": "",
+    "weight": 0,
+    "measureUnitType": "GRAM",
+    "tags": [],
+    "sizePrices": [
+      {
+        "price": 0
+      }
+    ],
+    "productCategoryId": "3e3720fc-34bb-f558-01a0-f89249e6c911",
+    "paymentSubjectCode": "1"
+  },
+  {
+    "sku": "00566",
+    "id": "60d53118-3e93-4076-9b31-073c1a5e2f35",
+    "description": "",
+    "name": "-глазунья",
+    "restrictions": {},
+    "isHidden": false,
+    "buttonImageUrl": "",
+    "weight": 0,
+    "measureUnitType": "GRAM",
+    "tags": [],
+    "sizePrices": [
+      {
+        "price": 0
+      }
+    ],
+    "productCategoryId": "3e3720fc-34bb-f558-01a0-f89249e6c911",
+    "paymentSubjectCode": "1"
+  },
+  {
+    "sku": "00385",
+    "id": "db65eedc-75b7-44db-8721-e3312801a3c4",
+    "description": "",
+    "name": "-лед",
+    "restrictions": {},
+    "isHidden": false,
+    "buttonImageUrl": "",
+    "weight": 100,
+    "measureUnitType": "GRAM",
+    "tags": [],
+    "sizePrices": [
+      {
+        "price": 0
+      }
+    ],
+    "productCategoryId": "3e3720fc-34bb-f558-01a0-f89249e6c911",
+    "paymentSubjectCode": "1"
+  },
+  {
+    "sku": "00384",
+    "id": "60341e52-d8bf-461a-bbb6-b9cd6da259a4",
+    "description": "",
+    "name": "-корица 1 гр",
+    "restrictions": {},
+    "isHidden": false,
+    "buttonImageUrl": "",
+    "weight": 1,
+    "measureUnitType": "GRAM",
+    "tags": [],
+    "sizePrices": [
+      {
+        "price": 0
+      }
+    ],
+    "productCategoryId": "3e3720fc-34bb-f558-01a0-f89249e6c911",
+    "paymentSubjectCode": "1"
+  },
+  {
+    "sku": "00383",
+    "id": "a5292e2d-0632-49e5-a29f-f215779195f3",
+    "description": "",
+    "name": "-сахар",
+    "restrictions": {},
+    "isHidden": false,
+    "buttonImageUrl": "",
+    "weight": 5.5,
+    "measureUnitType": "GRAM",
+    "tags": [],
+    "sizePrices": [
+      {
+        "price": 0
+      }
+    ],
+    "productCategoryId": "3e3720fc-34bb-f558-01a0-f89249e6c911",
+    "paymentSubjectCode": "1"
+  },
+  {
+    "sku": "00164",
+    "id": "10aa5c67-941e-4520-a866-e7ce72e61588",
+    "description": "",
+    "name": "С собой",
+    "restrictions": {
+      "maxQuantity": 1
+    },
+    "isHidden": false,
+    "buttonImageUrl": "",
+    "weight": 1000,
+    "measureUnitType": "GRAM",
+    "tags": [],
+    "sizePrices": [
+      {
+        "price": 0
+      }
+    ],
+    "productCategoryId": "3e3720fc-34bb-f558-01a0-f89249e6c911",
+    "paymentSubjectCode": "1"
+  },
+  {
+    "sku": "00505",
+    "id": "873f846f-b905-4a54-bf0a-aeae0530cd1f",
+    "description": "",
+    "name": "- зеленый сенча",
+    "restrictions": {},
+    "isHidden": false,
+    "buttonImageUrl": "",
+    "weight": 7,
+    "measureUnitType": "GRAM",
+    "tags": [],
+    "sizePrices": [
+      {
+        "price": 0
+      }
+    ],
+    "nutritions": {
+      "fats": 3.329,
+      "proteins": 24.386,
+      "carbs": 63.771,
+      "energy": 382.586
+    },
+    "productCategoryId": "3e3720fc-34bb-f558-01a0-f89249e6c911",
+    "paymentSubjectCode": "1"
+  },
+  {
+    "sku": "00506",
+    "id": "d6e0b45b-4d83-4001-97f3-53efd194b084",
+    "description": "",
+    "name": "- иван чай",
+    "restrictions": {},
+    "isHidden": false,
+    "buttonImageUrl": "",
+    "weight": 7,
+    "measureUnitType": "GRAM",
+    "tags": [],
+    "sizePrices": [
+      {
+        "price": 0
+      }
+    ],
+    "nutritions": {
+      "fats": 0.429,
+      "proteins": 0.514,
+      "carbs": 0.571,
+      "energy": 8.2
+    },
+    "productCategoryId": "3e3720fc-34bb-f558-01a0-f89249e6c911",
+    "paymentSubjectCode": "1"
+  },
+  {
+    "sku": "00630",
+    "id": "83ab8fd6-f6d3-4863-970b-4c04fa839184",
+    "description": "",
+    "name": "- травяной ",
+    "restrictions": {},
+    "isHidden": false,
+    "buttonImageUrl": "",
+    "weight": 8,
+    "measureUnitType": "GRAM",
+    "tags": [],
+    "sizePrices": [
+      {
+        "price": 0
+      }
+    ],
+    "nutritions": {
+      "fats": 0.388,
+      "proteins": 0.488,
+      "carbs": 0.088,
+      "energy": 5.788
+    },
+    "productCategoryId": "3e3720fc-34bb-f558-01a0-f89249e6c911",
+    "paymentSubjectCode": "1"
+  },
+  {
+    "sku": "00507",
+    "id": "b995d032-bbff-42a6-9af1-b0fe51e8bc04",
+    "description": "",
+    "name": "- черный ассам",
+    "restrictions": {},
+    "isHidden": false,
+    "buttonImageUrl": "",
+    "weight": 7,
+    "measureUnitType": "GRAM",
+    "tags": [],
+    "sizePrices": [
+      {
+        "price": 0
+      }
+    ],
+    "nutritions": {
+      "fats": 5.657,
+      "proteins": 22.171,
+      "carbs": 7.1,
+      "energy": 168
+    },
+    "productCategoryId": "3e3720fc-34bb-f558-01a0-f89249e6c911",
+    "paymentSubjectCode": "1"
+  },
+  {
+    "sku": "00265",
+    "id": "e0f3b35f-6e4f-455f-b73a-0cd3fd1dea33",
+    "description": "",
+    "name": "- черный ассам",
+    "restrictions": {},
+    "isHidden": false,
+    "buttonImageUrl": "",
+    "weight": 5,
+    "measureUnitType": "GRAM",
+    "tags": [],
+    "sizePrices": [
+      {
+        "price": 0
+      }
+    ],
+    "nutritions": {
+      "fats": 4.94,
+      "proteins": 19.4,
+      "carbs": 6.22,
+      "energy": 146.94
+    },
+    "productCategoryId": "3e3720fc-34bb-f558-01a0-f89249e6c911",
+    "paymentSubjectCode": "1"
+  },
+  {
+    "sku": "00631",
+    "id": "643a6c61-27c5-404f-a999-3eddc1f26fc3",
+    "description": "",
+    "name": "- травяной",
+    "restrictions": {},
+    "isHidden": false,
+    "buttonImageUrl": "",
+    "weight": 5,
+    "measureUnitType": "GRAM",
+    "tags": [],
+    "sizePrices": [
+      {
+        "price": 0
+      }
+    ],
+    "nutritions": {
+      "fats": 0.4,
+      "proteins": 0.5,
+      "carbs": 0.1,
+      "energy": 6
+    },
+    "productCategoryId": "3e3720fc-34bb-f558-01a0-f89249e6c911",
+    "paymentSubjectCode": "1"
+  },
+  {
+    "sku": "00267",
+    "id": "b51fdc1b-ce3f-4614-a2d4-f697e7a31209",
+    "description": "",
+    "name": "- иван-чай",
+    "restrictions": {},
+    "isHidden": false,
+    "buttonImageUrl": "",
+    "weight": 5,
+    "measureUnitType": "GRAM",
+    "tags": [],
+    "sizePrices": [
+      {
+        "price": 0
+      }
+    ],
+    "nutritions": {
+      "fats": 0.38,
+      "proteins": 0.46,
+      "carbs": 0.5,
+      "energy": 7.26
+    },
+    "productCategoryId": "3e3720fc-34bb-f558-01a0-f89249e6c911",
+    "paymentSubjectCode": "1"
+  },
+  {
+    "sku": "00266",
+    "id": "392b05b0-c518-48d1-b605-b060fc399b1e",
+    "description": "",
+    "name": "- зеленый сенча",
+    "restrictions": {},
+    "isHidden": false,
+    "buttonImageUrl": "",
+    "weight": 5,
+    "measureUnitType": "GRAM",
+    "tags": [],
+    "sizePrices": [
+      {
+        "price": 0
+      }
+    ],
+    "nutritions": {
+      "fats": 3,
+      "proteins": 22,
+      "carbs": 62,
+      "energy": 363
+    },
+    "productCategoryId": "3e3720fc-34bb-f558-01a0-f89249e6c911",
+    "paymentSubjectCode": "1"
+  },
+  {
+    "sku": "00563",
+    "id": "242e98e4-33f7-477f-8b64-9ff70e6316d6",
+    "description": "",
+    "name": "-молоко 3,2%",
+    "restrictions": {},
+    "isHidden": false,
+    "buttonImageUrl": "",
+    "weight": 153,
+    "measureUnitType": "GRAM",
+    "tags": [],
+    "sizePrices": [
+      {
+        "price": 0
+      }
+    ],
+    "productCategoryId": "3e3720fc-34bb-f558-01a0-f89249e6c911",
+    "paymentSubjectCode": "1"
+  },
+  {
+    "sku": "00564",
+    "id": "6409d245-185c-4121-91c6-73d00de771d9",
+    "description": "",
+    "name": "-молоко безлактозное",
+    "restrictions": {},
+    "isHidden": false,
+    "buttonImageUrl": "",
+    "weight": 151.125,
+    "measureUnitType": "GRAM",
+    "tags": [],
+    "sizePrices": [
+      {
+        "price": 0
+      }
+    ],
+    "productCategoryId": "3e3720fc-34bb-f558-01a0-f89249e6c911",
+    "paymentSubjectCode": "1"
+  }
+]

@@ -1,0 +1,42 @@
+[
+  {
+    "productId": "5161e442-ba64-47e3-af6c-aff4f90b1bc2",
+    "name": "Пюре картофельное 1 порция",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-pure.jpg"
+  },
+  {
+    "productId": "430b32ae-351e-4976-b058-6cd3c2d32202",
+    "name": "Айс Латте",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-ice-latte.jpg"
+  },
+  {
+    "productId": "4a9e4260-09cb-4f2d-9a60-167aee98c1ab",
+    "name": "Айс Латте на безлактозном",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-ice-latte-lf.jpg"
+  },
+  {
+    "productId": "b31edd16-cbde-413b-aa16-55f4916d0208",
+    "name": "Американо",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-americano.jpg"
+  },
+  {
+    "productId": "f1a137d3-6014-4f84-9ca0-98f935531a76",
+    "name": "Капучино 0,2",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-cappuccino-02.jpg"
+  },
+  {
+    "productId": "9a14ad12-35e8-4a90-a688-81f9ab8e1069",
+    "name": "Капучино 0,2 на безлактозном",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-cappuccino-02-lf.jpg"
+  },
+  {
+    "productId": "26b68781-368e-4f4d-b460-5e8e427899ae",
+    "name": "Капучино 0,3",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-cappuccino-03.jpg"
+  },
+  {
+    "productId": "67669e24-7f2a-4ad4-8c4a-29eba65999b0",
+    "name": "Капучино 0,3 на безлактозном",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-cappuccino-03-lf.jpg"
+  }
+]

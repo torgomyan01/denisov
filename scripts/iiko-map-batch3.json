@@ -1,0 +1,42 @@
+[
+  {
+    "productId": "b1d5ac11-f1f0-4e82-b7dd-adf1f29d8eb2",
+    "name": "Винегрет из печеных овощей с балтийской килькой",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-vinegret.jpg"
+  },
+  {
+    "productId": "91b392c6-2106-4699-8215-de31f9dc3e25",
+    "name": "Зеленый салат из редиса, огурца и зелени со сметаной",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-green-salad.jpg"
+  },
+  {
+    "productId": "1ff0dbfc-2f76-4aa3-8fb8-b0abcbd579e3",
+    "name": "Мимоза с форелью",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-mimosa.jpg"
+  },
+  {
+    "productId": "6c1d4be2-7844-4d20-89c0-c3113f7ac9ac",
+    "name": "Тёплый салат с хрустящим цыпленком",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-warm-salad.jpg"
+  },
+  {
+    "productId": "39e88e86-7afb-490f-9e53-6cd958bffd18",
+    "name": "Классический круассан",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-croissant.jpg"
+  },
+  {
+    "productId": "57fc0bc1-5e6c-4f7a-bbaa-f89015a6e3c5",
+    "name": "Пирожок с говяжьей щекой",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-pirozhok-scheka.jpg"
+  },
+  {
+    "productId": "fb89fa58-16bd-438d-b9f4-8203abe15597",
+    "name": "Пирожок с зеленым луком и яйцом",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-pirozhok-onion.jpg"
+  },
+  {
+    "productId": "89c7d875-190f-4a5c-8797-3b68c56c31e5",
+    "name": "Пирожок с капустой",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-pirozhok-cabbage.jpg"
+  }
+]

@@ -1,0 +1,42 @@
+[
+  {
+    "productId": "da17f887-9a93-4df5-8575-acdce747e27c",
+    "name": "Сидр Яблочный, Франция, 750 мл",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-cider-france.jpg"
+  },
+  {
+    "productId": "b2c969d0-b4ff-441a-9c96-e5f5083018f4",
+    "name": "Сидр Cornish Golden 0,5",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-cider-cornish.jpg"
+  },
+  {
+    "productId": "19a5943b-6e8f-494b-a814-fbacd7a36ea5",
+    "name": "Тёмное пиво, стаут, Англия, 500 мл",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-beer-stout.jpg"
+  },
+  {
+    "productId": "a9dc459f-3b95-4608-a579-1acf4a9a3def",
+    "name": "Багет из спельты и кукурузы",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-baguette-spelt.jpg"
+  },
+  {
+    "productId": "a4bd0bf5-1ab5-4f51-9d9f-015a5f030976",
+    "name": "Бриошь",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-brioche.jpg"
+  },
+  {
+    "productId": "f293d877-78fa-43ec-841b-2db53d357bd8",
+    "name": "Хлеб Бородинский",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-borodinsky.jpg"
+  },
+  {
+    "productId": "42b56207-2400-4272-9c0a-487adf1ab9be",
+    "name": "Хлеб Тартин",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-tartine.jpg"
+  },
+  {
+    "productId": "3730a4de-bd98-452d-b95b-49bd9a367c27",
+    "name": "Хлеб Тартин 1/2",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-tartine-half.jpg"
+  }
+]

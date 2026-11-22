@@ -1,0 +1,42 @@
+[
+  {
+    "productId": "7bd79c56-7e86-43a6-8176-e4b0acc5e6f5",
+    "name": "Блины с мясом, грибами и зелёным луком",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-bliny.jpg"
+  },
+  {
+    "productId": "078d7455-da7b-4a14-9a92-28b55e20336e",
+    "name": "Гречневая каша с пармезаном и яйцом пашот",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-grechka-pashot.jpg"
+  },
+  {
+    "productId": "dba27b60-a5f2-47b1-8e24-fc1f52cb102a",
+    "name": "Деревенский завтрак",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-derevenskiy.jpg"
+  },
+  {
+    "productId": "ad41e185-34f5-4bc4-b03e-748830ed22ef",
+    "name": "Драник с яйцом пашот,тамбовским окороком и соусом морне",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-draniki.jpg"
+  },
+  {
+    "productId": "ae0fd9b9-2ab5-4657-95b3-5ea0dfe9b25c",
+    "name": "Запеканка творожная",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-zapekanka.jpg"
+  },
+  {
+    "productId": "4315c124-bc3f-4338-a430-3a53ec126d17",
+    "name": "Овсяная каша на молоке / на безлактозном с клубничным вареньем",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-ovsyanaya.jpg"
+  },
+  {
+    "productId": "9df17ee9-a4bf-431d-a4a7-df8b5bf34427",
+    "name": "Рисовая каша на молоке / на безлактозном с клубничным вареньем",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-risovaya.jpg"
+  },
+  {
+    "productId": "e3f6a47a-c983-4671-89fd-45c00c6a0293",
+    "name": "Скрембл с тамбовским окороком",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-skrembl.jpg"
+  }
+]

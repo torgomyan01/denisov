@@ -1,0 +1,42 @@
+[
+  {
+    "productId": "ea53084f-04ae-49cb-883a-c96ca877a9e2",
+    "name": "Борщ с говядиной и бородинским хлебом с грудинкой",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-borscht-beef.jpg"
+  },
+  {
+    "productId": "aa2468d0-3e2c-40fd-b775-70ccbcaa2faf",
+    "name": "Ленинградские щи с говядиной",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-shchi.jpg"
+  },
+  {
+    "productId": "cbcbdc88-cd1b-46c9-8722-b40c33cefa14",
+    "name": "Сливочный рыбный суп",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-fish-soup.jpg"
+  },
+  {
+    "productId": "f2af33da-d062-4154-bc2c-8448c081bfab",
+    "name": "Швейцарский пан",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-swiss-pan.jpg"
+  },
+  {
+    "productId": "699fc465-1684-4efe-b01b-3899a22a6199",
+    "name": "Шоколадное печенье с пеканом",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-choc-cookie.jpg"
+  },
+  {
+    "productId": "0ec484b4-3c7f-4e44-8777-f75127b91a90",
+    "name": "Греча",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-grecha.jpg"
+  },
+  {
+    "productId": "43d1ecb5-e6a5-4a0b-a551-4d3aa6f4f604",
+    "name": "Картофель по-деревенски",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-potato-country.jpg"
+  },
+  {
+    "productId": "7d849619-6428-4d7a-89f2-d0c63392a28d",
+    "name": "Паста ",
+    "source": "C:/Users/User/.cursor/projects/c-Users-User-Desktop-denisov/assets/iiko-pasta-side.jpg"
+  }
+]
