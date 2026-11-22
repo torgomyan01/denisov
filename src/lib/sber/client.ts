@@ -55,8 +55,8 @@ const networkErrorMessage = (error: unknown): string => {
         ? error.cause
         : "";
   const detail = `${error.message}${cause ? `: ${cause}` : ""}`;
-  if (/self-signed|CERT|certificate/i.test(detail)) {
-    return "TLS к Sber заблокирован (часто антивирус). Для локали: SBER_TLS_INSECURE=1";
+  if (/self-signed|CERT|certificate|UNABLE_TO_VERIFY/i.test(detail)) {
+    return "TLS к Sber: ошибка сертификата. На сервере/ПК поставьте SBER_TLS_INSECURE=1 и перезапустите (или обновите ca-certificates).";
   }
   return detail || "Не удалось связаться со Sber";
 };
