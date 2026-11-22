@@ -1,5 +1,6 @@
 import {
   createIikoDeliveryOrder,
+  syncIikoPaidOnline,
   type IikoCreateModifier,
 } from "@/lib/iiko/create-delivery";
 import { loadIikoDefaultModifiersByProductId } from "@/lib/iiko/catalog-cache";
@@ -90,112 +91,147 @@ export const fulfillSberPaidOrder = async (
     include: orderInclude,
   });
 
-  if (
-    isIikoConfigured() &&
-    !order.iikoOrderId &&
-    order.iikoCreationStatus !== "Success"
-  ) {
-    const defaultModifiersByProduct =
-      await loadIikoDefaultModifiersByProductId();
-    const iikoResult = await createIikoDeliveryOrder({
-      orderNumber: order.number,
-      customerName: order.customerName,
-      customerPhone: order.customerPhone,
-      customerEmail: order.customerEmail,
-      fulfillmentMode: order.fulfillmentMode,
-      comment: order.comment,
-      utensils: order.utensils,
-      totalRub: order.totalRub,
-      deliveryFeeRub: order.deliveryFeeRub,
-      paymentStatus: "paid",
-      timeMode: order.timeMode,
-      scheduledAt: order.scheduledAt,
-      deliveryAddress: order.deliveryAddress,
-      deliveryApartment: order.deliveryApartment,
-      deliveryEntrance: order.deliveryEntrance,
-      deliveryFloor: order.deliveryFloor,
-      deliveryIntercom: order.deliveryIntercom,
-      deliveryCourierComment: order.deliveryCourierComment,
-      deliveryLat: order.deliveryLat,
-      deliveryLng: order.deliveryLng,
-      items: order.items.map((line) => {
-        let modifiers: IikoCreateModifier[] = [];
-        try {
-          const parsed = JSON.parse(line.modifiersJson || "[]") as unknown;
-          if (Array.isArray(parsed)) {
-            const collected: IikoCreateModifier[] = [];
-            for (const raw of parsed) {
-              if (!raw || typeof raw !== "object") continue;
-              const row = raw as Record<string, unknown>;
-              const productId = String(row.productId || "");
-              const productGroupId = String(
-                row.groupId || row.productGroupId || "",
-              );
-              if (!productId) continue;
-              collected.push({
-                productId,
-                productGroupId,
-                amount: Math.max(1, Number(row.amount) || 1),
-                name: String(row.name || ""),
-              });
+  if (isIikoConfigured()) {
+    if (order.iikoOrderId) {
+      // Order already in iiko (created while Sber was pending) — attach paid payment
+      const paidSync = await syncIikoPaidOnline({
+        iikoOrderId: order.iikoOrderId,
+        sumRub: order.totalRub,
+        comment: order.comment,
+        utensils: order.utensils,
+        fulfillmentMode: order.fulfillmentMode,
+        deliveryCourierComment: order.deliveryCourierComment,
+      });
+      order = await prisma.order.update({
+        where: { id: order.id },
+        data: paidSync.ok
+          ? {
+              iikoSyncError: "",
+              statusLogs: {
+                create: {
+                  status: order.status,
+                  note: "iiko: оплата онлайн отмечена после Sber",
+                },
+              },
             }
-            modifiers = collected;
+          : {
+              iikoSyncError: paidSync.error.slice(0, 500),
+              statusLogs: {
+                create: {
+                  status: order.status,
+                  note: `iiko: не удалось отметить оплату — ${paidSync.error}`.slice(
+                    0,
+                    255,
+                  ),
+                },
+              },
+            },
+        include: orderInclude,
+      });
+    } else if (order.iikoCreationStatus !== "Success") {
+      const defaultModifiersByProduct =
+        await loadIikoDefaultModifiersByProductId();
+      const iikoResult = await createIikoDeliveryOrder({
+        orderNumber: order.number,
+        customerName: order.customerName,
+        customerPhone: order.customerPhone,
+        customerEmail: order.customerEmail,
+        fulfillmentMode: order.fulfillmentMode,
+        comment: order.comment,
+        utensils: order.utensils,
+        totalRub: order.totalRub,
+        deliveryFeeRub: order.deliveryFeeRub,
+        paymentStatus: "paid",
+        paymentMethod: order.paymentMethod || "sber",
+        timeMode: order.timeMode,
+        scheduledAt: order.scheduledAt,
+        deliveryAddress: order.deliveryAddress,
+        deliveryApartment: order.deliveryApartment,
+        deliveryEntrance: order.deliveryEntrance,
+        deliveryFloor: order.deliveryFloor,
+        deliveryIntercom: order.deliveryIntercom,
+        deliveryCourierComment: order.deliveryCourierComment,
+        deliveryLat: order.deliveryLat,
+        deliveryLng: order.deliveryLng,
+        items: order.items.map((line) => {
+          let modifiers: IikoCreateModifier[] = [];
+          try {
+            const parsed = JSON.parse(line.modifiersJson || "[]") as unknown;
+            if (Array.isArray(parsed)) {
+              const collected: IikoCreateModifier[] = [];
+              for (const raw of parsed) {
+                if (!raw || typeof raw !== "object") continue;
+                const row = raw as Record<string, unknown>;
+                const productId = String(row.productId || "");
+                const productGroupId = String(
+                  row.groupId || row.productGroupId || "",
+                );
+                if (!productId) continue;
+                collected.push({
+                  productId,
+                  productGroupId,
+                  amount: Math.max(1, Number(row.amount) || 1),
+                  name: String(row.name || ""),
+                });
+              }
+              modifiers = collected;
+            }
+          } catch {
+            modifiers = [];
           }
-        } catch {
-          modifiers = [];
-        }
-        if (!modifiers.length) {
-          const defaults = defaultModifiersByProduct.get(line.productId) || [];
-          modifiers = defaults.map((mod) => ({
-            productId: mod.productId,
-            productGroupId: mod.productGroupId,
-            amount: mod.amount,
-            name: mod.name,
-          }));
-        }
-        return {
-          productId: line.productId,
-          name: line.name,
-          iikoProductId: line.productId,
-          price: line.price,
-          qty: line.qty,
-          ...(modifiers.length ? { modifiers } : {}),
-        };
-      }),
-    });
+          if (!modifiers.length) {
+            const defaults = defaultModifiersByProduct.get(line.productId) || [];
+            modifiers = defaults.map((mod) => ({
+              productId: mod.productId,
+              productGroupId: mod.productGroupId,
+              amount: mod.amount,
+              name: mod.name,
+            }));
+          }
+          return {
+            productId: line.productId,
+            name: line.name,
+            iikoProductId: line.productId,
+            price: line.price,
+            qty: line.qty,
+            ...(modifiers.length ? { modifiers } : {}),
+          };
+        }),
+      });
 
-    order = await prisma.order.update({
-      where: { id: order.id },
-      data: iikoResult.ok
-        ? {
-            iikoOrderId: iikoResult.iikoOrderId,
-            iikoCorrelationId: iikoResult.correlationId || null,
-            iikoCreationStatus: iikoResult.creationStatus,
-            iikoSyncError: "",
-            statusLogs: {
-              create: {
-                status: order.status,
-                note: `iiko (досылка после оплаты): ${iikoResult.creationStatus}`,
+      order = await prisma.order.update({
+        where: { id: order.id },
+        data: iikoResult.ok
+          ? {
+              iikoOrderId: iikoResult.iikoOrderId,
+              iikoCorrelationId: iikoResult.correlationId || null,
+              iikoCreationStatus: iikoResult.creationStatus,
+              iikoSyncError: "",
+              statusLogs: {
+                create: {
+                  status: order.status,
+                  note: `iiko (досылка после оплаты): ${iikoResult.creationStatus}`,
+                },
+              },
+            }
+          : {
+              iikoOrderId: iikoResult.iikoOrderId || null,
+              iikoCorrelationId: iikoResult.correlationId || null,
+              iikoCreationStatus: iikoResult.creationStatus || "Error",
+              iikoSyncError: iikoResult.error.slice(0, 500),
+              statusLogs: {
+                create: {
+                  status: order.status,
+                  note: `iiko (досылка после оплаты): ${iikoResult.error}`.slice(
+                    0,
+                    255,
+                  ),
+                },
               },
             },
-          }
-        : {
-            iikoOrderId: iikoResult.iikoOrderId || null,
-            iikoCorrelationId: iikoResult.correlationId || null,
-            iikoCreationStatus: iikoResult.creationStatus || "Error",
-            iikoSyncError: iikoResult.error.slice(0, 500),
-            statusLogs: {
-              create: {
-                status: order.status,
-                note: `iiko (досылка после оплаты): ${iikoResult.error}`.slice(
-                  0,
-                  255,
-                ),
-              },
-            },
-          },
-      include: orderInclude,
-    });
+        include: orderInclude,
+      });
+    }
   }
 
   await scheduleNotify({

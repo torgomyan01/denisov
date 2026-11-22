@@ -28,6 +28,7 @@ import { isIikoConfigured } from "@/lib/iiko/config";
 import {
   createIikoDeliveryOrder,
   isIikoProductId,
+  syncIikoPaidOnline,
   type IikoCreateModifier,
 } from "@/lib/iiko/create-delivery";
 import { loadIikoDefaultModifiersByProductId } from "@/lib/iiko/catalog-cache";
@@ -378,6 +379,7 @@ export const placeOrderAction = async (
         totalRub: order.totalRub,
         deliveryFeeRub: order.deliveryFeeRub,
         paymentStatus: order.paymentStatus,
+        paymentMethod: order.paymentMethod,
         timeMode: order.timeMode,
         scheduledAt: order.scheduledAt,
         deliveryAddress: order.deliveryAddress,
@@ -557,7 +559,52 @@ export const retryIikoOrderSyncAction = async (
     if (!existing) {
       return { success: false, error: "Заказ не найден" };
     }
+    // Already in iiko: if Sber paid but payment block missing — push payments now
     if (existing.iikoOrderId && existing.iikoCreationStatus === "Success") {
+      if (
+        existing.paymentMethod === "sber" &&
+        existing.paymentStatus === "paid"
+      ) {
+        const paidSync = await syncIikoPaidOnline({
+          iikoOrderId: existing.iikoOrderId,
+          sumRub: existing.totalRub,
+          comment: existing.comment,
+          utensils: existing.utensils,
+          fulfillmentMode: existing.fulfillmentMode,
+          deliveryCourierComment: existing.deliveryCourierComment,
+        });
+        const updated = await prisma.order.update({
+          where: { id: existing.id },
+          data: paidSync.ok
+            ? {
+                iikoSyncError: "",
+                statusLogs: {
+                  create: {
+                    status: existing.status,
+                    note: "iiko: оплата онлайн дослана вручную",
+                  },
+                },
+              }
+            : {
+                iikoSyncError: paidSync.error.slice(0, 500),
+                statusLogs: {
+                  create: {
+                    status: existing.status,
+                    note: `iiko: досылка оплаты — ${paidSync.error}`.slice(
+                      0,
+                      255,
+                    ),
+                  },
+                },
+              },
+          include: orderInclude,
+        });
+        revalidatePath("/admin");
+        if (!paidSync.ok) {
+          return { success: false, error: paidSync.error };
+        }
+        return { success: true, data: toOrderPublic(updated) };
+      }
       return { success: true, data: toOrderPublic(existing) };
     }
 
@@ -621,6 +668,7 @@ export const retryIikoOrderSyncAction = async (
         | "paid"
         | "failed"
         | "refunded",
+      paymentMethod: existing.paymentMethod,
       timeMode: existing.timeMode,
       scheduledAt: existing.scheduledAt,
       deliveryAddress: existing.deliveryAddress,

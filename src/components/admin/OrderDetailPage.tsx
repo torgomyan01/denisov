@@ -189,6 +189,10 @@ export const OrderDetailPanel = ({
     Boolean(order.iikoSyncError) ||
     !order.iikoOrderId ||
     order.iikoCreationStatus === "Error";
+  const canPushPaidToIiko =
+    order.paymentMethod === "sber" &&
+    order.paymentStatus === "paid" &&
+    Boolean(order.iikoOrderId);
 
   return (
     <div className="animate-panel-in">
@@ -436,6 +440,16 @@ export const OrderDetailPanel = ({
               onClick={() => void retryIiko()}
             >
               Отправить в iiko снова
+            </button>
+          ) : null}
+          {canPushPaidToIiko ? (
+            <button
+              type="button"
+              className={btnDark}
+              disabled={busy}
+              onClick={() => void retryIiko()}
+            >
+              Отметить оплату в iiko
             </button>
           ) : null}
         </div>

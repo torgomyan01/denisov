@@ -33,6 +33,8 @@ export type IikoCreateOrderInput = {
   totalRub: number;
   deliveryFeeRub: number;
   paymentStatus: "pending" | "paid" | "failed" | "refunded";
+  /** sber | on_receipt — needed so pending online is not labeled «при получении» */
+  paymentMethod?: string;
   timeMode: string;
   scheduledAt: Date | null;
   deliveryAddress: string;
@@ -127,7 +129,14 @@ const formatCompleteBefore = (date: Date): string => {
   );
 };
 
-const buildComment = (input: IikoCreateOrderInput): string => {
+export const buildIikoOrderComment = (input: {
+  comment: string;
+  utensils: number;
+  fulfillmentMode: "pickup" | "delivery";
+  paymentStatus: "pending" | "paid" | "failed" | "refunded";
+  paymentMethod?: string;
+  deliveryCourierComment?: string;
+}): string => {
   const parts: string[] = [];
   if (input.comment.trim()) parts.push(input.comment.trim());
   if (input.utensils > 0) parts.push(`Приборы: ${input.utensils}`);
@@ -138,14 +147,18 @@ const buildComment = (input: IikoCreateOrderInput): string => {
     parts.push("Оплата: онлайн");
   } else if (input.paymentStatus === "refunded") {
     parts.push("Оплата: возврат на карту");
+  } else if (input.paymentMethod === "sber") {
+    parts.push("Оплата: онлайн (ожидает)");
   } else {
     parts.push("Оплата: при получении");
   }
-  if (input.deliveryCourierComment.trim()) {
-    parts.push(`Курьеру: ${input.deliveryCourierComment.trim()}`);
-  }
+  const courier = (input.deliveryCourierComment || "").trim();
+  if (courier) parts.push(`Курьеру: ${courier}`);
   return parts.join(". ").slice(0, 500);
 };
+
+const buildComment = (input: IikoCreateOrderInput): string =>
+  buildIikoOrderComment(input);
 
 type CreateDeliveryResponse = {
   correlationId?: string;
@@ -324,4 +337,148 @@ export const createIikoDeliveryOrder = async (
       error instanceof Error ? error.message : "Не удалось создать заказ в iiko";
     return { ok: false, error: message.slice(0, 500) };
   }
+};
+
+export type IikoPaymentSyncResult =
+  | { ok: true; correlationId: string }
+  | { ok: false; error: string };
+
+/**
+ * Add already-captured external payment to an existing delivery
+ * (Sber paid after create). POST /api/1/deliveries/add_payments
+ */
+export const addIikoDeliveryPayments = async (
+  input: {
+    iikoOrderId: string;
+    sumRub: number;
+  },
+  config: IikoConfig = getIikoConfig(),
+): Promise<IikoPaymentSyncResult> => {
+  if (!isIikoConfigured(config)) {
+    return { ok: false, error: "iiko не настроен" };
+  }
+  if (!input.iikoOrderId.trim() || !isIikoProductId(input.iikoOrderId)) {
+    return { ok: false, error: "Некорректный iiko order id" };
+  }
+  if (!config.paymentTypeId || !isIikoProductId(config.paymentTypeId)) {
+    return {
+      ok: false,
+      error: "Нет IIKO_PAYMENT_TYPE_ID — нельзя отметить оплату в iiko",
+    };
+  }
+  const sum = Math.round(input.sumRub);
+  if (!Number.isFinite(sum) || sum <= 0) {
+    return { ok: false, error: "Некорректная сумма оплаты для iiko" };
+  }
+
+  try {
+    const response = await iikoRequest<{ correlationId?: string }>(
+      "/api/1/deliveries/add_payments",
+      {
+        organizationId: config.organizationId,
+        orderId: input.iikoOrderId.trim(),
+        payments: [
+          {
+            paymentTypeKind: config.paymentTypeKind || "Card",
+            sum,
+            paymentTypeId: config.paymentTypeId,
+            isProcessedExternally: true,
+          },
+        ],
+      },
+      config,
+    );
+    return {
+      ok: true,
+      correlationId: String(response.correlationId ?? ""),
+    };
+  } catch (error) {
+    if (error instanceof IikoApiError) {
+      return { ok: false, error: error.message.slice(0, 500) };
+    }
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Не удалось добавить оплату в iiko";
+    return { ok: false, error: message.slice(0, 500) };
+  }
+};
+
+/** Update delivery comment (e.g. after online payment confirmed). */
+export const changeIikoDeliveryComment = async (
+  input: {
+    iikoOrderId: string;
+    comment: string;
+  },
+  config: IikoConfig = getIikoConfig(),
+): Promise<IikoPaymentSyncResult> => {
+  if (!isIikoConfigured(config)) {
+    return { ok: false, error: "iiko не настроен" };
+  }
+  if (!input.iikoOrderId.trim() || !isIikoProductId(input.iikoOrderId)) {
+    return { ok: false, error: "Некорректный iiko order id" };
+  }
+
+  try {
+    const response = await iikoRequest<{ correlationId?: string }>(
+      "/api/1/deliveries/change_comment",
+      {
+        organizationId: config.organizationId,
+        orderId: input.iikoOrderId.trim(),
+        comment: input.comment.slice(0, 500) || null,
+      },
+      config,
+    );
+    return {
+      ok: true,
+      correlationId: String(response.correlationId ?? ""),
+    };
+  } catch (error) {
+    if (error instanceof IikoApiError) {
+      return { ok: false, error: error.message.slice(0, 500) };
+    }
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Не удалось обновить комментарий в iiko";
+    return { ok: false, error: message.slice(0, 500) };
+  }
+};
+
+/**
+ * After Sber capture: mark existing iiko delivery as paid online + fix comment.
+ */
+export const syncIikoPaidOnline = async (input: {
+  iikoOrderId: string;
+  sumRub: number;
+  comment: string;
+  utensils: number;
+  fulfillmentMode: "pickup" | "delivery";
+  deliveryCourierComment?: string;
+}): Promise<IikoPaymentSyncResult> => {
+  const payments = await addIikoDeliveryPayments({
+    iikoOrderId: input.iikoOrderId,
+    sumRub: input.sumRub,
+  });
+  if (!payments.ok) return payments;
+
+  const comment = buildIikoOrderComment({
+    comment: input.comment,
+    utensils: input.utensils,
+    fulfillmentMode: input.fulfillmentMode,
+    paymentStatus: "paid",
+    paymentMethod: "sber",
+    deliveryCourierComment: input.deliveryCourierComment,
+  });
+  const updated = await changeIikoDeliveryComment({
+    iikoOrderId: input.iikoOrderId,
+    comment,
+  });
+  if (!updated.ok) {
+    return {
+      ok: false,
+      error: `Оплата в iiko добавлена, комментарий не обновлён: ${updated.error}`,
+    };
+  }
+  return { ok: true, correlationId: payments.correlationId || updated.correlationId };
 };
