@@ -150,6 +150,13 @@ export const sberRegisterOrder = async (input: {
   }
 
   const urls = sberReturnUrls(config);
+  // Sber description: ^[ -~А-Яа-яЁёA-Za-z0-9-_№]*$ — no middot/emoji/etc.
+  const rawDescription = input.description || `Заказ ${input.orderNumber}`;
+  const description = rawDescription
+    .replace(/[^ -\u007EА-Яа-яЁёA-Za-z0-9-_№]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 512);
   const body: Record<string, unknown> = {
     userName: config.userName,
     password: config.password,
@@ -159,16 +166,17 @@ export const sberRegisterOrder = async (input: {
     returnUrl: urls.returnUrl,
     failUrl: urls.failUrl,
     dynamicCallbackUrl: urls.dynamicCallbackUrl,
-    description: (input.description || `Заказ ${input.orderNumber}`).slice(
-      0,
-      512,
-    ),
+    description: description || `Заказ ${input.orderNumber}`.slice(0, 512),
   };
   if (input.customerEmail?.trim()) {
-    body.email = input.customerEmail.trim().slice(0, 255);
+    body.email = input.customerEmail.trim().slice(0, 128);
   }
   if (input.customerPhone?.trim()) {
-    body.phone = input.customerPhone.replace(/\D/g, "").slice(0, 20);
+    // With country code Sber requires leading '+'; without '+' do not send country code.
+    const digits = input.customerPhone.replace(/\D/g, "").slice(0, 15);
+    if (digits.length >= 7) {
+      body.phone = `+${digits}`;
+    }
   }
   if (config.merchantLogin) {
     body.merchantLogin = config.merchantLogin;

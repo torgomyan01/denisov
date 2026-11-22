@@ -172,8 +172,8 @@ node scripts/sber-set-permanent-password.mjs "<userName>" "<tmpPassword>" "<newP
 ```env
 SITE_URL="https://cafedenisov.ru"
 SBER_USER_NAME="…"
-SBER_PASSWORD="…"                 # постоянный пароль после шага 2
-SBER_MERCHANT_LOGIN="…"           # если банк выдал отдельно; иначе можно пусто
+SBER_PASSWORD='…'                 # постоянный пароль; single quotes — если в пароле есть $ (Next иначе «съест» $VAR)
+SBER_MERCHANT_LOGIN="…"           # только логин дочернего мерчанта; иначе пусто (не дублировать userName)
 # Если Node не доверяет цепочке Sber (антивирус / старые CA на VPS):
 # SBER_TLS_INSECURE=1
 # На Linux лучше сначала: apt update && apt install -y ca-certificates && update-ca-certificates

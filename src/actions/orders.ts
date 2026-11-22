@@ -312,7 +312,7 @@ export const placeOrderAction = async (
       const registered = await sberRegisterOrder({
         orderNumber: order.number,
         amountRub: order.totalRub,
-        description: `Заказ ${order.number} · ДЕНИСОВ`,
+        description: `Заказ ${order.number} - ДЕНИСОВ`,
         customerEmail: order.customerEmail || undefined,
         customerPhone: order.customerPhone,
       });
