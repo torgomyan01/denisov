@@ -29,6 +29,8 @@ import {
 import { loadIikoDefaultModifiersByProductId } from "@/lib/iiko/catalog-cache";
 import { syncOpenOrdersFromIiko } from "@/lib/iiko/sync-status";
 import { prisma } from "@/lib/prisma";
+import { sberRegisterOrder } from "@/lib/sber/client";
+import { isSberConfigured } from "@/lib/sber/config";
 import { getSite } from "@/lib/site";
 import { notifyCustomerOrderStatus } from "@/lib/web-push";
 import type { ActionResult } from "@/types/site";
@@ -58,7 +60,7 @@ const scheduleCustomerOrderStatusNotify = async (input: {
 
 export const placeOrderAction = async (
   input: unknown,
-): Promise<ActionResult<{ order: OrderPublic }>> => {
+): Promise<ActionResult<{ order: OrderPublic; paymentUrl?: string }>> => {
   try {
     const customer = await requireCustomer();
     const parsed = placeOrderSchema.safeParse(input);
@@ -104,8 +106,13 @@ export const placeOrderAction = async (
     }
 
     const isPrepaid = payment.method === "card";
-    // Prepaid card is still a test stub — accept any well-formed card; no charge.
-    if (isPrepaid) void payment;
+    if (isPrepaid && !isSberConfigured()) {
+      return {
+        success: false,
+        error:
+          "Онлайн-оплата временно недоступна. Выберите оплату при получении или попробуйте позже.",
+      };
+    }
 
     const site = await getSite();
     const deliverySettings =
@@ -257,8 +264,8 @@ export const placeOrderAction = async (
           customerEmail: (customer.email ?? "").slice(0, 255),
           fulfillmentMode: cart.fulfillmentMode,
           status: "Unconfirmed",
-          paymentStatus: isPrepaid ? "paid" : "pending",
-          paymentMethod: isPrepaid ? "card_test" : "on_receipt",
+          paymentStatus: "pending",
+          paymentMethod: isPrepaid ? "sber" : "on_receipt",
           totalRub,
           deliveryFeeRub,
           utensils: cart.utensils,
@@ -279,7 +286,7 @@ export const placeOrderAction = async (
             scheduledAt && !Number.isNaN(scheduledAt.getTime())
               ? scheduledAt
               : null,
-          paidAt: isPrepaid ? now : null,
+          paidAt: null,
           statusUpdatedAt: now,
           items: {
             create: itemsData.map(
@@ -290,7 +297,7 @@ export const placeOrderAction = async (
             create: {
               status: "Unconfirmed",
               note: isPrepaid
-                ? "Заказ оформлен (оплата онлайн, тест)"
+                ? "Заказ создан, ожидает оплаты Sber"
                 : "Заказ оформлен (оплата при получении)",
             },
           },
@@ -300,6 +307,82 @@ export const placeOrderAction = async (
 
       return created;
     });
+
+    if (isPrepaid) {
+      const registered = await sberRegisterOrder({
+        orderNumber: order.number,
+        amountRub: order.totalRub,
+        description: `Заказ ${order.number} · ДЕНИСОВ`,
+        customerEmail: order.customerEmail || undefined,
+        customerPhone: order.customerPhone,
+      });
+
+      if (!registered.ok) {
+        await prisma.order.update({
+          where: { id: order.id },
+          data: {
+            paymentStatus: "failed",
+            status: "Cancelled",
+            statusLogs: {
+              create: {
+                status: "Cancelled",
+                note: `Оплата не создана: ${registered.error}`.slice(0, 255),
+              },
+            },
+          },
+        });
+        return {
+          success: false,
+          error: `Не удалось начать оплату: ${registered.error}`,
+        };
+      }
+
+      const pendingPay = await prisma.order.update({
+        where: { id: order.id },
+        data: {
+          sberOrderId: registered.orderId,
+          sberFormUrl: registered.formUrl.slice(0, 1000),
+          statusLogs: {
+            create: {
+              status: "Unconfirmed",
+              note: "Ссылка на оплату Sber создана",
+            },
+          },
+        },
+        include: orderInclude,
+      });
+
+      if (cart.fulfillmentMode === "delivery") {
+        await prisma.customer.update({
+          where: { id: customer.id },
+          data: {
+            deliveryApartment: door.apartment || null,
+            deliveryEntrance: door.entrance || null,
+            deliveryFloor: door.floor || null,
+            deliveryIntercom: door.intercom || null,
+            deliveryCourierComment: door.courierComment || null,
+          },
+        });
+      }
+
+      await saveCustomerCart(
+        customer.id,
+        clearCartItemsKeepingFulfillment(cart),
+      );
+
+      revalidatePath("/");
+      revalidatePath("/admin");
+      revalidatePath("/profile");
+      revalidatePath("/profile/orders");
+
+      return {
+        success: true,
+        data: {
+          order: toOrderPublic(pendingPay),
+          paymentUrl: registered.formUrl,
+        },
+      };
+    }
 
     let orderWithIiko = order;
 
@@ -412,10 +495,21 @@ export const placeOrderAction = async (
     revalidatePath("/profile/orders");
 
     return { success: true, data: { order: orderPublic } };
-  } catch {
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "";
+    if (message === "Unauthorized") {
+      return {
+        success: false,
+        error: "Не удалось оформить заказ. Войдите в аккаунт и попробуйте снова.",
+      };
+    }
+    console.error("placeOrderAction failed:", error);
     return {
       success: false,
-      error: "Не удалось оформить заказ. Войдите в аккаунт и попробуйте снова.",
+      error:
+        message && !message.includes("Invalid `")
+          ? message
+          : "Не удалось оформить заказ. Попробуйте ещё раз.",
     };
   }
 };

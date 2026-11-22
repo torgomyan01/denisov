@@ -43,8 +43,9 @@ import type { SiteMenu } from "@/types/site";
 type CheckoutStepProps = {
   customer: CustomerPublic;
   menu: SiteMenu;
+  onlinePayEnabled?: boolean;
   onBack: () => void;
-  onSuccess: (order: OrderPublic) => void;
+  onSuccess: (order: OrderPublic, paymentUrl?: string) => void;
 };
 
 const cardClass =
@@ -67,27 +68,10 @@ const payOptionClass = (active: boolean): string =>
 const enterStyle = (index: number): CSSProperties =>
   ({ "--i": index }) as CSSProperties;
 
-const formatCardNumber = (raw: string): string => {
-  const digits = raw.replace(/\D/g, "").slice(0, 16);
-  return digits.replace(/(\d{4})(?=\d)/g, "$1 ").trim();
-};
-
-const formatExpiry = (raw: string): string => {
-  const digits = raw.replace(/\D/g, "").slice(0, 4);
-  if (digits.length <= 2) return digits;
-  return `${digits.slice(0, 2)}/${digits.slice(2)}`;
-};
-
-const maskPreviewNumber = (formatted: string): string => {
-  const digits = formatted.replace(/\s/g, "");
-  if (!digits) return "•••• •••• •••• ••••";
-  const padded = digits.padEnd(16, "•");
-  return padded.replace(/(.{4})(?=.)/g, "$1 ").trim();
-};
-
 export const CheckoutStep = ({
   customer,
   menu,
+  onlinePayEnabled = true,
   onBack,
   onSuccess,
 }: CheckoutStepProps) => {
@@ -117,19 +101,8 @@ export const CheckoutStep = ({
   );
   const [payMethod, setPayMethod] =
     useState<CheckoutPaymentMethod>("on_receipt");
-  const [cardNumber, setCardNumber] = useState("");
-  const [expiry, setExpiry] = useState("");
-  const [cvc, setCvc] = useState("");
-  const [cardHolder, setCardHolder] = useState(
-    [customer.name, customer.surname].filter(Boolean).join(" ").trim() || "",
-  );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-
-  const previewNumber = useMemo(
-    () => maskPreviewNumber(cardNumber),
-    [cardNumber],
-  );
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -142,18 +115,16 @@ export const CheckoutStep = ({
       setError("Укажите квартиру или офис");
       return;
     }
+    if (payMethod === "card" && !onlinePayEnabled) {
+      setError("Онлайн-оплата временно недоступна");
+      return;
+    }
     setBusy(true);
     setError("");
     try {
       const payment =
         payMethod === "card"
-          ? {
-              method: "card" as const,
-              cardNumber,
-              expiry,
-              cvc,
-              cardHolder,
-            }
+          ? { method: "card" as const }
           : { method: "on_receipt" as const };
 
       const result = await placeOrderAction({
@@ -177,7 +148,7 @@ export const CheckoutStep = ({
         setError(result.success ? "Ошибка" : result.error);
         return;
       }
-      onSuccess(result.data.order);
+      onSuccess(result.data.order, result.data.paymentUrl);
     } finally {
       setBusy(false);
     }
@@ -185,7 +156,7 @@ export const CheckoutStep = ({
 
   const submitLabel =
     payMethod === "card"
-      ? `Оплатить ${formatPrice(String(total))}`
+      ? `Перейти к оплате · ${formatPrice(String(total))}`
       : `Оформить · ${formatPrice(String(total))}`;
 
   return (
@@ -431,7 +402,7 @@ export const CheckoutStep = ({
               Способ оплаты
             </strong>
             <span className="text-[0.78rem] leading-[1.35] text-ink/52">
-              При получении или картой сейчас
+              При получении или онлайн через Sber
             </span>
           </div>
         </div>
@@ -460,138 +431,42 @@ export const CheckoutStep = ({
               </span>
             </span>
           </button>
-          <button
-            type="button"
-            role="radio"
-            aria-checked={payMethod === "card"}
-            className={payOptionClass(payMethod === "card")}
-            onClick={() => setPayMethod("card")}
-          >
-            <span className={cardIconClass} aria-hidden="true">
-              <CreditCard size={16} strokeWidth={2} className={cartIcon} />
-            </span>
-            <span className="min-w-0">
-              <strong className="block text-[0.92rem] leading-[1.25] font-[650] text-ink">
-                Онлайн картой
-              </strong>
-              <span className="mt-[0.15rem] block text-[0.78rem] leading-[1.35] text-ink/55">
-                Тестовый режим — списания не будет
+          {onlinePayEnabled ? (
+            <button
+              type="button"
+              role="radio"
+              aria-checked={payMethod === "card"}
+              className={payOptionClass(payMethod === "card")}
+              onClick={() => setPayMethod("card")}
+            >
+              <span className={cardIconClass} aria-hidden="true">
+                <CreditCard size={16} strokeWidth={2} className={cartIcon} />
               </span>
-            </span>
-          </button>
+              <span className="min-w-0">
+                <strong className="block text-[0.92rem] leading-[1.25] font-[650] text-ink">
+                  Онлайн · карта / SberPay
+                </strong>
+                <span className="mt-[0.15rem] block text-[0.78rem] leading-[1.35] text-ink/55">
+                  Безопасная оплата на странице Сбера
+                </span>
+              </span>
+            </button>
+          ) : null}
         </div>
-      </section>
 
-      {payMethod === "card" ? (
-        <section
-          className={`${cardClass} ${cartCheckoutEnter}`}
-          style={enterStyle(isDelivery ? 5 : 4)}
-          aria-label="Банковская карта"
-        >
-          <div className="flex items-center gap-[0.7rem]">
-            <span className={cardIconClass} aria-hidden="true">
-              <CreditCard size={16} strokeWidth={2} className={cartIcon} />
-            </span>
-            <div>
-              <strong className="block text-[0.95rem] leading-[1.25] font-[650] text-ink">
-                Банковская карта
-              </strong>
-              <span className="text-[0.78rem] leading-[1.35] text-ink/52">
-                Тестовый режим — списания не будет
-              </span>
-            </div>
-          </div>
-
-          <div
-            className="relative min-h-[132px] overflow-hidden rounded-2xl bg-[radial-gradient(120%_90%_at_100%_0%,rgba(156,107,74,0.45),transparent_55%),linear-gradient(145deg,#2a261f_0%,#1a1713_55%,#3a2a20_100%)] px-[1.05rem] pt-4 pb-[0.95rem] text-[#f7f1e6] shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] before:absolute before:-top-[40%] before:-left-[20%] before:size-40 before:animate-pay-glow before:rounded-full before:bg-white/6 before:content-[''] motion-reduce:before:animate-none"
-            aria-hidden="true"
-          >
-            <div className="h-6 w-[34px] rounded-[5px] bg-[linear-gradient(135deg,#d8c29a,#b89563_45%,#e7d4ad)] shadow-[inset_0_0_0_1px_rgba(0,0,0,0.12)]" />
-            <p className="mt-[0.7rem] text-[10px] leading-none font-[650] tracking-[0.16em] uppercase opacity-70">
-              Denisov · Test
-            </p>
-            <p className="mt-[0.85rem] font-serif text-[1.05rem] leading-[1.2] font-medium tracking-[0.12em] tabular-nums">
-              {previewNumber}
-            </p>
-            <div className="mt-[0.85rem] flex justify-between gap-3 text-[10px] leading-none font-[650] tracking-[0.1em] uppercase opacity-78">
-              <span className="max-w-[60%] overflow-hidden text-ellipsis whitespace-nowrap">
-                {cardHolder.trim() || "ИМЯ НА КАРТЕ"}
-              </span>
-              <span className="max-w-[60%] overflow-hidden text-ellipsis whitespace-nowrap">
-                {expiry || "MM/YY"}
-              </span>
-            </div>
-          </div>
-
-          <label className={labelClass}>
-            Номер карты
-            <input
-              type="text"
-              className={inputClass}
-              inputMode="numeric"
-              autoComplete="cc-number"
-              placeholder="4242 4242 4242 4242"
-              value={cardNumber}
-              onChange={(e) => setCardNumber(formatCardNumber(e.target.value))}
-              required
-            />
-          </label>
-
-          <div className="grid grid-cols-2 gap-[0.65rem]">
-            <label className={labelClass}>
-              Срок
-              <input
-                type="text"
-                className={inputClass}
-                inputMode="numeric"
-                autoComplete="cc-exp"
-                placeholder="MM/YY"
-                value={expiry}
-                onChange={(e) => setExpiry(formatExpiry(e.target.value))}
-                required
-              />
-            </label>
-            <label className={labelClass}>
-              CVC
-              <input
-                type="password"
-                className={inputClass}
-                inputMode="numeric"
-                autoComplete="cc-csc"
-                placeholder="123"
-                value={cvc}
-                onChange={(e) =>
-                  setCvc(e.target.value.replace(/\D/g, "").slice(0, 4))
-                }
-                required
-              />
-            </label>
-          </div>
-
-          <label className={labelClass}>
-            Имя на карте
-            <input
-              type="text"
-              className={inputClass}
-              autoComplete="cc-name"
-              value={cardHolder}
-              onChange={(e) => setCardHolder(e.target.value)}
-              required
-              maxLength={80}
-            />
-          </label>
-
-          <p className="flex items-center gap-[0.4rem] text-[0.78rem] leading-[1.35] text-ink/50">
+        {payMethod === "card" ? (
+          <p className="flex items-start gap-[0.4rem] text-[0.78rem] leading-[1.4] text-ink/55">
             <Lock
               size={14}
               strokeWidth={2}
-              className={cartIcon}
+              className={`${cartIcon} mt-[0.1rem] shrink-0`}
               aria-hidden="true"
             />
-            Данные только для теста. Реальную оплату подключим позже.
+            После нажатия откроется платёжная страница Сбера. Данные карты на
+            нашем сайте не вводятся и не хранятся.
           </p>
-        </section>
-      ) : null}
+        ) : null}
+      </section>
 
       {error ? (
         <p
@@ -608,7 +483,11 @@ export const CheckoutStep = ({
         disabled={busy || !items.length}
       >
         <span className="relative z-1">
-          {busy ? "Оформляем…" : submitLabel}
+          {busy
+            ? payMethod === "card"
+              ? "Создаём оплату…"
+              : "Оформляем…"
+            : submitLabel}
         </span>
         {busy ? (
           <span

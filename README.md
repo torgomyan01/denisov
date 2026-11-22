@@ -156,6 +156,44 @@ IIKO_CITY="Санкт-Петербург"
 
 `apiKey` одного недостаточно для актуального `/api/v2/access_token` — нужны ещё `appId` и `clientSecret`. Без полного набора синк в iiko не включается.
 
+### Sber эквайринг (онлайн-оплата)
+
+Оплата картой / SberPay идёт через платёжный шлюз Сбера (`register.do`). Заказ сначала создаётся у нас со статусом «ожидает оплаты»; в iiko уходит **только после** подтверждённой оплаты (callback или return URL). Оплата при получении работает как раньше.
+
+1. В личном кабинете Sber ecom возьми **userName** (логин API) и временный пароль. При необходимости укажи **merchantLogin** (дочерний мерчант).
+2. Смени временный пароль на постоянный (один раз):
+
+```bash
+node scripts/sber-set-permanent-password.mjs "<userName>" "<tmpPassword>" "<newPermanentPassword>"
+```
+
+3. В `.env` на проде (и локально для теста):
+
+```env
+SITE_URL="https://cafedenisov.ru"
+SBER_USER_NAME="…"
+SBER_PASSWORD="…"                 # постоянный пароль после шага 2
+SBER_MERCHANT_LOGIN="…"           # если банк выдал отдельно; иначе можно пусто
+# Локально, если антивирус ломает TLS к Sber (fetch failed / self-signed):
+# SBER_TLS_INSECURE=1
+# Обычно не нужны — дефолты production API:
+# SBER_API_BASE_URL="https://ecommerce.sberbank.ru/ecomm/gw/partner/api/v1"
+# SBER_ACCOUNTS_BASE_URL="https://ecommerce.sberbank.ru/ecomm/gw/partner/api/accounts/v1"
+```
+
+4. В ЛК Sber включи **динамические callback** и пермиссию callback. URL, который уходит в `register.do`:
+   `https://cafedenisov.ru/api/payments/sber/callback`
+5. На сервере после деплоя:
+
+```bash
+npx prisma db push
+# перезапуск next (pm2/systemd)
+```
+
+6. Проверь тестовым заказом: «Онлайн · карта / SberPay» → страница Сбера → возврат на `/order/pay/result`. В админке заказ должен стать «Оплачен», затем появится запись в iiko.
+
+`SITE_URL` обязан совпадать с публичным HTTPS-доменом (без слэша в конце) — иначе return/callback уйдут не туда.
+
 ## База данных (реляционная CMS)
 
 Контент больше не хранится в одном JSON. Таблицы:
@@ -182,4 +220,5 @@ IIKO_CITY="Санкт-Петербург"
 npm run db:push          # применить схему
 npm run db:seed          # залить контент из site.json
 npm run images:compress  # сжать uploads
+node scripts/sber-set-permanent-password.mjs   # разово сменить пароль Sber
 ```

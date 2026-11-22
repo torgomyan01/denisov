@@ -11,6 +11,7 @@ type CartShellProps = {
   pickupPoints: PickupPointPublic[];
   cafeHours: string;
   delivery?: DeliverySettings;
+  onlinePayEnabled?: boolean;
 };
 
 /** Floating cart button + fixed right drawer with slide animation. */
@@ -19,6 +20,7 @@ export const CartShell = ({
   pickupPoints,
   cafeHours,
   delivery = createDefaultDeliverySettings(),
+  onlinePayEnabled = false,
 }: CartShellProps) => (
   <>
     <CartFab />
@@ -27,6 +29,7 @@ export const CartShell = ({
       pickupPoints={pickupPoints}
       cafeHours={cafeHours}
       delivery={delivery}
+      onlinePayEnabled={onlinePayEnabled}
     />
   </>
 );

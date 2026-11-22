@@ -12,6 +12,7 @@
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
     "images:compress": "node scripts/compress-uploads.mjs",
+    "sber:set-password": "node scripts/sber-set-permanent-password.mjs",
     "postinstall": "prisma generate"
   },
   "prisma": {

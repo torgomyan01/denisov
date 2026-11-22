@@ -72,9 +72,10 @@ export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
 };
 
 /** Stored on Order.paymentMethod */
-export type OrderPaymentMethod = "card_test" | "on_receipt" | string;
+export type OrderPaymentMethod = "sber" | "on_receipt" | "card_test" | string;
 
 export const PAYMENT_METHOD_LABELS: Record<string, string> = {
+  sber: "Онлайн (Sber)",
   card_test: "Онлайн картой (тест)",
   on_receipt: "При получении",
 };

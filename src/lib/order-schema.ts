@@ -1,35 +1,12 @@
 import { z } from "zod";
 import { persistedCartSchema } from "@/lib/customer-cart-schema";
 
-/** Checkout payment mode: prepaid card stub or pay on receipt. */
+/** Checkout payment mode: Sber online or pay on receipt. */
 export const checkoutPaymentMethodSchema = z.enum(["card", "on_receipt"]);
 export type CheckoutPaymentMethod = z.infer<typeof checkoutPaymentMethodSchema>;
 
-/** Test-card form — no real charge; format checks only. */
-export const testCardFieldsSchema = z.object({
-  cardNumber: z
-    .string()
-    .transform((v) => v.replace(/\s+/g, ""))
-    .refine((v) => /^\d{16}$/.test(v), "Введите 16 цифр номера карты"),
-  expiry: z
-    .string()
-    .trim()
-    .refine(
-      (v) => /^(0[1-9]|1[0-2])\s*\/\s*\d{2}$/.test(v),
-      "Срок: ММ/ГГ",
-    ),
-  cvc: z
-    .string()
-    .trim()
-    .refine((v) => /^\d{3,4}$/.test(v), "CVC: 3 или 4 цифры"),
-  cardHolder: z.string().trim().min(2, "Укажите имя на карте").max(80),
-});
-
-/** @deprecated use placeOrderPaymentSchema */
-export const testPaymentSchema = testCardFieldsSchema;
-
 export const placeOrderPaymentSchema = z.discriminatedUnion("method", [
-  testCardFieldsSchema.extend({
+  z.object({
     method: z.literal("card"),
   }),
   z.object({

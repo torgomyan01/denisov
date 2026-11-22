@@ -351,8 +351,12 @@ model Order {
   fulfillmentMode     FulfillmentMode @default(pickup)
   status              OrderStatus     @default(Unconfirmed)
   paymentStatus       PaymentStatus   @default(pending)
-  /// card_test for now; real gateway later
-  paymentMethod       String          @default("card_test") @db.VarChar(32)
+  /// on_receipt | sber (online card / SberPay)
+  paymentMethod       String          @default("on_receipt") @db.VarChar(32)
+  /// Sber gateway order id (mdOrder / orderId)
+  sberOrderId         String?         @unique @db.VarChar(64)
+  /// Hosted payment page URL from register.do
+  sberFormUrl         String          @default("") @db.VarChar(1000)
   /// Total in rubles (integer) — items + delivery fee
   totalRub            Int             @default(0)
   /// Delivery fee portion of total (0 for pickup)

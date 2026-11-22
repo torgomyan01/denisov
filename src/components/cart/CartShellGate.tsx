@@ -11,6 +11,7 @@ type CartShellGateProps = {
   pickupPoints: PickupPointPublic[];
   cafeHours: string;
   delivery: DeliverySettings;
+  onlinePayEnabled?: boolean;
 };
 
 /** Global cart FAB + drawer on every public page (hidden only in admin). */
@@ -19,6 +20,7 @@ export const CartShellGate = ({
   pickupPoints,
   cafeHours,
   delivery,
+  onlinePayEnabled = false,
 }: CartShellGateProps) => {
   const pathname = usePathname() || "";
   if (pathname.startsWith("/admin")) return null;
@@ -31,6 +33,7 @@ export const CartShellGate = ({
         pickupPoints={pickupPoints}
         cafeHours={cafeHours}
         delivery={delivery}
+        onlinePayEnabled={onlinePayEnabled}
       />
     </>
   );

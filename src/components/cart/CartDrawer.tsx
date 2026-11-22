@@ -92,6 +92,7 @@ type CartDrawerProps = {
   pickupPoints: PickupPointPublic[];
   cafeHours: string;
   delivery?: DeliverySettings;
+  onlinePayEnabled?: boolean;
 };
 
 export const CartDrawer = ({
@@ -99,6 +100,7 @@ export const CartDrawer = ({
   pickupPoints,
   cafeHours,
   delivery: deliveryProp,
+  onlinePayEnabled = false,
 }: CartDrawerProps) => {
   const delivery = deliveryProp ?? createDefaultDeliverySettings();
   const dispatch = useAppDispatch();
@@ -269,12 +271,16 @@ export const CartDrawer = ({
     }
   };
 
-  const onOrderSuccess = (order: OrderPublic) => {
+  const onOrderSuccess = (order: OrderPublic, paymentUrl?: string) => {
+    dispatch(clearCart());
+    if (paymentUrl) {
+      window.location.assign(paymentUrl);
+      return;
+    }
     reachMetrikaGoal(METRIKA_GOALS.orderSuccess, {
       order_id: order.id,
       order_number: order.number,
     });
-    dispatch(clearCart());
     setPlacedOrder(order);
     setStep("success");
   };
@@ -428,6 +434,7 @@ export const CartDrawer = ({
               <CheckoutStep
                 customer={customer}
                 menu={menu}
+                onlinePayEnabled={onlinePayEnabled}
                 onBack={() => setStep("cart")}
                 onSuccess={onOrderSuccess}
               />
