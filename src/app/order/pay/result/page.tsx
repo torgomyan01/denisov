@@ -6,6 +6,7 @@ import { sberGetOrderStatus } from "@/lib/sber/client";
 import {
   fulfillSberPaidOrder,
   markSberOrderFailed,
+  markSberOrderRefunded,
 } from "@/lib/sber/fulfill-paid-order";
 
 export const dynamic = "force-dynamic";
@@ -60,9 +61,12 @@ export default async function OrderPayResultPage({ searchParams }: PageProps) {
         })
       : null);
 
-  let outcome: "paid" | "pending" | "failed" | "unknown" = "unknown";
+  let outcome: "paid" | "pending" | "failed" | "refunded" | "unknown" =
+    "unknown";
 
-  if (order?.sberOrderId) {
+  if (order?.paymentStatus === "refunded") {
+    outcome = "refunded";
+  } else if (order?.sberOrderId) {
     const gateway = await sberGetOrderStatus({
       sberOrderId: order.sberOrderId,
     });
@@ -71,9 +75,22 @@ export default async function OrderPayResultPage({ searchParams }: PageProps) {
       if (fulfilled.ok) {
         outcome = "paid";
         order = { ...order, paymentStatus: "paid" };
+      } else if (fulfilled.error === "Оплата уже возвращена") {
+        outcome = "refunded";
+        order = { ...order, paymentStatus: "refunded" };
       } else {
         outcome = "pending";
       }
+    } else if (
+      gateway.ok &&
+      (gateway.orderStatus === 3 || gateway.orderStatus === 4)
+    ) {
+      await markSberOrderRefunded(
+        order.id,
+        `Sber return: статус ${gateway.orderStatus}`,
+      );
+      outcome = "refunded";
+      order = { ...order, paymentStatus: "refunded" };
     } else if (gateway.ok && gateway.declined) {
       await markSberOrderFailed(
         order.id,
@@ -97,20 +114,24 @@ export default async function OrderPayResultPage({ searchParams }: PageProps) {
   const title =
     outcome === "paid"
       ? "Оплата прошла"
-      : outcome === "failed"
-        ? "Оплата не прошла"
-        : outcome === "pending"
-          ? "Проверяем оплату"
-          : "Результат оплаты";
+      : outcome === "refunded"
+        ? "Оплата возвращена"
+        : outcome === "failed"
+          ? "Оплата не прошла"
+          : outcome === "pending"
+            ? "Проверяем оплату"
+            : "Результат оплаты";
 
   const message =
     outcome === "paid"
       ? "Спасибо! Заказ оплачен и отправлен на кухню."
-      : outcome === "failed"
-        ? "Платёж отклонён или отменён. Можно оформить заказ снова или выбрать оплату при получении."
-        : outcome === "pending"
-          ? "Если вы уже оплатили — статус обновится через несколько секунд. Обновите страницу или откройте заказ в профиле."
-          : "Не удалось сопоставить платёж с заказом. Откройте заказ в личном кабинете.";
+      : outcome === "refunded"
+        ? "Средства по этому заказу возвращены на карту."
+        : outcome === "failed"
+          ? "Платёж отклонён или отменён. Можно оформить заказ снова или выбрать оплату при получении."
+          : outcome === "pending"
+            ? "Если вы уже оплатили — статус обновится через несколько секунд. Обновите страницу или откройте заказ в профиле."
+            : "Не удалось сопоставить платёж с заказом. Откройте заказ в личном кабинете.";
 
   return (
     <main className="relative min-h-[70vh] overflow-hidden bg-[radial-gradient(90%_70%_at_12%_0%,rgba(156,107,74,0.14),transparent_55%),radial-gradient(70%_60%_at_100%_10%,rgba(107,143,113,0.12),transparent_50%),linear-gradient(180deg,#f7f3ea_0%,#efe8db_100%)] px-5 py-16 text-ink">

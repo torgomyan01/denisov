@@ -11,10 +11,12 @@ import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   getOrderAdminAction,
+  refundSberOrderAdminAction,
   retryIikoOrderSyncAction,
 } from "@/actions/orders";
 import { OrderDeliveryMapModal } from "@/components/admin/OrderDeliveryMapModal";
 import { OrderPrintLabel } from "@/components/admin/OrderPrintLabel";
+import { ConfirmModal } from "@/components/admin/ui";
 import {
   ORDER_STATUS_HINTS,
   ORDER_STATUS_LABELS,
@@ -54,6 +56,7 @@ export const OrderDetailPanel = ({
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [deliveryMapOpen, setDeliveryMapOpen] = useState(false);
+  const [refundConfirmOpen, setRefundConfirmOpen] = useState(false);
   const [toast, setToast] = useState({
     text: "",
     tone: "success" as "success" | "error",
@@ -121,6 +124,21 @@ export const OrderDetailPanel = ({
         : result.data.iikoSyncError || "iiko не принял заказ",
       result.data.iikoSyncError ? "error" : "success",
     );
+    bumpOrdersList();
+  };
+
+  const confirmRefund = async () => {
+    if (!order || busy) return;
+    setBusy(true);
+    const result = await refundSberOrderAdminAction({ orderId: order.id });
+    setBusy(false);
+    setRefundConfirmOpen(false);
+    if (!result.success || !result.data) {
+      showToast(result.success ? "Ошибка" : result.error, "error");
+      return;
+    }
+    setOrder(result.data);
+    showToast("Деньги возвращены на карту");
     bumpOrdersList();
   };
 
@@ -312,6 +330,28 @@ export const OrderDetailPanel = ({
           <p className="mt-[0.65rem]! font-serif text-[1.45rem]! font-semibold">
             {order.totalRub} ₽
           </p>
+          {order.paymentMethod === "sber" &&
+          order.paymentStatus === "paid" ? (
+            <div className="mt-3 flex flex-col gap-2">
+              <button
+                type="button"
+                className={btnDark}
+                disabled={busy}
+                onClick={() => setRefundConfirmOpen(true)}
+              >
+                Вернуть оплату на карту
+              </button>
+              <p className="text-[0.8rem]! leading-snug text-ink/48">
+                Возврат только из этой админки. Отмена в iiko деньги не
+                возвращает.
+              </p>
+            </div>
+          ) : null}
+          {order.paymentStatus === "refunded" ? (
+            <p className="mt-2 text-[0.85rem]! text-ink/55">
+              Средства возвращены через Sber API.
+            </p>
+          ) : null}
         </section>
       </div>
 
@@ -429,6 +469,16 @@ export const OrderDetailPanel = ({
       )}
 
       {toastPortal}
+      <ConfirmModal
+        open={refundConfirmOpen}
+        title="Вернуть оплату?"
+        message={`Вернуть ${order.totalRub} ₽ на карту гостя по заказу ${order.number}? Отмена в iiko при этом не выполняется.`}
+        confirmLabel={busy ? "Возврат…" : "Вернуть на карту"}
+        onConfirm={() => void confirmRefund()}
+        onCancel={() => {
+          if (!busy) setRefundConfirmOpen(false);
+        }}
+      />
       {order.deliveryLat != null && order.deliveryLng != null ? (
         <OrderDeliveryMapModal
           open={deliveryMapOpen}

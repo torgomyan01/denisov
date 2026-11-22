@@ -210,6 +210,84 @@ export const sberRegisterOrder = async (input: {
   }
 };
 
+export type SberMutateResult =
+  | { ok: true }
+  | { ok: false; error: string };
+
+export type SberRefundOrReverseResult =
+  | {
+      ok: true;
+      method: "reverse" | "refund" | "already";
+      orderStatus: number;
+    }
+  | { ok: false; error: string };
+
+/** Cancel hold / same-day cancel — reverse.do (orderId = gateway mdOrder). */
+export const sberReverseOrder = async (input: {
+  sberOrderId: string;
+  config?: SberConfig;
+}): Promise<SberMutateResult> => {
+  const config = input.config ?? getSberConfig();
+  if (!isSberConfigured(config)) {
+    return { ok: false, error: "Sber эквайринг не настроен (.env)" };
+  }
+  if (!input.sberOrderId.trim()) {
+    return { ok: false, error: "Нет ID оплаты Sber" };
+  }
+
+  try {
+    const { data } = await postJson(`${config.apiBaseUrl}/reverse.do`, {
+      userName: config.userName,
+      password: config.password,
+      orderId: input.sberOrderId,
+    });
+    const errorCode = asString(data.errorCode);
+    if (errorCode && errorCode !== "0") {
+      return { ok: false, error: errorFromPayload(data, "Ошибка отмены оплаты (reverse)") };
+    }
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, error: networkErrorMessage(error) };
+  }
+};
+
+/**
+ * Full or partial refund after deposit — refund.do.
+ * amountKopeks: required by gateway; 0 = full refund per Sber docs.
+ */
+export const sberRefundOrder = async (input: {
+  sberOrderId: string;
+  amountKopeks: number;
+  config?: SberConfig;
+}): Promise<SberMutateResult> => {
+  const config = input.config ?? getSberConfig();
+  if (!isSberConfigured(config)) {
+    return { ok: false, error: "Sber эквайринг не настроен (.env)" };
+  }
+  if (!input.sberOrderId.trim()) {
+    return { ok: false, error: "Нет ID оплаты Sber" };
+  }
+  if (!Number.isFinite(input.amountKopeks) || input.amountKopeks < 0) {
+    return { ok: false, error: "Некорректная сумма возврата" };
+  }
+
+  try {
+    const { data } = await postJson(`${config.apiBaseUrl}/refund.do`, {
+      userName: config.userName,
+      password: config.password,
+      orderId: input.sberOrderId,
+      amount: Math.round(input.amountKopeks),
+    });
+    const errorCode = asString(data.errorCode);
+    if (errorCode && errorCode !== "0") {
+      return { ok: false, error: errorFromPayload(data, "Ошибка возврата (refund)") };
+    }
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, error: networkErrorMessage(error) };
+  }
+};
+
 /** orderStatus: 0 registered, 1 held, 2 deposited, 3 reversed, 4 refunded, 6 declined */
 export const sberGetOrderStatus = async (input: {
   sberOrderId: string;
@@ -262,6 +340,72 @@ export const sberGetOrderStatus = async (input: {
   } catch (error) {
     return { ok: false, error: networkErrorMessage(error) };
   }
+};
+
+/**
+ * Pick reverse (held) vs refund (deposited) from current gateway status.
+ * Idempotent if already reversed/refunded at the bank.
+ */
+export const sberRefundOrReverseOrder = async (input: {
+  sberOrderId: string;
+  amountRub: number;
+  config?: SberConfig;
+}): Promise<SberRefundOrReverseResult> => {
+  const status = await sberGetOrderStatus({
+    sberOrderId: input.sberOrderId,
+    config: input.config,
+  });
+  if (!status.ok) return status;
+
+  if (status.orderStatus === 3 || status.orderStatus === 4) {
+    return {
+      ok: true,
+      method: "already",
+      orderStatus: status.orderStatus,
+    };
+  }
+
+  // Held / authorized — cancel via reverse
+  if (status.orderStatus === 1) {
+    const reversed = await sberReverseOrder({
+      sberOrderId: input.sberOrderId,
+      config: input.config,
+    });
+    if (!reversed.ok) return reversed;
+    return { ok: true, method: "reverse", orderStatus: status.orderStatus };
+  }
+
+  // Deposited — refund (one-stage paid orders land here)
+  if (status.orderStatus === 2 || status.deposited) {
+    const amountKopeks = Math.round(input.amountRub * 100);
+    const refunded = await sberRefundOrder({
+      sberOrderId: input.sberOrderId,
+      amountKopeks: amountKopeks > 0 ? amountKopeks : 0,
+      config: input.config,
+    });
+    if (!refunded.ok) {
+      // Some merchants allow same-day reverse on deposited — try once
+      const reversed = await sberReverseOrder({
+        sberOrderId: input.sberOrderId,
+        config: input.config,
+      });
+      if (reversed.ok) {
+        return { ok: true, method: "reverse", orderStatus: status.orderStatus };
+      }
+      return {
+        ok: false,
+        error: `${refunded.error}; reverse: ${reversed.error}`,
+      };
+    }
+    return { ok: true, method: "refund", orderStatus: status.orderStatus };
+  }
+
+  return {
+    ok: false,
+    error: `Возврат недоступен: статус шлюза ${status.orderStatus}${
+      status.paymentState ? ` (${status.paymentState})` : ""
+    }`,
+  };
 };
 
 /** One-time: replace temporary gateway password with a permanent one. */

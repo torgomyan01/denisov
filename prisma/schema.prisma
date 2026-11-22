@@ -336,6 +336,8 @@ enum PaymentStatus {
   pending
   paid
   failed
+  /// Full reverse/refund via Sber API (admin)
+  refunded
 }
 
 /// Placed customer order (pickup or delivery).

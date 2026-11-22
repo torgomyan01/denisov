@@ -4,6 +4,7 @@ import { sberGetOrderStatus } from "@/lib/sber/client";
 import {
   fulfillSberPaidOrder,
   markSberOrderFailed,
+  markSberOrderRefunded,
 } from "@/lib/sber/fulfill-paid-order";
 
 export const dynamic = "force-dynamic";
@@ -56,30 +57,59 @@ const handleCallback = async (request: NextRequest): Promise<NextResponse> => {
   const order = mdOrder
     ? await prisma.order.findFirst({
         where: { sberOrderId: mdOrder },
-        select: { id: true, paymentStatus: true },
+        select: { id: true, paymentStatus: true, sberOrderId: true },
       })
     : await prisma.order.findFirst({
         where: { number: orderNumber },
-        select: { id: true, paymentStatus: true },
+        select: { id: true, paymentStatus: true, sberOrderId: true },
       });
 
   if (!order) {
     return new NextResponse("ok", { status: 200 });
   }
 
-  if (order.paymentStatus === "paid") {
+  if (order.paymentStatus === "refunded") {
     return new NextResponse("ok", { status: 200 });
   }
 
-  const sberOrderId =
-    mdOrder ||
-    (
-      await prisma.order.findUnique({
-        where: { id: order.id },
-        select: { sberOrderId: true },
-      })
-    )?.sberOrderId ||
-    "";
+  const sberOrderId = mdOrder || order.sberOrderId || "";
+
+  const isRefundOp =
+    operation === "reversed" ||
+    operation === "refunded" ||
+    operation === "refund";
+
+  // Post-capture refund/reverse callbacks (also when already paid locally)
+  if (isRefundOp) {
+    if (sberOrderId) {
+      const gateway = await sberGetOrderStatus({ sberOrderId });
+      if (
+        gateway.ok &&
+        (gateway.orderStatus === 3 ||
+          gateway.orderStatus === 4 ||
+          gateway.paymentState === "REVERSED" ||
+          gateway.paymentState === "REFUNDED")
+      ) {
+        await markSberOrderRefunded(
+          order.id,
+          `Sber callback: ${operation || "refund"}`.slice(0, 255),
+        );
+        return new NextResponse("ok", { status: 200 });
+      }
+    }
+    // Without gateway confirm — only trust refund op if we already had a paid order
+    if (order.paymentStatus === "paid" && status === "1") {
+      await markSberOrderRefunded(
+        order.id,
+        `Sber callback: ${operation || "refund"}`.slice(0, 255),
+      );
+    }
+    return new NextResponse("ok", { status: 200 });
+  }
+
+  if (order.paymentStatus === "paid") {
+    return new NextResponse("ok", { status: 200 });
+  }
 
   if (sberOrderId) {
     const gateway = await sberGetOrderStatus({ sberOrderId });
@@ -88,10 +118,18 @@ const handleCallback = async (request: NextRequest): Promise<NextResponse> => {
       return new NextResponse("ok", { status: 200 });
     }
     if (gateway.ok && gateway.declined) {
-      await markSberOrderFailed(
-        order.id,
-        `Оплата отклонена Sber (status ${gateway.orderStatus})`,
-      );
+      // Declined before pay — not a post-capture refund
+      if (gateway.orderStatus === 3 || gateway.orderStatus === 4) {
+        await markSberOrderRefunded(
+          order.id,
+          `Sber: статус ${gateway.orderStatus}`,
+        );
+      } else {
+        await markSberOrderFailed(
+          order.id,
+          `Оплата отклонена Sber (status ${gateway.orderStatus})`,
+        );
+      }
       return new NextResponse("ok", { status: 200 });
     }
   }
@@ -110,12 +148,7 @@ const handleCallback = async (request: NextRequest): Promise<NextResponse> => {
     return new NextResponse("ok", { status: 200 });
   }
 
-  if (
-    status === "0" ||
-    operation === "declinedbytimeout" ||
-    operation === "reversed" ||
-    operation === "refunded"
-  ) {
+  if (status === "0" || operation === "declinedbytimeout") {
     await markSberOrderFailed(
       order.id,
       `Sber callback: ${operation || "fail"} status=${status || "?"}`.slice(

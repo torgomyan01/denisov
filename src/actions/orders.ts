@@ -7,7 +7,11 @@ import {
   clearCartItemsKeepingFulfillment,
   saveCustomerCart,
 } from "@/lib/customer-cart";
-import { deleteOrderSchema, placeOrderSchema } from "@/lib/order-schema";
+import {
+  deleteOrderSchema,
+  placeOrderSchema,
+  refundSberOrderSchema,
+} from "@/lib/order-schema";
 import {
   generateOrderNumber,
   rubFromPriceString,
@@ -29,8 +33,9 @@ import {
 import { loadIikoDefaultModifiersByProductId } from "@/lib/iiko/catalog-cache";
 import { syncOpenOrdersFromIiko } from "@/lib/iiko/sync-status";
 import { prisma } from "@/lib/prisma";
-import { sberRegisterOrder } from "@/lib/sber/client";
+import { sberRefundOrReverseOrder, sberRegisterOrder } from "@/lib/sber/client";
 import { isSberConfigured } from "@/lib/sber/config";
+import { markSberOrderRefunded } from "@/lib/sber/fulfill-paid-order";
 import { getSite } from "@/lib/site";
 import { notifyCustomerOrderStatus } from "@/lib/web-push";
 import type { ActionResult } from "@/types/site";
@@ -611,7 +616,11 @@ export const retryIikoOrderSyncAction = async (
       utensils: existing.utensils,
       totalRub: existing.totalRub,
       deliveryFeeRub: existing.deliveryFeeRub,
-      paymentStatus: existing.paymentStatus as "pending" | "paid" | "failed",
+      paymentStatus: existing.paymentStatus as
+        | "pending"
+        | "paid"
+        | "failed"
+        | "refunded",
       timeMode: existing.timeMode,
       scheduledAt: existing.scheduledAt,
       deliveryAddress: existing.deliveryAddress,
@@ -825,6 +834,90 @@ export const updateOrderStatusAction = async (
   };
 };
 
+/**
+ * Full card refund via Sber (refund.do / reverse.do).
+ * Site admin only — cancelling in iiko does not return money.
+ */
+export const refundSberOrderAdminAction = async (
+  input: unknown,
+): Promise<ActionResult<OrderPublic>> => {
+  try {
+    await requireAuth();
+    const parsed = refundSberOrderSchema.safeParse(input);
+    if (!parsed.success) {
+      return {
+        success: false,
+        error: parsed.error.issues[0]?.message ?? "Некорректные данные",
+      };
+    }
+
+    if (!isSberConfigured()) {
+      return { success: false, error: "Sber эквайринг не настроен (.env)" };
+    }
+
+    const existing = await prisma.order.findUnique({
+      where: { id: parsed.data.orderId },
+      include: orderInclude,
+    });
+    if (!existing) {
+      return { success: false, error: "Заказ не найден" };
+    }
+
+    if (existing.paymentMethod !== "sber") {
+      return {
+        success: false,
+        error: "Возврат через API только для онлайн-оплаты Sber",
+      };
+    }
+    if (existing.paymentStatus === "refunded") {
+      return { success: true, data: toOrderPublic(existing) };
+    }
+    if (existing.paymentStatus !== "paid") {
+      return {
+        success: false,
+        error: "Возврат доступен только для оплаченного заказа",
+      };
+    }
+    if (!existing.sberOrderId) {
+      return { success: false, error: "Нет ID оплаты Sber у заказа" };
+    }
+
+    const gateway = await sberRefundOrReverseOrder({
+      sberOrderId: existing.sberOrderId,
+      amountRub: existing.totalRub,
+    });
+    if (!gateway.ok) {
+      return { success: false, error: gateway.error };
+    }
+
+    const methodLabel =
+      gateway.method === "reverse"
+        ? "отмена (reverse)"
+        : gateway.method === "refund"
+          ? "возврат (refund)"
+          : "уже возвращено в Sber";
+    await markSberOrderRefunded(
+      existing.id,
+      `Возврат на карту из админки: ${methodLabel}`,
+    );
+
+    const updated = await prisma.order.findUnique({
+      where: { id: existing.id },
+      include: orderInclude,
+    });
+    if (!updated) {
+      return { success: false, error: "Заказ не найден после возврата" };
+    }
+
+    revalidatePath("/admin");
+    revalidatePath("/profile");
+    revalidatePath("/profile/orders");
+    return { success: true, data: toOrderPublic(updated) };
+  } catch {
+    return { success: false, error: "Не удалось выполнить возврат" };
+  }
+};
+
 /** Removes the order from the site DB only — does not cancel it in iiko. */
 export const deleteOrderAdminAction = async (
   input: unknown,
@@ -841,10 +934,25 @@ export const deleteOrderAdminAction = async (
 
     const existing = await prisma.order.findUnique({
       where: { id: parsed.data.orderId },
-      select: { id: true },
+      select: {
+        id: true,
+        paymentMethod: true,
+        paymentStatus: true,
+      },
     });
     if (!existing) {
       return { success: false, error: "Заказ не найден" };
+    }
+
+    if (
+      existing.paymentMethod === "sber" &&
+      existing.paymentStatus === "paid"
+    ) {
+      return {
+        success: false,
+        error:
+          "Сначала верните оплату на карту (кнопка в карточке заказа), затем удаляйте",
+      };
     }
 
     await prisma.order.delete({ where: { id: existing.id } });

@@ -47,20 +47,46 @@ export const fulfillSberPaidOrder = async (
   if (existing.paymentStatus === "paid") {
     return { ok: true, alreadyPaid: true };
   }
+  if (existing.paymentStatus === "refunded") {
+    return { ok: false, error: "Оплата уже возвращена" };
+  }
 
   const now = new Date();
-  let order = await prisma.order.update({
-    where: { id: orderId },
+  // Conditional claim — prevents late callback from overwriting refunded→paid
+  const claimed = await prisma.order.updateMany({
+    where: {
+      id: orderId,
+      paymentStatus: { in: ["pending", "failed"] },
+    },
     data: {
       paymentStatus: "paid",
       paidAt: now,
-      statusLogs: {
-        create: {
-          status: existing.status,
-          note: "Оплата подтверждена (Sber)",
-        },
-      },
     },
+  });
+  if (claimed.count === 0) {
+    const again = await prisma.order.findUnique({
+      where: { id: orderId },
+      select: { paymentStatus: true },
+    });
+    if (again?.paymentStatus === "paid") {
+      return { ok: true, alreadyPaid: true };
+    }
+    if (again?.paymentStatus === "refunded") {
+      return { ok: false, error: "Оплата уже возвращена" };
+    }
+    return { ok: false, error: "Не удалось подтвердить оплату" };
+  }
+
+  await prisma.orderStatusLog.create({
+    data: {
+      orderId,
+      status: existing.status,
+      note: "Оплата подтверждена (Sber)",
+    },
+  });
+
+  let order = await prisma.order.findUniqueOrThrow({
+    where: { id: orderId },
     include: orderInclude,
   });
 
@@ -191,7 +217,13 @@ export const markSberOrderFailed = async (
     where: { id: orderId },
     select: { paymentStatus: true, status: true },
   });
-  if (!existing || existing.paymentStatus === "paid") return;
+  if (
+    !existing ||
+    existing.paymentStatus === "paid" ||
+    existing.paymentStatus === "refunded"
+  ) {
+    return;
+  }
 
   await prisma.order.update({
     where: { id: orderId },
@@ -205,4 +237,39 @@ export const markSberOrderFailed = async (
       },
     },
   });
+};
+
+/** Mark local payment as refunded after Sber reverse/refund (idempotent). */
+export const markSberOrderRefunded = async (
+  orderId: string,
+  note: string,
+): Promise<{ ok: true; already: boolean } | { ok: false; error: string }> => {
+  const existing = await prisma.order.findUnique({
+    where: { id: orderId },
+    select: { paymentStatus: true, status: true },
+  });
+  if (!existing) return { ok: false, error: "Заказ не найден" };
+  if (existing.paymentStatus === "refunded") {
+    return { ok: true, already: true };
+  }
+
+  const claimed = await prisma.order.updateMany({
+    where: {
+      id: orderId,
+      paymentStatus: { not: "refunded" },
+    },
+    data: { paymentStatus: "refunded" },
+  });
+  if (claimed.count === 0) {
+    return { ok: true, already: true };
+  }
+
+  await prisma.orderStatusLog.create({
+    data: {
+      orderId,
+      status: existing.status,
+      note: note.slice(0, 255),
+    },
+  });
+  return { ok: true, already: false };
 };

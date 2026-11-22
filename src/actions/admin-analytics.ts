@@ -38,6 +38,7 @@ const PAYMENT_STATUS_FALLBACK: Record<string, string> = {
   pending: "Ожидает оплаты",
   paid: "Оплачен",
   failed: "Ошибка оплаты",
+  refunded: "Возврат на карту",
 };
 
 const iikoLabel = (status: string): string => {

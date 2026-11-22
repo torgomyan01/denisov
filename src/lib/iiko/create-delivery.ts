@@ -32,7 +32,7 @@ export type IikoCreateOrderInput = {
   utensils: number;
   totalRub: number;
   deliveryFeeRub: number;
-  paymentStatus: "pending" | "paid" | "failed";
+  paymentStatus: "pending" | "paid" | "failed" | "refunded";
   timeMode: string;
   scheduledAt: Date | null;
   deliveryAddress: string;
@@ -136,6 +136,8 @@ const buildComment = (input: IikoCreateOrderInput): string => {
   }
   if (input.paymentStatus === "paid") {
     parts.push("Оплата: онлайн");
+  } else if (input.paymentStatus === "refunded") {
+    parts.push("Оплата: возврат на карту");
   } else {
     parts.push("Оплата: при получении");
   }

@@ -37,7 +37,7 @@ export const ORDER_STATUSES: readonly OrderStatus[] = [
   "Cancelled",
 ] as const;
 
-export type PaymentStatus = "pending" | "paid" | "failed";
+export type PaymentStatus = "pending" | "paid" | "failed" | "refunded";
 
 export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
   Unconfirmed: "Не подтверждён",
@@ -69,6 +69,7 @@ export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
   pending: "Ожидает оплаты",
   paid: "Оплачен",
   failed: "Ошибка оплаты",
+  refunded: "Возврат на карту",
 };
 
 /** Stored on Order.paymentMethod */

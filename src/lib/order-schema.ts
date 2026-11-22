@@ -74,3 +74,7 @@ export const updateOrderStatusSchema = z.object({
 export const deleteOrderSchema = z.object({
   orderId: z.string().trim().min(1).max(64),
 });
+
+export const refundSberOrderSchema = z.object({
+  orderId: z.string().trim().min(1).max(64),
+});
