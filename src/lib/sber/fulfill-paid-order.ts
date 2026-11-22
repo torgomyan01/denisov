@@ -31,7 +31,8 @@ const scheduleNotify = async (input: {
 };
 
 /**
- * Mark order paid after Sber confirmation and push to iiko once.
+ * Mark order paid after Sber confirmation.
+ * iiko is created at place-order time; here we only backfill if create was skipped/failed.
  * Idempotent: safe to call from callback + return page.
  */
 export const fulfillSberPaidOrder = async (
@@ -148,7 +149,7 @@ export const fulfillSberPaidOrder = async (
             statusLogs: {
               create: {
                 status: order.status,
-                note: `Отправлено в iiko после оплаты (${iikoResult.creationStatus})`,
+                note: `iiko (досылка после оплаты): ${iikoResult.creationStatus}`,
               },
             },
           }
@@ -160,7 +161,10 @@ export const fulfillSberPaidOrder = async (
             statusLogs: {
               create: {
                 status: order.status,
-                note: `iiko после оплаты: ${iikoResult.error}`.slice(0, 255),
+                note: `iiko (досылка после оплаты): ${iikoResult.error}`.slice(
+                  0,
+                  255,
+                ),
               },
             },
           },

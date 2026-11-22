@@ -244,7 +244,7 @@ export const placeOrderAction = async (
         : null;
     const now = new Date();
 
-    const order = await prisma.$transaction(async (tx) => {
+    let order = await prisma.$transaction(async (tx) => {
       let number = generateOrderNumber();
       for (let i = 0; i < 5; i += 1) {
         const clash = await tx.order.findUnique({
@@ -308,6 +308,8 @@ export const placeOrderAction = async (
       return created;
     });
 
+    let paymentUrl: string | undefined;
+
     if (isPrepaid) {
       const registered = await sberRegisterOrder({
         orderNumber: order.number,
@@ -337,7 +339,7 @@ export const placeOrderAction = async (
         };
       }
 
-      const pendingPay = await prisma.order.update({
+      order = await prisma.order.update({
         where: { id: order.id },
         data: {
           sberOrderId: registered.orderId,
@@ -351,39 +353,10 @@ export const placeOrderAction = async (
         },
         include: orderInclude,
       });
-
-      if (cart.fulfillmentMode === "delivery") {
-        await prisma.customer.update({
-          where: { id: customer.id },
-          data: {
-            deliveryApartment: door.apartment || null,
-            deliveryEntrance: door.entrance || null,
-            deliveryFloor: door.floor || null,
-            deliveryIntercom: door.intercom || null,
-            deliveryCourierComment: door.courierComment || null,
-          },
-        });
-      }
-
-      await saveCustomerCart(
-        customer.id,
-        clearCartItemsKeepingFulfillment(cart),
-      );
-
-      revalidatePath("/");
-      revalidatePath("/admin");
-      revalidatePath("/profile");
-      revalidatePath("/profile/orders");
-
-      return {
-        success: true,
-        data: {
-          order: toOrderPublic(pendingPay),
-          paymentUrl: registered.formUrl,
-        },
-      };
+      paymentUrl = registered.formUrl;
     }
 
+    // Все заказы (в т.ч. Sber pending) сразу уходят в iiko — кухня видит их до оплаты.
     let orderWithIiko = order;
 
     if (iikoEnabled) {
@@ -494,7 +467,13 @@ export const placeOrderAction = async (
     revalidatePath("/profile");
     revalidatePath("/profile/orders");
 
-    return { success: true, data: { order: orderPublic } };
+    return {
+      success: true,
+      data: {
+        order: orderPublic,
+        ...(paymentUrl ? { paymentUrl } : {}),
+      },
+    };
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
     if (message === "Unauthorized") {
