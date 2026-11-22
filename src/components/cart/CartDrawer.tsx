@@ -599,13 +599,14 @@ export const CartDrawer = ({
                                   deliveryLng != null &&
                                   inZone,
                               )}
+                              role="status"
                             >
                               {deliveryLat == null || deliveryLng == null
-                                ? "Выберите адрес из списка — или уточните на карте"
+                                ? "Выберите адрес из подсказок или точку на карте"
                                 : inZone
                                   ? deliveryAddressLabel ||
                                     "Адрес в зоне доставки"
-                                  : "Сюда пока не доставляем, можно забрать самовывозом"}
+                                  : "Вне зоны доставки — выберите другой адрес или самовывоз"}
                             </p>
                             <button
                               type="button"
