@@ -15,6 +15,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { getCustomerAction } from "@/actions/customer-auth";
 import { saveMyCartAction } from "@/actions/customer-cart";
+import { getPublicDeliverySettingsAction } from "@/actions/delivery-zones";
 import { CheckoutStep } from "@/components/cart/CheckoutStep";
 import { ModifierChoiceModal } from "@/components/site/ModifierChoiceModal";
 import {
@@ -67,6 +68,7 @@ import {
   cartSnapshot,
   cartSubtotal,
   clearCart,
+  clearDeliveryLocation,
   closeCart,
   decrementQty,
   decrementUtensils,
@@ -102,7 +104,11 @@ export const CartDrawer = ({
   delivery: deliveryProp,
   onlinePayEnabled = false,
 }: CartDrawerProps) => {
-  const delivery = deliveryProp ?? createDefaultDeliverySettings();
+  const [deliveryLive, setDeliveryLive] = useState<DeliverySettings | null>(
+    null,
+  );
+  const delivery =
+    deliveryLive ?? deliveryProp ?? createDefaultDeliverySettings();
   const dispatch = useAppDispatch();
   const router = useRouter();
   const pathname = usePathname() || "/";
@@ -303,6 +309,19 @@ export const CartDrawer = ({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [isOpen, mapModalOpen, dispatch]);
+
+  // Root layout SiteCart can keep stale zones after admin edits — refresh on open.
+  useEffect(() => {
+    if (!isOpen) return;
+    let cancelled = false;
+    void getPublicDeliverySettingsAction().then((result) => {
+      if (cancelled || !result.success || !result.data) return;
+      setDeliveryLive(result.data);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen]);
 
   // Keep lock for the whole open + close animation (`mounted`), not only
   // while `isOpen` — unlocking mid-close made the page jump under smooth scroll.
@@ -569,6 +588,8 @@ export const CartDrawer = ({
                                   );
                                   return;
                                 }
+                                // Text-only suggest must not keep previous map coords.
+                                dispatch(clearDeliveryLocation());
                                 dispatch(setDeliveryAddress(address));
                               }}
                             />

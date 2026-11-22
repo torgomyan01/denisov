@@ -46,9 +46,28 @@ const deliverySettingsPatchSchema = z.object({
 });
 
 const revalidateDelivery = () => {
+  revalidatePath("/", "layout");
   revalidatePath("/");
   revalidatePath("/menu");
   revalidatePath("/admin");
+};
+
+/** Public cart/checkout — fresh zones (root layout SiteCart can be stale). */
+export const getPublicDeliverySettingsAction = async (): Promise<
+  ActionResult<DeliverySettings>
+> => {
+  try {
+    const site = await getSite();
+    return {
+      success: true,
+      data: site.delivery ?? createDefaultDeliverySettings(),
+    };
+  } catch {
+    return {
+      success: false,
+      error: "Не удалось загрузить настройки доставки",
+    };
+  }
 };
 
 export const listDeliveryZonesAdminAction = async (): Promise<

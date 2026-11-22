@@ -19,13 +19,46 @@ export const distanceKm = (
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 };
 
-/** Ray-casting point-in-polygon. */
+/** Distance threshold (~1.5 m) so points on the drawn edge count as inside. */
+const EDGE_EPS = 1e-5;
+
+const pointOnSegment = (
+  lat: number,
+  lng: number,
+  a: [number, number],
+  b: [number, number],
+): boolean => {
+  const [ya, xa] = a;
+  const [yb, xb] = b;
+  const cross = (lng - xa) * (yb - ya) - (lat - ya) * (xb - xa);
+  if (Math.abs(cross) > EDGE_EPS) return false;
+  const dot = (lng - xa) * (xb - xa) + (lat - ya) * (yb - ya);
+  if (dot < -EDGE_EPS) return false;
+  const lenSq = (xb - xa) ** 2 + (yb - ya) ** 2;
+  if (dot - lenSq > EDGE_EPS) return false;
+  return true;
+};
+
+/** Ray-casting point-in-polygon. Vertices stored as [lat, lng]. */
 export const pointInPolygon = (
   lat: number,
   lng: number,
   polygon: Array<[number, number]>,
 ): boolean => {
   if (polygon.length < 3) return false;
+
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const pi = polygon[i];
+    const pj = polygon[j];
+    if (!pi || !pj) continue;
+    if (
+      (Math.abs(pi[0] - lat) <= EDGE_EPS && Math.abs(pi[1] - lng) <= EDGE_EPS) ||
+      pointOnSegment(lat, lng, pj, pi)
+    ) {
+      return true;
+    }
+  }
+
   let inside = false;
   for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
     const pi = polygon[i];

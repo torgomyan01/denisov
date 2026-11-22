@@ -71,14 +71,19 @@ const makePolygon = (
   ring: Array<[number, number]>,
   color: string,
   interactive: boolean,
+  active = true,
 ): YMapsPolygon =>
   new ymaps.Polygon(
     [ring.map(([lat, lng]) => [lat, lng] as YMapsCoords)],
     {},
     {
-      fillColor: withAlpha(color, interactive ? "55" : "33"),
+      fillColor: withAlpha(
+        color,
+        interactive ? "55" : active ? "33" : "14",
+      ),
       strokeColor: color,
-      strokeWidth: interactive ? 3 : 2,
+      strokeWidth: interactive ? 3 : active ? 2 : 1.5,
+      strokeOpacity: active ? 1 : 0.4,
       opacity: 1,
       editorDrawingCursor: "crosshair",
       editorMaxPoints: 64,
@@ -221,7 +226,13 @@ export const DeliveryZoneMap = ({
     for (const zone of zones) {
       if (zone.polygon.length < 3) continue;
       if (selected && zone.id === selected.id) continue;
-      const poly = makePolygon(ymaps, zone.polygon, zone.color, false);
+      const poly = makePolygon(
+        ymaps,
+        zone.polygon,
+        zone.color,
+        false,
+        zone.isActive,
+      );
       map.geoObjects.add(poly);
       layerRef.current.push(poly);
     }
@@ -284,7 +295,13 @@ export const DeliveryZoneMap = ({
 
     for (const zone of zones) {
       if (zone.polygon.length < 3) continue;
-      const poly = makePolygon(ymaps, zone.polygon, zone.color, false);
+      const poly = makePolygon(
+        ymaps,
+        zone.polygon,
+        zone.color,
+        false,
+        zone.isActive,
+      );
       map.geoObjects.add(poly);
       layerRef.current.push(poly);
     }
