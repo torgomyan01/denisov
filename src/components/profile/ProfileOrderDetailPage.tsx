@@ -71,8 +71,15 @@ export const ProfileOrderDetailPage = ({
 
   useEffect(() => {
     void load();
-    const timer = window.setInterval(() => void load(), 20000);
-    return () => window.clearInterval(timer);
+    const timer = window.setInterval(() => void load(), 30_000);
+    const onSynced = () => {
+      void load();
+    };
+    window.addEventListener("denisov-orders-synced", onSynced);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("denisov-orders-synced", onSynced);
+    };
   }, [load]);
 
   if (loading) {

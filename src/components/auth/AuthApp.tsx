@@ -83,6 +83,7 @@ export const AuthApp = ({ yandexEnabled }: AuthAppProps) => {
       const result = await getCustomerAction();
       if (result.success && result.data) {
         await applyCartAfterAuth(dispatch, store);
+        window.dispatchEvent(new Event("denisov-customer-auth"));
         router.replace(safeNextPath(searchParams.get("next")));
         return;
       }
@@ -118,6 +119,7 @@ export const AuthApp = ({ yandexEnabled }: AuthAppProps) => {
         return;
       }
       await applyCartAfterAuth(dispatch, store);
+      window.dispatchEvent(new Event("denisov-customer-auth"));
       router.replace(safeNextPath(searchParams.get("next")));
       router.refresh();
     } finally {

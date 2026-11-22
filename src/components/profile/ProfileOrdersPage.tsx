@@ -87,10 +87,10 @@ export const ProfileOrdersPage = () => {
   const [error, setError] = useState("");
   const [filter, setFilter] = useState<OrdersFilter>("new");
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (opts?: { silent?: boolean }) => {
+    if (!opts?.silent) setLoading(true);
     const result = await listMyOrdersAction();
-    setLoading(false);
+    if (!opts?.silent) setLoading(false);
     if (!result.success || !result.data) {
       setError(result.success ? "Ошибка" : result.error);
       setOrders([]);
@@ -102,8 +102,15 @@ export const ProfileOrdersPage = () => {
 
   useEffect(() => {
     void load();
-    const timer = window.setInterval(() => void load(), 25000);
-    return () => window.clearInterval(timer);
+    const timer = window.setInterval(() => void load({ silent: true }), 30_000);
+    const onSynced = () => {
+      void load({ silent: true });
+    };
+    window.addEventListener("denisov-orders-synced", onSynced);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("denisov-orders-synced", onSynced);
+    };
   }, [load]);
 
   const counts = useMemo(() => {

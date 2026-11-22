@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { SiteCart } from "@/components/cart/SiteCart";
 import { StoreProvider } from "@/components/cart/StoreProvider";
 import { CookieConsentBanner } from "@/components/site/CookieConsentBanner";
+import { CustomerIikoStatusPoller } from "@/components/site/CustomerIikoStatusPoller";
 import { YandexMetrika } from "@/components/site/YandexMetrika";
 import "./globals.css";
 
@@ -31,6 +32,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <StoreProvider>
           {children}
           <SiteCart />
+          <CustomerIikoStatusPoller />
           <CookieConsentBanner />
           <Suspense fallback={null}>
             <YandexMetrika />

@@ -539,6 +539,43 @@ export const syncOrdersFromIikoAction = async (input?: {
   }
 };
 
+/** Shared throttle so many open tabs don't hammer iiko. */
+let lastPublicIikoSyncAtMs = 0;
+const PUBLIC_IIKO_SYNC_MIN_GAP_MS = 25_000;
+
+/**
+ * Public site-wide sync of open delivery statuses from iiko.
+ * Works for guests and logged-in customers (no order data returned).
+ * Throttled ~25s across all callers in this process.
+ */
+export const syncOpenSiteOrdersFromIikoAction = async (): Promise<
+  ActionResult<{ updated: number; throttled: boolean }>
+> => {
+  try {
+    if (!isIikoConfigured()) {
+      return { success: true, data: { updated: 0, throttled: false } };
+    }
+
+    const now = Date.now();
+    if (now - lastPublicIikoSyncAtMs < PUBLIC_IIKO_SYNC_MIN_GAP_MS) {
+      return { success: true, data: { updated: 0, throttled: true } };
+    }
+    lastPublicIikoSyncAtMs = now;
+
+    const syncResults = await syncOpenOrdersFromIiko({ take: 80 });
+    await notifySyncedStatusChanges(syncResults);
+    const updated = syncResults.filter((row) => row.changed).length;
+    if (updated > 0) {
+      revalidatePath("/profile");
+      revalidatePath("/profile/orders");
+      revalidatePath("/admin");
+    }
+    return { success: true, data: { updated, throttled: false } };
+  } catch {
+    return { success: false, error: "Не удалось синхронизировать статусы" };
+  }
+};
+
 /** Resend a local order to iiko if create previously failed. */
 export const retryIikoOrderSyncAction = async (
   orderId: string,
