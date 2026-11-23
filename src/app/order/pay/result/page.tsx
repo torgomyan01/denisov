@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { OrderPayResultClient } from "@/components/order/OrderPayResultClient";
+import { RetrySberPaymentButton } from "@/components/order/RetrySberPaymentButton";
+import { canRetryOnlinePayment } from "@/lib/orders";
 import { prisma } from "@/lib/prisma";
 import { sberGetOrderStatus } from "@/lib/sber/client";
 import {
@@ -35,29 +37,27 @@ export default async function OrderPayResultPage({ searchParams }: PageProps) {
   ).trim();
   const orderNumber = first(params.orderNumber).trim();
 
+  const orderSelect = {
+    id: true,
+    number: true,
+    paymentStatus: true,
+    paymentMethod: true,
+    status: true,
+    sberOrderId: true,
+    totalRub: true,
+  } as const;
+
   let order =
     (sberOrderId
       ? await prisma.order.findFirst({
           where: { sberOrderId },
-          select: {
-            id: true,
-            number: true,
-            paymentStatus: true,
-            sberOrderId: true,
-            totalRub: true,
-          },
+          select: orderSelect,
         })
       : null) ||
     (orderNumber
       ? await prisma.order.findFirst({
           where: { number: orderNumber },
-          select: {
-            id: true,
-            number: true,
-            paymentStatus: true,
-            sberOrderId: true,
-            totalRub: true,
-          },
+          select: orderSelect,
         })
       : null);
 
@@ -128,10 +128,19 @@ export default async function OrderPayResultPage({ searchParams }: PageProps) {
       : outcome === "refunded"
         ? "Средства по этому заказу возвращены на карту."
         : outcome === "failed"
-          ? "Платёж отклонён или отменён. Можно оформить заказ снова (доставка — только онлайн; при самовывозе доступна оплата на кассе)."
+          ? "Платёж отклонён или отменён. Можно оплатить этот же заказ снова — без нового оформления."
           : outcome === "pending"
-            ? "Если вы уже оплатили — статус обновится через несколько секунд. Обновите страницу или откройте заказ в профиле."
+            ? "Если вы уже оплатили — статус обновится через несколько секунд. Обновите страницу или откройте заказ в профиле. Если оплата не завершена — нажмите «Оплатить снова»."
             : "Не удалось сопоставить платёж с заказом. Откройте заказ в личном кабинете.";
+
+  const showPayAgain =
+    order != null &&
+    canRetryOnlinePayment({
+      paymentMethod: order.paymentMethod,
+      paymentStatus: order.paymentStatus,
+      status: order.status,
+    }) &&
+    (outcome === "failed" || outcome === "pending" || outcome === "unknown");
 
   return (
     <main className="relative min-h-[70vh] overflow-hidden bg-[radial-gradient(90%_70%_at_12%_0%,rgba(156,107,74,0.14),transparent_55%),radial-gradient(70%_60%_at_100%_10%,rgba(107,143,113,0.12),transparent_50%),linear-gradient(180deg,#f7f3ea_0%,#efe8db_100%)] px-5 py-16 text-ink">
@@ -150,6 +159,9 @@ export default async function OrderPayResultPage({ searchParams }: PageProps) {
         <p className="max-w-[40ch] text-[0.98rem] leading-[1.5] text-ink/68">
           {message}
         </p>
+        {showPayAgain && order ? (
+          <RetrySberPaymentButton orderId={order.id} />
+        ) : null}
         <div className="mt-2 flex flex-col gap-3 sm:flex-row">
           {order ? (
             <Link

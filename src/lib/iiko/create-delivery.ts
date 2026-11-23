@@ -190,6 +190,8 @@ export const buildIikoOrderComment = (input: {
     parts.push("Оплата: онлайн");
   } else if (input.paymentStatus === "refunded") {
     parts.push("Оплата: возврат на карту");
+  } else if (input.paymentStatus === "failed") {
+    parts.push("Оплата: онлайн не прошла — ожидает повторной оплаты");
   } else if (input.paymentMethod === "sber") {
     parts.push("Оплата: онлайн (ожидает)");
   } else {
@@ -649,6 +651,32 @@ export const changeIikoDeliveryComment = async (
 };
 
 /**
+ * Update iiko delivery comment for online payment state (awaiting / failed / paid text).
+ * Does not add payment rows — only kitchen-visible comment.
+ */
+export const syncIikoOnlinePaymentComment = async (input: {
+  iikoOrderId: string;
+  comment: string;
+  utensils: number;
+  fulfillmentMode: "pickup" | "delivery";
+  paymentStatus: "pending" | "paid" | "failed" | "refunded";
+  deliveryCourierComment?: string;
+}): Promise<IikoPaymentSyncResult> => {
+  const comment = buildIikoOrderComment({
+    comment: input.comment,
+    utensils: input.utensils,
+    fulfillmentMode: input.fulfillmentMode,
+    paymentStatus: input.paymentStatus,
+    paymentMethod: "sber",
+    deliveryCourierComment: input.deliveryCourierComment,
+  });
+  return changeIikoDeliveryComment({
+    iikoOrderId: input.iikoOrderId,
+    comment,
+  });
+};
+
+/**
  * After Sber capture: mark existing iiko delivery as paid online + fix comment.
  */
 export const syncIikoPaidOnline = async (input: {
@@ -665,17 +693,13 @@ export const syncIikoPaidOnline = async (input: {
   });
   if (!payments.ok) return payments;
 
-  const comment = buildIikoOrderComment({
+  const updated = await syncIikoOnlinePaymentComment({
+    iikoOrderId: input.iikoOrderId,
     comment: input.comment,
     utensils: input.utensils,
     fulfillmentMode: input.fulfillmentMode,
     paymentStatus: "paid",
-    paymentMethod: "sber",
     deliveryCourierComment: input.deliveryCourierComment,
-  });
-  const updated = await changeIikoDeliveryComment({
-    iikoOrderId: input.iikoOrderId,
-    comment,
   });
   if (!updated.ok) {
     return {

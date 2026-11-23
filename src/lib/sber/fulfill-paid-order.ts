@@ -1,5 +1,6 @@
 import {
   createIikoDeliveryOrderReliable,
+  syncIikoOnlinePaymentComment,
   syncIikoPaidOnline,
   type IikoCreateModifier,
 } from "@/lib/iiko/create-delivery";
@@ -251,7 +252,15 @@ export const markSberOrderFailed = async (
 ): Promise<void> => {
   const existing = await prisma.order.findUnique({
     where: { id: orderId },
-    select: { paymentStatus: true, status: true },
+    select: {
+      paymentStatus: true,
+      status: true,
+      iikoOrderId: true,
+      comment: true,
+      utensils: true,
+      fulfillmentMode: true,
+      deliveryCourierComment: true,
+    },
   });
   if (
     !existing ||
@@ -273,6 +282,26 @@ export const markSberOrderFailed = async (
       },
     },
   });
+
+  // Kitchen-visible note: online pay failed, waiting for retry.
+  if (existing.iikoOrderId && isIikoConfigured()) {
+    const commentSync = await syncIikoOnlinePaymentComment({
+      iikoOrderId: existing.iikoOrderId,
+      comment: existing.comment,
+      utensils: existing.utensils,
+      fulfillmentMode: existing.fulfillmentMode,
+      paymentStatus: "failed",
+      deliveryCourierComment: existing.deliveryCourierComment,
+    });
+    if (!commentSync.ok) {
+      await prisma.order.update({
+        where: { id: orderId },
+        data: {
+          iikoSyncError: commentSync.error.slice(0, 500),
+        },
+      });
+    }
+  }
 };
 
 /** Mark local payment as refunded after Sber reverse/refund (idempotent). */

@@ -78,3 +78,7 @@ export const deleteOrderSchema = z.object({
 export const refundSberOrderSchema = z.object({
   orderId: z.string().trim().min(1).max(64),
 });
+
+export const retrySberPaymentSchema = z.object({
+  orderId: z.string().trim().min(1).max(64),
+});

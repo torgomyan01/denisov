@@ -11,8 +11,10 @@ import {
   deleteOrderSchema,
   placeOrderSchema,
   refundSberOrderSchema,
+  retrySberPaymentSchema,
 } from "@/lib/order-schema";
 import {
+  canRetryOnlinePayment,
   generateOrderNumber,
   rubFromPriceString,
   toOrderPublic,
@@ -29,6 +31,7 @@ import { autoRetryFailedIikoCreations } from "@/lib/iiko/auto-retry-create";
 import {
   createIikoDeliveryOrderReliable,
   isIikoProductId,
+  syncIikoOnlinePaymentComment,
   syncIikoPaidOnline,
   type IikoCreateModifier,
 } from "@/lib/iiko/create-delivery";
@@ -893,6 +896,128 @@ export const getMyOrderAction = async (
     return { success: true, data: toOrderPublic(row) };
   } catch {
     return { success: false, error: "Войдите, чтобы увидеть заказ" };
+  }
+};
+
+/**
+ * Create a new Sber payment link for an unpaid online order (same site order).
+ * Updates iiko comment to «ожидает повторной оплаты» when applicable.
+ */
+export const retrySberPaymentAction = async (
+  input: unknown,
+): Promise<ActionResult<{ paymentUrl: string; order: OrderPublic }>> => {
+  try {
+    const customer = await requireCustomer();
+    const parsed = retrySberPaymentSchema.safeParse(input);
+    if (!parsed.success) {
+      return { success: false, error: "Заказ не найден" };
+    }
+    if (!isSberConfigured()) {
+      return {
+        success: false,
+        error: "Онлайн-оплата временно недоступна. Попробуйте позже.",
+      };
+    }
+
+    const existing = await prisma.order.findFirst({
+      where: { id: parsed.data.orderId, customerId: customer.id },
+      include: orderInclude,
+    });
+    if (!existing) {
+      return { success: false, error: "Заказ не найден" };
+    }
+    if (!canRetryOnlinePayment(existing)) {
+      return {
+        success: false,
+        error:
+          existing.paymentStatus === "paid"
+            ? "Заказ уже оплачен"
+            : "Повторная оплата для этого заказа недоступна",
+      };
+    }
+
+    // Sber requires a unique orderNumber per register — append retry suffix.
+    const sberOrderNumber = `${existing.number}-P${Date.now().toString(36)}`.slice(
+      0,
+      36,
+    );
+    const registered = await sberRegisterOrder({
+      orderNumber: sberOrderNumber,
+      amountRub: existing.totalRub,
+      description: `Заказ ${existing.number} - ДЕНИСОВ (повтор)`,
+      customerEmail: existing.customerEmail || undefined,
+      customerPhone: existing.customerPhone,
+    });
+    if (!registered.ok) {
+      return {
+        success: false,
+        error: `Не удалось создать оплату: ${registered.error}`,
+      };
+    }
+
+    const updated = await prisma.order.update({
+      where: { id: existing.id },
+      data: {
+        paymentStatus: "pending",
+        sberOrderId: registered.orderId,
+        sberFormUrl: registered.formUrl.slice(0, 1000),
+        statusLogs: {
+          create: {
+            status: existing.status,
+            note: "Новая ссылка на оплату Sber (повтор)",
+          },
+        },
+      },
+      include: orderInclude,
+    });
+
+    if (updated.iikoOrderId && isIikoConfigured()) {
+      const commentSync = await syncIikoOnlinePaymentComment({
+        iikoOrderId: updated.iikoOrderId,
+        comment: updated.comment,
+        utensils: updated.utensils,
+        fulfillmentMode: updated.fulfillmentMode,
+        paymentStatus: "pending",
+        deliveryCourierComment: updated.deliveryCourierComment,
+      });
+      if (!commentSync.ok) {
+        await prisma.order.update({
+          where: { id: updated.id },
+          data: { iikoSyncError: commentSync.error.slice(0, 500) },
+        });
+      } else {
+        await prisma.order.update({
+          where: { id: updated.id },
+          data: {
+            iikoSyncError: "",
+            statusLogs: {
+              create: {
+                status: updated.status,
+                note: "iiko: комментарий — ожидает онлайн-оплаты",
+              },
+            },
+          },
+        });
+      }
+    }
+
+    const fresh = await prisma.order.findUniqueOrThrow({
+      where: { id: updated.id },
+      include: orderInclude,
+    });
+
+    return {
+      success: true,
+      data: {
+        paymentUrl: registered.formUrl,
+        order: toOrderPublic(fresh),
+      },
+    };
+  } catch {
+    return {
+      success: false,
+      error: "Не удалось начать оплату. Войдите и попробуйте снова.",
+    };
   }
 };
 

@@ -4,6 +4,7 @@ import { ChevronLeft, Clock3 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { getMyOrderAction } from "@/actions/orders";
+import { RetrySberPaymentButton } from "@/components/order/RetrySberPaymentButton";
 import {
   profileBack,
   profileBadge,
@@ -25,6 +26,7 @@ import {
   getCustomerOrderStatusView,
 } from "@/lib/order-customer";
 import {
+  canRetryOnlinePayment,
   PAYMENT_STATUS_LABELS,
   paymentMethodLabel,
   type OrderPublic,
@@ -70,6 +72,7 @@ export const ProfileOrderDetailPage = ({
   }, [orderId]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional order fetch on mount
     void load();
     const timer = window.setInterval(() => void load(), 30_000);
     const onSynced = () => {
@@ -106,6 +109,7 @@ export const ProfileOrderDetailPage = ({
   const view = getCustomerOrderStatusView(order);
   const flow = customerOrderFlow(order.fulfillmentMode);
   const currentIdx = flow.indexOf(order.status);
+  const showPayAgain = canRetryOnlinePayment(order);
 
   return (
     <div className={profilePanelCard}>
@@ -231,6 +235,18 @@ export const ProfileOrderDetailPage = ({
           {" · "}
           {PAYMENT_STATUS_LABELS[order.paymentStatus]}
         </p>
+        {showPayAgain ? (
+          <div className="mt-4 rounded-2xl border border-clay/20 bg-clay/[0.06] px-3.5 py-3.5">
+            <p className="m-0 text-[0.9rem] leading-[1.4] text-ink/75">
+              {order.paymentStatus === "failed"
+                ? "Оплата не прошла. Можно оплатить этот же заказ ещё раз — без нового оформления."
+                : "Заказ ещё не оплачен. Завершите оплату, чтобы кухня и доставка шли по предоплате."}
+            </p>
+            <div className="mt-3">
+              <RetrySberPaymentButton orderId={order.id} />
+            </div>
+          </div>
+        ) : null}
       </section>
 
       {order.statusLogs.length ? (

@@ -84,6 +84,25 @@ export const PAYMENT_METHOD_LABELS: Record<string, string> = {
 export const paymentMethodLabel = (method: string): string =>
   PAYMENT_METHOD_LABELS[method] || method || "—";
 
+/** Guest can start another Sber payment for this order. */
+export const canRetryOnlinePayment = (order: {
+  paymentMethod: string;
+  paymentStatus: PaymentStatus;
+  status: OrderStatus;
+}): boolean => {
+  if (order.paymentMethod !== "sber") return false;
+  if (
+    order.paymentStatus !== "pending" &&
+    order.paymentStatus !== "failed"
+  ) {
+    return false;
+  }
+  if (order.status === "Cancelled" || order.status === "Closed") {
+    return false;
+  }
+  return true;
+};
+
 /** Allowed next statuses from current (by fulfillment), iiko-aligned. */
 export const nextOrderStatuses = (
   status: OrderStatus,
