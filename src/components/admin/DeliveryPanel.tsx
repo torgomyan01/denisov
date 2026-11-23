@@ -32,9 +32,11 @@ import {
   RefreshCw,
   Settings2,
   Trash2,
+  X,
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 
 const DeliveryZoneMap = dynamic(
   () =>
@@ -61,6 +63,7 @@ type ZoneForm = {
 
 type GlobalForm = {
   ordersEnabled: boolean;
+  deliveryPayOnReceiptEnabled: boolean;
   title: string;
   subtitle: string;
   minOrderAmount: string;
@@ -103,6 +106,47 @@ const railClass =
 const mapShellClass =
   "relative overflow-hidden rounded-[22px] border border-ink/10 bg-[#1a1713]/[0.03] shadow-[inset_0_1px_0_rgba(255,255,255,0.5)]";
 
+const ToggleRow = ({
+  checked,
+  onChange,
+  title,
+  description,
+}: {
+  checked: boolean;
+  onChange: (next: boolean) => void;
+  title: string;
+  description: string;
+}) => (
+  <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-ink/10 bg-white/80 px-3.5 py-3.5 transition-[border-color,background-color] duration-200 hover:border-ink/18">
+    <span
+      className={cx(
+        "relative mt-0.5 h-6 w-11 shrink-0 rounded-full transition-colors duration-200",
+        checked ? "bg-clay" : "bg-ink/18",
+      )}
+      aria-hidden
+    >
+      <span
+        className={cx(
+          "absolute top-0.5 left-0.5 size-5 rounded-full bg-white shadow transition-transform duration-200",
+          checked && "translate-x-5",
+        )}
+      />
+    </span>
+    <span className="min-w-0">
+      <strong className="block text-[0.92rem] font-[650] text-ink">{title}</strong>
+      <span className="mt-[0.25rem] block text-[0.78rem] leading-[1.4] text-ink/52">
+        {description}
+      </span>
+    </span>
+    <input
+      type="checkbox"
+      className="sr-only"
+      checked={checked}
+      onChange={(e) => onChange(e.target.checked)}
+    />
+  </label>
+);
+
 interface DeliveryPanelProps {
   busy: boolean;
   setBusy: (v: boolean) => void;
@@ -120,11 +164,13 @@ export const DeliveryPanel = ({
   const [creating, setCreating] = useState(false);
   const [drawing, setDrawing] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsDraft, setSettingsDraft] = useState<GlobalForm | null>(null);
   const [form, setForm] = useState<ZoneForm>(() =>
     emptyZoneForm(ZONE_COLOR_PALETTE[0]),
   );
   const [globalForm, setGlobalForm] = useState<GlobalForm>({
     ordersEnabled: true,
+    deliveryPayOnReceiptEnabled: false,
     title: createDefaultDeliverySettings().title,
     subtitle: createDefaultDeliverySettings().subtitle,
     minOrderAmount: "0",
@@ -153,6 +199,7 @@ export const DeliveryPanel = ({
       const d = settingsResult.data;
       setGlobalForm({
         ordersEnabled: d.ordersEnabled !== false,
+        deliveryPayOnReceiptEnabled: d.deliveryPayOnReceiptEnabled === true,
         title: d.title,
         subtitle: d.subtitle,
         minOrderAmount: String(d.minOrderAmount ?? 0),
@@ -163,6 +210,8 @@ export const DeliveryPanel = ({
   }, [showToast]);
 
   useEffect(() => {
+    // Initial fetch for zones + global delivery settings.
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional mount load
     void load();
   }, [load]);
 
@@ -196,22 +245,41 @@ export const DeliveryPanel = ({
     setForm(emptyZoneForm(ZONE_COLOR_PALETTE[0]));
   };
 
-  const saveGlobal = async () => {
+  const openSettings = () => {
+    setSettingsDraft({ ...globalForm });
+    setSettingsOpen(true);
+  };
+
+  const closeSettings = () => {
     if (busy) return;
+    setSettingsOpen(false);
+    setSettingsDraft(null);
+  };
+
+  const patchSettingsDraft = (patch: Partial<GlobalForm>) => {
+    setSettingsDraft((prev) => (prev ? { ...prev, ...patch } : prev));
+  };
+
+  const saveGlobal = async () => {
+    if (busy || !settingsDraft) return;
     setBusy(true);
     const result = await updateDeliverySettingsAction({
-      ordersEnabled: globalForm.ordersEnabled,
-      title: globalForm.title,
-      subtitle: globalForm.subtitle,
-      minOrderAmount: parseMoney(globalForm.minOrderAmount),
-      deliveryFee: parseMoney(globalForm.deliveryFee),
-      freeDeliveryFrom: parseMoney(globalForm.freeDeliveryFrom),
+      ordersEnabled: settingsDraft.ordersEnabled,
+      deliveryPayOnReceiptEnabled: settingsDraft.deliveryPayOnReceiptEnabled,
+      title: settingsDraft.title,
+      subtitle: settingsDraft.subtitle,
+      minOrderAmount: parseMoney(settingsDraft.minOrderAmount),
+      deliveryFee: parseMoney(settingsDraft.deliveryFee),
+      freeDeliveryFrom: parseMoney(settingsDraft.freeDeliveryFrom),
     });
     setBusy(false);
     if (!result.success) {
       showToast(result.error, "error");
       return;
     }
+    setGlobalForm(settingsDraft);
+    setSettingsOpen(false);
+    setSettingsDraft(null);
     showToast("Настройки доставки сохранены", "success");
   };
 
@@ -316,6 +384,15 @@ export const DeliveryPanel = ({
             type="button"
             className={btnLine}
             disabled={busy || loading}
+            onClick={openSettings}
+          >
+            <Settings2 size={14} strokeWidth={2} aria-hidden />
+            Настройки
+          </button>
+          <button
+            type="button"
+            className={btnLine}
+            disabled={busy || loading}
             onClick={() => void load()}
           >
             <RefreshCw size={14} strokeWidth={2} aria-hidden />
@@ -334,101 +411,6 @@ export const DeliveryPanel = ({
       </header>
 
       <hr className="mb-5 h-px border-0 bg-[linear-gradient(90deg,transparent,rgba(156,107,74,0.45),transparent)]" />
-
-      <div className="mb-5 rounded-[18px] border border-ink/8 bg-sand/35 px-[1rem] py-[0.85rem]">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <button
-            type="button"
-            className="inline-flex cursor-pointer items-center gap-2 border-0 bg-transparent p-0 text-left"
-            onClick={() => setSettingsOpen((v) => !v)}
-          >
-            <span className="grid size-8 place-items-center rounded-full bg-clay/12 text-clay">
-              <Settings2 size={15} strokeWidth={2} aria-hidden />
-            </span>
-            <span>
-              <strong className="block text-[0.9rem] font-[650] text-ink">
-                Общие настройки
-              </strong>
-              <span className="text-[0.78rem] text-ink/48">
-                Приём заказов и цены без зон
-              </span>
-            </span>
-          </button>
-
-          <label className="inline-flex cursor-pointer items-center gap-3 rounded-full border border-ink/10 bg-white/80 px-3 py-[0.55rem]">
-            <span className="text-[0.78rem] font-[650] tracking-[0.04em] text-ink/65">
-              Приём заказов
-            </span>
-            <span
-              className={cx(
-                "relative h-6 w-11 rounded-full transition-colors duration-200",
-                globalForm.ordersEnabled ? "bg-clay" : "bg-ink/18",
-              )}
-              aria-hidden
-            >
-              <span
-                className={cx(
-                  "absolute top-0.5 left-0.5 size-5 rounded-full bg-white shadow transition-transform duration-200",
-                  globalForm.ordersEnabled && "translate-x-5",
-                )}
-              />
-            </span>
-            <input
-              type="checkbox"
-              className="sr-only"
-              checked={globalForm.ordersEnabled}
-              onChange={(e) =>
-                setGlobalForm((s) => ({
-                  ...s,
-                  ordersEnabled: e.target.checked,
-                }))
-              }
-            />
-          </label>
-        </div>
-
-        {settingsOpen ? (
-          <div className="mt-4 grid gap-3 border-t border-ink/8 pt-4 sm:grid-cols-3">
-            <Field
-              label="Мин. сумма (если у зоны 0)"
-              type="number"
-              value={globalForm.minOrderAmount}
-              onChange={(v) =>
-                setGlobalForm((s) => ({ ...s, minOrderAmount: v }))
-              }
-              compact
-            />
-            <Field
-              label="Цена без зон, ₽"
-              type="number"
-              value={globalForm.deliveryFee}
-              onChange={(v) =>
-                setGlobalForm((s) => ({ ...s, deliveryFee: v }))
-              }
-              compact
-            />
-            <Field
-              label="Бесплатно от (без зон)"
-              type="number"
-              value={globalForm.freeDeliveryFrom}
-              onChange={(v) =>
-                setGlobalForm((s) => ({ ...s, freeDeliveryFrom: v }))
-              }
-              compact
-            />
-            <div className="sm:col-span-3 flex justify-end">
-              <button
-                type="button"
-                className={btnDark}
-                disabled={busy}
-                onClick={() => void saveGlobal()}
-              >
-                Сохранить настройки
-              </button>
-            </div>
-          </div>
-        ) : null}
-      </div>
 
       <div className="grid gap-4 xl:grid-cols-[minmax(300px,360px)_minmax(0,1fr)] xl:items-start">
         <aside className={`${railClass} min-h-[28rem] px-[0.9rem] py-[0.95rem]`}>
@@ -694,6 +676,132 @@ export const DeliveryPanel = ({
           </div>
         </section>
       </div>
+
+      {typeof document !== "undefined" && settingsOpen && settingsDraft
+        ? createPortal(
+            <div
+              className="fixed inset-0 z-[80] grid animate-fade-in place-items-center bg-[#16120e]/45 p-4 backdrop-blur-[4px] sm:p-5"
+              role="presentation"
+              onClick={closeSettings}
+            >
+              <div
+                className="max-h-[min(92vh,40rem)] w-[min(100%,32rem)] overflow-auto rounded-[20px] border border-ink/8 bg-paper px-[1.25rem] pt-[1.2rem] pb-5 shadow-[0_24px_60px_rgba(22,18,14,0.22)] sm:px-[1.45rem] sm:pt-[1.35rem]"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="delivery-settings-title"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="m-0 text-[10px] font-semibold tracking-[0.18em] text-clay uppercase">
+                      Доставка
+                    </p>
+                    <h3
+                      id="delivery-settings-title"
+                      className="mt-1 mb-0 font-serif text-[1.45rem] leading-[1.15] font-semibold tracking-[-0.02em] text-ink"
+                    >
+                      Общие настройки
+                    </h3>
+                    <p className="mt-[0.35rem] mb-0 text-[0.82rem] leading-[1.4] text-ink/48">
+                      Приём заказов, оплата курьеру и запасные цены без зон.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    className="inline-flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-full border border-ink/10 bg-white/80 text-ink/55 transition-[background-color,color] duration-200 hover:bg-clay/10 hover:text-clay"
+                    aria-label="Закрыть"
+                    disabled={busy}
+                    onClick={closeSettings}
+                  >
+                    <X size={16} strokeWidth={2} aria-hidden />
+                  </button>
+                </div>
+
+                <div className="mt-5 flex flex-col gap-3">
+                  <p className="m-0 text-[10px] font-semibold tracking-[0.16em] text-ink/40 uppercase">
+                    Режим работы
+                  </p>
+                  <ToggleRow
+                    checked={settingsDraft.ordersEnabled}
+                    onChange={(next) =>
+                      patchSettingsDraft({ ordersEnabled: next })
+                    }
+                    title="Приём заказов"
+                    description="Выключите, чтобы временно закрыть корзину на сайте — новые заказы не принимаются."
+                  />
+                  <ToggleRow
+                    checked={settingsDraft.deliveryPayOnReceiptEnabled}
+                    onChange={(next) =>
+                      patchSettingsDraft({
+                        deliveryPayOnReceiptEnabled: next,
+                      })
+                    }
+                    title="Оплата курьеру при доставке"
+                    description="Если выключено — доставка только онлайн (Sber). Включите, когда курьеры снова смогут принимать наличные или карту."
+                  />
+                </div>
+
+                <div className="mt-5 flex flex-col gap-3">
+                  <p className="m-0 text-[10px] font-semibold tracking-[0.16em] text-ink/40 uppercase">
+                    Цены без зон
+                  </p>
+                  <p className="m-0 -mt-1 text-[0.78rem] leading-[1.4] text-ink/48">
+                    Используются, если активных зон ещё нет, или как запасной
+                    тариф. У зоны «мин. сумма = 0» берётся общая мин. сумма
+                    ниже.
+                  </p>
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <Field
+                      label="Мин. сумма, ₽"
+                      type="number"
+                      value={settingsDraft.minOrderAmount}
+                      onChange={(v) =>
+                        patchSettingsDraft({ minOrderAmount: v })
+                      }
+                      compact
+                    />
+                    <Field
+                      label="Доставка, ₽"
+                      type="number"
+                      value={settingsDraft.deliveryFee}
+                      onChange={(v) => patchSettingsDraft({ deliveryFee: v })}
+                      compact
+                    />
+                    <Field
+                      label="Бесплатно от, ₽"
+                      type="number"
+                      value={settingsDraft.freeDeliveryFrom}
+                      onChange={(v) =>
+                        patchSettingsDraft({ freeDeliveryFrom: v })
+                      }
+                      compact
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-5 flex justify-end gap-[0.65rem] border-t border-ink/8 pt-[0.9rem]">
+                  <button
+                    type="button"
+                    className={btnLine}
+                    disabled={busy}
+                    onClick={closeSettings}
+                  >
+                    Отмена
+                  </button>
+                  <button
+                    type="button"
+                    className={btnDark}
+                    disabled={busy}
+                    onClick={() => void saveGlobal()}
+                  >
+                    Сохранить
+                  </button>
+                </div>
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
 
       <ConfirmModal
         open={pendingDelete != null}

@@ -38,6 +38,7 @@ const updateZoneSchema = zoneBodySchema.and(
 
 const deliverySettingsPatchSchema = z.object({
   ordersEnabled: z.boolean(),
+  deliveryPayOnReceiptEnabled: z.boolean(),
   title: z.string().trim().max(255).optional(),
   subtitle: z.string().trim().max(500).optional(),
   minOrderAmount: z.number().int().min(0).max(1_000_000),
@@ -118,6 +119,7 @@ export const updateDeliverySettingsAction = async (
         title: parsed.data.title?.trim() || defaults.title,
         subtitle: parsed.data.subtitle?.trim() || defaults.subtitle,
         ordersEnabled: parsed.data.ordersEnabled,
+        deliveryPayOnReceiptEnabled: parsed.data.deliveryPayOnReceiptEnabled,
         minOrderAmount: parsed.data.minOrderAmount,
         deliveryFee: parsed.data.deliveryFee,
         freeDeliveryFrom: parsed.data.freeDeliveryFrom,
@@ -130,6 +132,7 @@ export const updateDeliverySettingsAction = async (
           ? { subtitle: parsed.data.subtitle.trim() }
           : {}),
         ordersEnabled: parsed.data.ordersEnabled,
+        deliveryPayOnReceiptEnabled: parsed.data.deliveryPayOnReceiptEnabled,
         minOrderAmount: parsed.data.minOrderAmount,
         deliveryFee: parsed.data.deliveryFee,
         freeDeliveryFrom: parsed.data.freeDeliveryFrom,

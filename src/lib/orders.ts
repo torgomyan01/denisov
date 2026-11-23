@@ -78,7 +78,7 @@ export type OrderPaymentMethod = "sber" | "on_receipt" | "card_test" | string;
 export const PAYMENT_METHOD_LABELS: Record<string, string> = {
   sber: "Онлайн (Sber)",
   card_test: "Онлайн картой (тест)",
-  on_receipt: "При получении",
+  on_receipt: "При получении (касса)",
 };
 
 export const paymentMethodLabel = (method: string): string =>

@@ -203,6 +203,8 @@ model DeliverySettings {
   title            String   @default("Доставка из Денисова") @db.VarChar(255)
   subtitle         String   @default("") @db.VarChar(500)
   ordersEnabled    Boolean  @default(true)
+  /// Allow cash/card to courier on delivery (off while using external courier).
+  deliveryPayOnReceiptEnabled Boolean @default(false)
   /// Fallback min cart ₽ when no multi-zones (or zone min is 0).
   minOrderAmount   Int      @default(0)
   /// Fallback fee when multi-zones are not configured.

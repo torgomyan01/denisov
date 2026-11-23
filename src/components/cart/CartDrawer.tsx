@@ -419,7 +419,7 @@ export const CartDrawer = ({
                 </p>
                 <p className="mx-auto mt-[0.15rem] mb-3 max-w-[32ch] text-[0.9rem] leading-[1.45] text-ink/65">
                   {placedOrder.paymentStatus === "pending"
-                    ? "Заказ принят. Оплата при получении — наличными или картой."
+                    ? "Заказ принят. Оплата при получении — наличными или картой на кассе в кафе."
                     : "Заказ оплачен и отправлен на кухню."}{" "}
                   Статус можно смотреть в личном кабинете.
                 </p>
@@ -454,6 +454,9 @@ export const CartDrawer = ({
                 customer={customer}
                 menu={menu}
                 onlinePayEnabled={onlinePayEnabled}
+                deliveryPayOnReceiptEnabled={
+                  delivery.deliveryPayOnReceiptEnabled === true
+                }
                 onBack={() => setStep("cart")}
                 onSuccess={onOrderSuccess}
               />

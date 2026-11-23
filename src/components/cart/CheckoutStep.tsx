@@ -44,6 +44,8 @@ type CheckoutStepProps = {
   customer: CustomerPublic;
   menu: SiteMenu;
   onlinePayEnabled?: boolean;
+  /** Admin toggle: allow cash/card to courier on delivery. */
+  deliveryPayOnReceiptEnabled?: boolean;
   onBack: () => void;
   onSuccess: (order: OrderPublic, paymentUrl?: string) => void;
 };
@@ -72,6 +74,7 @@ export const CheckoutStep = ({
   customer,
   menu,
   onlinePayEnabled = true,
+  deliveryPayOnReceiptEnabled = false,
   onBack,
   onSuccess,
 }: CheckoutStepProps) => {
@@ -79,6 +82,8 @@ export const CheckoutStep = ({
   const items = cartState.items as CartLine[];
   const total = cartSubtotal(items);
   const isDelivery = cartState.fulfillmentMode === "delivery";
+  const deliveryOnlyOnline = isDelivery && !deliveryPayOnReceiptEnabled;
+  const showOnReceiptOption = !isDelivery || deliveryPayOnReceiptEnabled;
   const nutrition = useMemo(
     () => cartNutritionTotals(items, menu),
     [items, menu],
@@ -99,8 +104,13 @@ export const CheckoutStep = ({
   const [courierComment, setCourierComment] = useState(
     customer.deliveryCourierComment ?? "",
   );
-  const [payMethod, setPayMethod] =
-    useState<CheckoutPaymentMethod>("on_receipt");
+  const [payMethod, setPayMethod] = useState<CheckoutPaymentMethod>(
+    deliveryOnlyOnline ? "card" : "on_receipt",
+  );
+  // Delivery prepaid-only: force online without an effect (avoids cascading renders).
+  const activePayMethod: CheckoutPaymentMethod = deliveryOnlyOnline
+    ? "card"
+    : payMethod;
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -115,15 +125,23 @@ export const CheckoutStep = ({
       setError("Укажите квартиру или офис");
       return;
     }
-    if (payMethod === "card" && !onlinePayEnabled) {
-      setError("Онлайн-оплата временно недоступна");
+    if (deliveryOnlyOnline && activePayMethod !== "card") {
+      setError("Доставка только с онлайн-оплатой");
+      return;
+    }
+    if (activePayMethod === "card" && !onlinePayEnabled) {
+      setError(
+        deliveryOnlyOnline
+          ? "Онлайн-оплата временно недоступна. Доставка без предоплаты невозможна — попробуйте позже или выберите самовывоз."
+          : "Онлайн-оплата временно недоступна",
+      );
       return;
     }
     setBusy(true);
     setError("");
     try {
       const payment =
-        payMethod === "card"
+        activePayMethod === "card"
           ? { method: "card" as const }
           : { method: "on_receipt" as const };
 
@@ -155,7 +173,7 @@ export const CheckoutStep = ({
   };
 
   const submitLabel =
-    payMethod === "card"
+    activePayMethod === "card"
       ? `Перейти к оплате · ${formatPrice(String(total))}`
       : `Оформить · ${formatPrice(String(total))}`;
 
@@ -402,59 +420,77 @@ export const CheckoutStep = ({
               Способ оплаты
             </strong>
             <span className="text-[0.78rem] leading-[1.35] text-ink/52">
-              При получении или онлайн через Sber
+              {deliveryOnlyOnline
+                ? "Доставка — только онлайн через Sber"
+                : isDelivery
+                  ? "Курьеру при получении или онлайн через Sber"
+                  : "На кассе в кафе или онлайн через Sber"}
             </span>
           </div>
         </div>
 
-        <div
-          className="flex flex-col gap-2"
-          role="radiogroup"
-          aria-label="Способ оплаты"
-        >
-          <button
-            type="button"
-            role="radio"
-            aria-checked={payMethod === "on_receipt"}
-            className={payOptionClass(payMethod === "on_receipt")}
-            onClick={() => setPayMethod("on_receipt")}
+        {deliveryOnlyOnline && !onlinePayEnabled ? (
+          <p
+            className="rounded-xl bg-danger/8 px-3 py-[0.65rem] text-[0.88rem] text-danger"
+            role="alert"
           >
-            <span className={cardIconClass} aria-hidden="true">
-              <Banknote size={16} strokeWidth={2} className={cartIcon} />
-            </span>
-            <span className="min-w-0">
-              <strong className="block text-[0.92rem] leading-[1.25] font-[650] text-ink">
-                При получении
-              </strong>
-              <span className="mt-[0.15rem] block text-[0.78rem] leading-[1.35] text-ink/55">
-                Наличными или картой курьеру / в точке самовывоза
-              </span>
-            </span>
-          </button>
-          {onlinePayEnabled ? (
-            <button
-              type="button"
-              role="radio"
-              aria-checked={payMethod === "card"}
-              className={payOptionClass(payMethod === "card")}
-              onClick={() => setPayMethod("card")}
-            >
-              <span className={cardIconClass} aria-hidden="true">
-                <CreditCard size={16} strokeWidth={2} className={cartIcon} />
-              </span>
-              <span className="min-w-0">
-                <strong className="block text-[0.92rem] leading-[1.25] font-[650] text-ink">
-                  Онлайн · карта / SberPay
-                </strong>
-                <span className="mt-[0.15rem] block text-[0.78rem] leading-[1.35] text-ink/55">
-                  Безопасная оплата на странице Сбера
+            Онлайн-оплата временно недоступна. Доставка без предоплаты
+            невозможна — попробуйте позже или выберите самовывоз.
+          </p>
+        ) : (
+          <div
+            className="flex flex-col gap-2"
+            role="radiogroup"
+            aria-label="Способ оплаты"
+          >
+            {showOnReceiptOption ? (
+              <button
+                type="button"
+                role="radio"
+                aria-checked={activePayMethod === "on_receipt"}
+                className={payOptionClass(activePayMethod === "on_receipt")}
+                onClick={() => setPayMethod("on_receipt")}
+              >
+                <span className={cardIconClass} aria-hidden="true">
+                  <Banknote size={16} strokeWidth={2} className={cartIcon} />
                 </span>
-              </span>
-            </button>
-          ) : null}
-        </div>
+                <span className="min-w-0">
+                  <strong className="block text-[0.92rem] leading-[1.25] font-[650] text-ink">
+                    При получении
+                  </strong>
+                  <span className="mt-[0.15rem] block text-[0.78rem] leading-[1.35] text-ink/55">
+                    {isDelivery
+                      ? "Наличными или картой курьеру"
+                      : "Наличными или картой на кассе в кафе"}
+                  </span>
+                </span>
+              </button>
+            ) : null}
+            {onlinePayEnabled ? (
+              <button
+                type="button"
+                role="radio"
+                aria-checked={activePayMethod === "card"}
+                className={payOptionClass(activePayMethod === "card")}
+                onClick={() => setPayMethod("card")}
+              >
+                <span className={cardIconClass} aria-hidden="true">
+                  <CreditCard size={16} strokeWidth={2} className={cartIcon} />
+                </span>
+                <span className="min-w-0">
+                  <strong className="block text-[0.92rem] leading-[1.25] font-[650] text-ink">
+                    Онлайн · карта / SberPay
+                  </strong>
+                  <span className="mt-[0.15rem] block text-[0.78rem] leading-[1.35] text-ink/55">
+                    Безопасная оплата на странице Сбера
+                  </span>
+                </span>
+              </button>
+            ) : null}
+          </div>
+        )}
 
-        {payMethod === "card" ? (
+        {activePayMethod === "card" && onlinePayEnabled ? (
           <p className="flex items-start gap-[0.4rem] text-[0.78rem] leading-[1.4] text-ink/55">
             <Lock
               size={14}
@@ -480,11 +516,15 @@ export const CheckoutStep = ({
       <button
         type="submit"
         className={`${cartCheckoutSubmitButton} ${busy ? "pointer-events-none" : ""}`}
-        disabled={busy || !items.length}
+        disabled={
+          busy ||
+          !items.length ||
+          (deliveryOnlyOnline && !onlinePayEnabled)
+        }
       >
         <span className="relative z-1">
           {busy
-            ? payMethod === "card"
+            ? activePayMethod === "card"
               ? "Создаём оплату…"
               : "Оформляем…"
             : submitLabel}

@@ -15,6 +15,7 @@ export const createDefaultDeliverySettings = (): DeliverySettings => ({
   title: DEFAULT_DELIVERY_TITLE,
   subtitle: DEFAULT_DELIVERY_SUBTITLE,
   ordersEnabled: true,
+  deliveryPayOnReceiptEnabled: false,
   minOrderAmount: 0,
   deliveryFee: 0,
   freeDeliveryFrom: 0,

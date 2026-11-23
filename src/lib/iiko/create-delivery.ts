@@ -1,7 +1,50 @@
 import { randomUUID } from "crypto";
 import { getIikoConfig, isIikoConfigured, type IikoConfig } from "@/lib/iiko/config";
 import { IikoApiError, iikoRequest } from "@/lib/iiko/client";
+import { fetchIikoDeliveriesByIds } from "@/lib/iiko/sync-status";
 import { rubFromPriceString } from "@/lib/orders";
+
+const sleep = (ms: number): Promise<void> =>
+  new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+
+/** Transient iiko failures we should retry from our side. */
+export const isRetriableIikoCreationError = (error: string): boolean => {
+  const t = error.toLowerCase();
+  if (
+    t.includes("не настроен") ||
+    t.includes("некорректн") ||
+    t.includes("телефон") ||
+    t.includes("productid") ||
+    t.includes("uuid") ||
+    t.includes("нет iiko") ||
+    t.includes("payment_type") ||
+    t.includes("payment type")
+  ) {
+    return false;
+  }
+  if (!t.trim()) return true;
+  return (
+    t.includes("timeout") ||
+    t.includes("transited to error") ||
+    t.includes("creationstatus=error") ||
+    t.includes("creation status") ||
+    t.includes("временно") ||
+    t.includes("try again") ||
+    t.includes("unavailable") ||
+    t.includes("econnreset") ||
+    t.includes("etimedout") ||
+    t.includes("socket") ||
+    t.includes("502") ||
+    t.includes("503") ||
+    t.includes("504") ||
+    t.includes("429") ||
+    t.includes("network") ||
+    t.includes("fetch failed") ||
+    t.includes("iiko вернул creationstatus=error")
+  );
+};
 
 export type IikoCreateModifier = {
   productId: string;
@@ -337,6 +380,166 @@ export const createIikoDeliveryOrder = async (
       error instanceof Error ? error.message : "Не удалось создать заказ в iiko";
     return { ok: false, error: message.slice(0, 500) };
   }
+};
+
+/**
+ * Poll deliveries/by_id until creation settles (Success | Error) or time runs out.
+ * If still InProgress — return ok with InProgress (background sync will continue).
+ */
+export const pollIikoCreationUntilSettled = async (
+  iikoOrderId: string,
+  options?: {
+    maxMs?: number;
+    intervalMs?: number;
+    config?: IikoConfig;
+  },
+): Promise<IikoCreateOrderResult> => {
+  const id = iikoOrderId.trim();
+  if (!id || !isIikoProductId(id)) {
+    return { ok: false, error: "Некорректный iiko order id для polling" };
+  }
+
+  const config = options?.config ?? getIikoConfig();
+  const maxMs = options?.maxMs ?? 18_000;
+  const intervalMs = options?.intervalMs ?? 2_000;
+  const started = Date.now();
+
+  while (Date.now() - started < maxMs) {
+    await sleep(intervalMs);
+    try {
+      const rows = await fetchIikoDeliveriesByIds([id], config);
+      const row = rows[0];
+      if (!row) continue;
+
+      const status = String(row.creationStatus ?? "").trim();
+      const errMsg =
+        row.errorInfo?.message ||
+        row.errorInfo?.description ||
+        "";
+
+      if (status === "Success") {
+        return {
+          ok: true,
+          iikoOrderId: id,
+          correlationId: "",
+          creationStatus: "Success",
+        };
+      }
+
+      if (status === "Error") {
+        return {
+          ok: false,
+          error: (errMsg || "iiko вернул creationStatus=Error").slice(0, 500),
+          iikoOrderId: id,
+          correlationId: "",
+          creationStatus: "Error",
+        };
+      }
+    } catch (error) {
+      // Keep polling through transient network blips.
+      if (process.env.NODE_ENV === "development") {
+        console.warn(
+          "[iiko] creation poll:",
+          error instanceof Error ? error.message : error,
+        );
+      }
+    }
+  }
+
+  return {
+    ok: true,
+    iikoOrderId: id,
+    correlationId: "",
+    creationStatus: "InProgress",
+  };
+};
+
+export type IikoReliableCreateResult = IikoCreateOrderResult & {
+  attempts: number;
+};
+
+/**
+ * Create delivery in iiko with polling + immediate retries for transient errors
+ * (e.g. «Creation timeout expired»). Maximizes success on our side.
+ */
+export const createIikoDeliveryOrderReliable = async (
+  input: IikoCreateOrderInput,
+  options?: {
+    /** Create attempts (each may include polling). Default 2. */
+    maxAttempts?: number;
+    pollMaxMs?: number;
+    pollIntervalMs?: number;
+    config?: IikoConfig;
+  },
+): Promise<IikoReliableCreateResult> => {
+  const maxAttempts = Math.max(1, options?.maxAttempts ?? 2);
+  const config = options?.config ?? getIikoConfig();
+  let last: IikoCreateOrderResult = {
+    ok: false,
+    error: "Не удалось создать заказ в iiko",
+  };
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    last = await createIikoDeliveryOrder(input, config);
+
+    if (last.ok && last.creationStatus === "Success") {
+      return { ...last, attempts: attempt };
+    }
+
+    if (last.ok && last.iikoOrderId && last.creationStatus !== "Success") {
+      const polled = await pollIikoCreationUntilSettled(last.iikoOrderId, {
+        maxMs: options?.pollMaxMs ?? 18_000,
+        intervalMs: options?.pollIntervalMs ?? 2_000,
+        config,
+      });
+
+      if (polled.ok && polled.creationStatus === "Success") {
+        return {
+          ok: true,
+          iikoOrderId: polled.iikoOrderId,
+          correlationId: last.correlationId || polled.correlationId,
+          creationStatus: "Success",
+          attempts: attempt,
+        };
+      }
+
+      if (!polled.ok) {
+        last = {
+          ok: false,
+          error: polled.error,
+          iikoOrderId: polled.iikoOrderId || last.iikoOrderId,
+          correlationId: last.correlationId || polled.correlationId,
+          creationStatus: "Error",
+        };
+      } else if (polled.creationStatus === "InProgress") {
+        // Not settled yet — keep InProgress; background auto-retry may help later.
+        return {
+          ok: true,
+          iikoOrderId: last.iikoOrderId,
+          correlationId: last.correlationId,
+          creationStatus: "InProgress",
+          attempts: attempt,
+        };
+      }
+    }
+
+    const errText = last.ok ? "" : last.error;
+    const canRetry =
+      attempt < maxAttempts &&
+      (!last.ok ? isRetriableIikoCreationError(errText) : false);
+
+    if (!canRetry) {
+      return last.ok
+        ? { ...last, attempts: attempt }
+        : { ...last, attempts: attempt };
+    }
+
+    await sleep(2_000 * attempt);
+  }
+
+  return last.ok
+    ? { ...last, attempts: maxAttempts }
+    : { ...last, attempts: maxAttempts };
 };
 
 export type IikoPaymentSyncResult =

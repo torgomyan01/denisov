@@ -1,5 +1,5 @@
 import {
-  createIikoDeliveryOrder,
+  createIikoDeliveryOrderReliable,
   syncIikoPaidOnline,
   type IikoCreateModifier,
 } from "@/lib/iiko/create-delivery";
@@ -131,7 +131,7 @@ export const fulfillSberPaidOrder = async (
     } else if (order.iikoCreationStatus !== "Success") {
       const defaultModifiersByProduct =
         await loadIikoDefaultModifiersByProductId();
-      const iikoResult = await createIikoDeliveryOrder({
+      const iikoResult = await createIikoDeliveryOrderReliable({
         orderNumber: order.number,
         customerName: order.customerName,
         customerPhone: order.customerPhone,
@@ -210,7 +210,7 @@ export const fulfillSberPaidOrder = async (
               statusLogs: {
                 create: {
                   status: order.status,
-                  note: `iiko (досылка после оплаты): ${iikoResult.creationStatus}`,
+                  note: `iiko (досылка после оплаты): ${iikoResult.creationStatus}, попыток: ${iikoResult.attempts}`,
                 },
               },
             }
@@ -222,7 +222,7 @@ export const fulfillSberPaidOrder = async (
               statusLogs: {
                 create: {
                   status: order.status,
-                  note: `iiko (досылка после оплаты): ${iikoResult.error}`.slice(
+                  note: `iiko (досылка после оплаты): ${iikoResult.error} (попыток: ${iikoResult.attempts})`.slice(
                     0,
                     255,
                   ),

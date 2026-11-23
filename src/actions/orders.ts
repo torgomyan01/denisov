@@ -25,8 +25,9 @@ import {
 } from "@/lib/delivery-pricing";
 import { createDefaultDeliverySettings } from "@/lib/delivery-defaults";
 import { isIikoConfigured } from "@/lib/iiko/config";
+import { autoRetryFailedIikoCreations } from "@/lib/iiko/auto-retry-create";
 import {
-  createIikoDeliveryOrder,
+  createIikoDeliveryOrderReliable,
   isIikoProductId,
   syncIikoPaidOnline,
   type IikoCreateModifier,
@@ -112,13 +113,6 @@ export const placeOrderAction = async (
     }
 
     const isPrepaid = payment.method === "card";
-    if (isPrepaid && !isSberConfigured()) {
-      return {
-        success: false,
-        error:
-          "Онлайн-оплата временно недоступна. Выберите оплату при получении или попробуйте позже.",
-      };
-    }
 
     const site = await getSite();
     const deliverySettings =
@@ -128,6 +122,27 @@ export const placeOrderAction = async (
       return {
         success: false,
         error: "Приём заказов временно приостановлен",
+      };
+    }
+
+    const deliveryOnlyOnline =
+      cart.fulfillmentMode === "delivery" &&
+      deliverySettings.deliveryPayOnReceiptEnabled !== true;
+
+    // External courier by default — on_receipt for delivery only if admin enables it.
+    if (deliveryOnlyOnline && !isPrepaid) {
+      return {
+        success: false,
+        error: "Доставка только с онлайн-оплатой",
+      };
+    }
+
+    if (isPrepaid && !isSberConfigured()) {
+      return {
+        success: false,
+        error: deliveryOnlyOnline
+          ? "Онлайн-оплата временно недоступна. Доставка без предоплаты невозможна — попробуйте позже или выберите самовывоз."
+          : "Онлайн-оплата временно недоступна. Выберите оплату при получении или попробуйте позже.",
       };
     }
 
@@ -295,9 +310,10 @@ export const placeOrderAction = async (
           paidAt: null,
           statusUpdatedAt: now,
           items: {
-            create: itemsData.map(
-              ({ modifiers: _mods, ...row }) => row,
-            ),
+            create: itemsData.map(({ modifiers, ...row }) => {
+              void modifiers;
+              return row;
+            }),
           },
           statusLogs: {
             create: {
@@ -368,7 +384,7 @@ export const placeOrderAction = async (
     if (iikoEnabled) {
       const defaultModifiersByProduct =
         await loadIikoDefaultModifiersByProductId();
-      const iikoResult = await createIikoDeliveryOrder({
+      const iikoResult = await createIikoDeliveryOrderReliable({
         orderNumber: order.number,
         customerName: order.customerName,
         customerPhone: order.customerPhone,
@@ -429,7 +445,7 @@ export const placeOrderAction = async (
               statusLogs: {
                 create: {
                   status: order.status,
-                  note: `Отправлено в iiko (${iikoResult.creationStatus})`,
+                  note: `Отправлено в iiko (${iikoResult.creationStatus}, попыток: ${iikoResult.attempts})`,
                 },
               },
             }
@@ -441,7 +457,10 @@ export const placeOrderAction = async (
               statusLogs: {
                 create: {
                   status: order.status,
-                  note: `iiko: ${iikoResult.error}`.slice(0, 255),
+                  note: `iiko: ${iikoResult.error} (попыток: ${iikoResult.attempts})`.slice(
+                    0,
+                    255,
+                  ),
                 },
               },
             },
@@ -528,7 +547,10 @@ export const syncOrdersFromIikoAction = async (input?: {
       input?.orderId ? { localOrderIds: [input.orderId] } : undefined,
     );
     await notifySyncedStatusChanges(syncResults);
-    const updated = syncResults.filter((row) => row.changed).length;
+    const autoRetries = await autoRetryFailedIikoCreations();
+    const updated =
+      syncResults.filter((row) => row.changed).length +
+      autoRetries.filter((row) => row.retried).length;
     if (updated > 0) {
       revalidatePath("/admin");
       revalidatePath("/profile/orders");
@@ -564,7 +586,10 @@ export const syncOpenSiteOrdersFromIikoAction = async (): Promise<
 
     const syncResults = await syncOpenOrdersFromIiko({ take: 80 });
     await notifySyncedStatusChanges(syncResults);
-    const updated = syncResults.filter((row) => row.changed).length;
+    const autoRetries = await autoRetryFailedIikoCreations();
+    const updated =
+      syncResults.filter((row) => row.changed).length +
+      autoRetries.filter((row) => row.retried).length;
     if (updated > 0) {
       revalidatePath("/profile");
       revalidatePath("/profile/orders");
@@ -690,7 +715,7 @@ export const retryIikoOrderSyncAction = async (
         return [];
       }
     };
-    const iikoResult = await createIikoDeliveryOrder({
+    const iikoResult = await createIikoDeliveryOrderReliable({
       orderNumber: existing.number,
       customerName: existing.customerName,
       customerPhone: existing.customerPhone,
@@ -752,7 +777,7 @@ export const retryIikoOrderSyncAction = async (
             statusLogs: {
               create: {
                 status: existing.status,
-                note: `Повторно отправлено в iiko (${iikoResult.creationStatus})`,
+                note: `Повторно отправлено в iiko (${iikoResult.creationStatus}, попыток: ${iikoResult.attempts})`,
               },
             },
           }
@@ -765,7 +790,10 @@ export const retryIikoOrderSyncAction = async (
             statusLogs: {
               create: {
                 status: existing.status,
-                note: `iiko retry: ${iikoResult.error}`.slice(0, 255),
+                note: `iiko retry: ${iikoResult.error} (попыток: ${iikoResult.attempts})`.slice(
+                  0,
+                  255,
+                ),
               },
             },
           },
@@ -911,8 +939,9 @@ export const getOrderAdminAction = async (
 
 /** Statuses are driven by iiko — manual admin changes are disabled. */
 export const updateOrderStatusAction = async (
-  _input: unknown,
+  input: unknown,
 ): Promise<ActionResult<OrderPublic>> => {
+  void input;
   return {
     success: false,
     error: "Статус меняется только в iiko. Обновите заказ — подтянем оттуда.",

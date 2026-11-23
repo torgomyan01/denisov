@@ -82,6 +82,7 @@ const mapDeliveryRow = (
     title: string;
     subtitle: string;
     ordersEnabled: boolean;
+    deliveryPayOnReceiptEnabled?: boolean;
     minOrderAmount: number;
     deliveryFee: number;
     freeDeliveryFrom: number;
@@ -108,6 +109,7 @@ const mapDeliveryRow = (
     title: row.title || createDefaultDeliverySettings().title,
     subtitle: row.subtitle ?? "",
     ordersEnabled: row.ordersEnabled !== false,
+    deliveryPayOnReceiptEnabled: row.deliveryPayOnReceiptEnabled === true,
     minOrderAmount: parseNonNegInt(row.minOrderAmount, 0),
     deliveryFee: parseNonNegInt(row.deliveryFee, 0),
     freeDeliveryFrom: parseNonNegInt(row.freeDeliveryFrom, 0),
@@ -150,6 +152,9 @@ export const normalizeSite = (raw: unknown): SiteData => {
     zonePolygon: parseZonePolygon(parsed.delivery?.zonePolygon ?? []),
     zoneCenterLat: parseOptionalFloat(parsed.delivery?.zoneCenterLat),
     zoneCenterLng: parseOptionalFloat(parsed.delivery?.zoneCenterLng),
+    ordersEnabled: parsed.delivery?.ordersEnabled !== false,
+    deliveryPayOnReceiptEnabled:
+      parsed.delivery?.deliveryPayOnReceiptEnabled === true,
     minOrderAmount: parseNonNegInt(parsed.delivery?.minOrderAmount, 0),
     deliveryFee: parseNonNegInt(parsed.delivery?.deliveryFee, 0),
     freeDeliveryFrom: parseNonNegInt(parsed.delivery?.freeDeliveryFrom, 0),
@@ -358,6 +363,7 @@ export const saveSite = async (content: SiteData): Promise<SiteData> => {
         title: delivery.title,
         subtitle: delivery.subtitle,
         ordersEnabled: delivery.ordersEnabled,
+        deliveryPayOnReceiptEnabled: delivery.deliveryPayOnReceiptEnabled === true,
         minOrderAmount: delivery.minOrderAmount,
         deliveryFee: delivery.deliveryFee,
         freeDeliveryFrom: delivery.freeDeliveryFrom,
@@ -373,6 +379,7 @@ export const saveSite = async (content: SiteData): Promise<SiteData> => {
         title: delivery.title,
         subtitle: delivery.subtitle,
         ordersEnabled: delivery.ordersEnabled,
+        deliveryPayOnReceiptEnabled: delivery.deliveryPayOnReceiptEnabled === true,
         minOrderAmount: delivery.minOrderAmount,
         deliveryFee: delivery.deliveryFee,
         freeDeliveryFrom: delivery.freeDeliveryFrom,

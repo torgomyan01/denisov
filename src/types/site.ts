@@ -138,6 +138,11 @@ export interface DeliverySettings {
   title: string;
   subtitle: string;
   ordersEnabled: boolean;
+  /**
+   * When true, delivery checkout offers «при получении» (cash/card to courier).
+   * Default false — external courier company does not collect payment.
+   */
+  deliveryPayOnReceiptEnabled: boolean;
   /** Fallback min cart ₽; 0 = no minimum */
   minOrderAmount: number;
   /** Fallback fee when multi-zones are empty */
