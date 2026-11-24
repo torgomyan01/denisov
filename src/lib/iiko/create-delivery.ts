@@ -132,35 +132,65 @@ export const normalizeIikoPhone = (raw: string): string | null => {
   return null;
 };
 
-const parseHouseFromAddress = (address: string): { street: string; house: string } => {
+const escapeRegExp = (value: string): string =>
+  value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const stripLeadingCityPrefix = (street: string, city: string): string => {
+  let out = street.trim();
+  // Strip optional leading postal code / country (e.g. "196084, Россия, ...")
+  out = out.replace(/^\d{6}\s*,\s*/, "");
+  out = out.replace(/^россия\s*,\s*/i, "");
+
+  const cityClean = city.trim();
+  if (cityClean) {
+    const cityRe = new RegExp(
+      `^(?:г\\.?\\s*)?${escapeRegExp(cityClean)}(?:\\s*,\\s*|\\s+)`,
+      "i",
+    );
+    out = out.replace(cityRe, "");
+  }
+  return out.replace(/^,\s*/, "").trim();
+};
+
+const parseHouseFromAddress = (
+  address: string,
+  city: string,
+): { street: string; house: string } => {
   const cleaned = address.replace(/\s+/g, " ").trim();
   if (!cleaned) return { street: "Адрес", house: "1" };
 
-  // «…, д. 12» / «… д 12к1» / trailing «12» / «12/3»
+  // «…, д. 12» / «… д 12к1» / «… д 46/1»
   const houseMatch = cleaned.match(
     /(?:,?\s*(?:д\.?|дом)\s*)(\d+[а-яА-Яa-zA-Z]?(?:[\/\-]\d+[а-яА-Яa-zA-Z]?)?)\s*$/i,
   );
   if (houseMatch?.[1]) {
     const house = houseMatch[1];
-    const street = cleaned
+    const rawStreet = cleaned
       .slice(0, houseMatch.index)
       .replace(/[,\s]+$/g, "")
       .trim();
+    const street = stripLeadingCityPrefix(rawStreet, city) || rawStreet || cleaned;
     return {
-      street: (street || cleaned).slice(0, 60),
+      street: street.slice(0, 60),
       house: house.slice(0, 10),
     };
   }
 
   const trailing = cleaned.match(/(\d+[а-яА-Яa-zA-Z]?(?:[\/\-]\d+)?)\s*$/);
   if (trailing?.[1] && trailing.index != null && trailing.index > 0) {
+    const rawStreet = cleaned
+      .slice(0, trailing.index)
+      .replace(/[,\s]+$/g, "")
+      .trim();
+    const street = stripLeadingCityPrefix(rawStreet, city) || rawStreet || cleaned;
     return {
-      street: cleaned.slice(0, trailing.index).replace(/[,\s]+$/g, "").slice(0, 60) || cleaned.slice(0, 60),
+      street: street.slice(0, 60),
       house: trailing[1].slice(0, 10),
     };
   }
 
-  return { street: cleaned.slice(0, 60), house: "1" };
+  const street = stripLeadingCityPrefix(cleaned, city) || cleaned;
+  return { street: street.slice(0, 60), house: "1" };
 };
 
 const formatCompleteBefore = (date: Date): string => {
@@ -284,7 +314,10 @@ export const createIikoDeliveryOrder = async (
   }
 
   if (input.fulfillmentMode === "delivery") {
-    const { street, house } = parseHouseFromAddress(input.deliveryAddress);
+    const { street, house } = parseHouseFromAddress(
+      input.deliveryAddress,
+      config.city,
+    );
     const deliveryPoint: Record<string, unknown> = {
       address: {
         type: "legacy",
