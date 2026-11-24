@@ -10,6 +10,8 @@ export type IikoConfig = {
   paymentTypeKind: string;
   city: string;
   sourceKey: string;
+  /** Optional explicit priceCategoryId for /api/menu/v3/by_id; otherwise auto-picked from /api/2/menu. */
+  priceCategoryId: string;
 };
 
 const trim = (value: string | undefined): string => (value ?? "").trim();
@@ -36,6 +38,7 @@ export const getIikoConfig = (): IikoConfig => ({
   paymentTypeKind: trim(process.env.IIKO_PAYMENT_TYPE_KIND) || "Card",
   city: resolveIikoCity(process.env.IIKO_CITY),
   sourceKey: trim(process.env.IIKO_SOURCE_KEY) || "denisov-web",
+  priceCategoryId: trim(process.env.IIKO_PRICE_CATEGORY_ID),
 });
 
 /** True when we have enough credentials to call iiko Cloud. */

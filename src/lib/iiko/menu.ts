@@ -68,6 +68,7 @@ export type IikoCatalog = {
 
 type MenusResponse = {
   externalMenus?: Array<{ id: string | number; name?: string }>;
+  priceCategories?: Array<{ id?: string; name?: string }>;
 };
 
 type MenuV3Modifier = {
@@ -196,11 +197,15 @@ export const fetchIikoCatalog = async (): Promise<
     }
 
     const externalMenuId = String(external.id);
+    const priceCategoryId =
+      config.priceCategoryId ||
+      String(menus.priceCategories?.[0]?.id ?? "").trim();
     const detail = await iikoRequest<MenuV3Response>(
       "/api/menu/v3/by_id",
       {
         externalMenuId,
         organizationId: config.organizationId,
+        ...(priceCategoryId ? { priceCategoryId } : {}),
       },
       config,
     );
