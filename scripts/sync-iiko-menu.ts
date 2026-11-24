@@ -5,8 +5,8 @@
  * Usage:
  *   npm run iiko:sync-menu
  *
- * Linux crontab (every 5 min):
- *   *\/5 * * * * cd /path/to/denisov && npm run iiko:sync-menu >> /var/log/denisov-iiko-menu.log 2>&1
+ * Linux crontab (every 10 min):
+ *   *\/10 * * * * cd /path/to/denisov && npm run iiko:sync-menu >> /var/log/denisov-iiko-menu.log 2>&1
  */
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";

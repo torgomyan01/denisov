@@ -7,8 +7,8 @@ import { prisma } from "@/lib/prisma";
 
 const CACHE_ID = "main";
 
-/** Freshness indicator for admin UI (cron runs every 5 min, allow 15 min window). */
-const FRESH_WINDOW_MS = 15 * 60 * 1000;
+/** Freshness indicator for admin UI (cron runs every 10 min, allow 20 min window). */
+const FRESH_WINDOW_MS = 20 * 60 * 1000;
 
 /** Short process memory to avoid re-parsing JSON on every request while picking up cron DB updates fast. */
 const MEMORY_TTL_MS = 30_000;

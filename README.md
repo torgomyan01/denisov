@@ -223,6 +223,6 @@ npx prisma db push
 npm run db:push          # применить схему
 npm run db:seed          # залить контент из site.json
 npm run images:compress  # сжать uploads
-npm run iiko:sync-menu   # обновить кэш меню iiko в БД (для cron каждые 5 мин)
+npm run iiko:sync-menu   # обновить кэш меню iiko в БД (для cron каждые 10 мин)
 node scripts/sber-set-permanent-password.mjs   # разово сменить пароль Sber
 ```
