@@ -2,12 +2,14 @@
 
 import {
   getIikoMenuCacheMetaAction,
+  getIikoMenuItemEditAction,
   patchIikoCategoryFlagsAction,
   patchIikoMenuFlagsAction,
   refreshIikoMenuCacheAction,
   reorderIikoCategoriesAction,
   upsertIikoMenuOverrideAction,
   uploadIikoMenuImageAction,
+  type IikoMenuItemEditPayload,
 } from "@/actions/iiko-menu";
 import { DndProvider, SortableItem } from "@/components/admin/dnd";
 import {
@@ -101,9 +103,14 @@ type Props = {
   onSiteReload: (site: SiteData) => void;
 };
 
+type EditDraft = IikoMenuItemEditPayload["override"] & { id: string };
+
 type EditState = {
   categoryId: string;
-  draft: MenuItem;
+  displayName: string;
+  loading: boolean;
+  iiko: IikoMenuItemEditPayload["iiko"];
+  draft: EditDraft;
   clearImage: boolean;
 };
 
@@ -192,17 +199,83 @@ export const AdminIikoMenuPanel = ({
   const openEdit = (categoryId: string, item: MenuItem) => {
     setEdit({
       categoryId,
-      draft: { ...item },
+      displayName: item.name,
+      loading: true,
+      iiko: {
+        name: item.name,
+        description: item.description,
+        price: item.price,
+        weight: item.weight,
+        image: item.image,
+        kcal: item.kcal,
+        protein: item.protein,
+        fat: item.fat,
+        carbs: item.carbs,
+      },
+      draft: {
+        id: item.id,
+        name: "",
+        description: "",
+        price: "",
+        weight: "",
+        image: "",
+        kcal: null,
+        protein: null,
+        fat: null,
+        carbs: null,
+        showInDelivery: item.showInDelivery !== false,
+        inStock: item.inStock !== false,
+        showInUpsell: Boolean(item.showInUpsell),
+        upsellSortOrder: item.upsellSortOrder || 0,
+      },
       clearImage: false,
+    });
+
+    void getIikoMenuItemEditAction(item.id).then((res) => {
+      if (!res.success || !res.data) {
+        showToast(
+          !res.success ? res.error : "Не удалось загрузить позицию",
+          "error",
+        );
+        setEdit((prev) =>
+          prev && prev.draft.id === item.id ? { ...prev, loading: false } : prev,
+        );
+        return;
+      }
+      const payload = res.data;
+      setEdit((prev) =>
+        prev && prev.draft.id === item.id
+          ? {
+              ...prev,
+              loading: false,
+              iiko: payload.iiko,
+              draft: { id: item.id, ...payload.override },
+              clearImage: false,
+            }
+          : prev,
+      );
     });
   };
 
-  const patchDraft = (updater: (row: MenuItem) => void) => {
+  const patchDraft = (updater: (row: EditDraft) => void) => {
     setEdit((prev) => {
       if (!prev) return prev;
       const draft = { ...prev.draft };
       updater(draft);
       return { ...prev, draft };
+    });
+  };
+
+  const resetTextAndPriceToIiko = () => {
+    patchDraft((row) => {
+      row.name = "";
+      row.description = "";
+      row.price = "";
+      row.weight = "";
+      row.kcal = null;
+      row.protein = null;
+      row.fat = null;
+      row.carbs = null;
     });
   };
 
@@ -489,15 +562,15 @@ export const AdminIikoMenuPanel = ({
             </h2>
             <p className="mt-[0.4rem] max-w-[46rem] text-[0.92rem] leading-normal text-ink/48">
               {categories.length} категорий · {itemCount} позиций.
-              Сайт и админка читают дневной кэш — iiko дергаем не чаще раза в
-              сутки (или вручную). Пустые поля в карточке = из кэша iiko;
-              заполненные в админке приоритетнее.
+              Кэш меню обновляется из iiko автоматически в фоне каждые 5 минут
+              (без задержки для гостей) или мгновенно по кнопке. Пустые поля в
+              карточке берутся из iiko; заполненные в админке имеют приоритет.
             </p>
             <p className="mt-2 text-[12px] text-ink/45">
               Кэш:{" "}
               {cacheMeta?.hasCache
                 ? `${formatCacheWhen(cacheMeta.fetchedAt)}${
-                    cacheMeta.isFresh ? " · актуален сегодня" : " · устарел"
+                    cacheMeta.isFresh ? " · свежий" : " · обновится в фоне"
                   } · ${cacheMeta.items} поз.`
                 : "ещё не создан — нажмите «Обновить из iiko»"}
             </p>
@@ -680,7 +753,7 @@ export const AdminIikoMenuPanel = ({
                   iiko · карточка
                 </p>
                 <h3 className="mt-1 font-serif text-2xl leading-tight">
-                  {edit.draft.name || "Позиция"}
+                  {edit.draft.name || edit.iiko.name || edit.displayName || "Позиция"}
                 </h3>
                 <p className="mt-1 font-mono text-[10px] text-ink/35">
                   {edit.draft.id}
@@ -691,12 +764,40 @@ export const AdminIikoMenuPanel = ({
               </button>
             </div>
 
+            {edit.loading ? (
+              <p className="mb-3 rounded-xl bg-sand/70 px-3 py-2 text-xs text-ink/60">
+                Загружаем данные iiko и переопределения…
+              </p>
+            ) : (
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-ink/8 bg-sand/60 px-3 py-2 text-xs text-ink/70">
+                <span>
+                  В iiko сейчас:{" "}
+                  <strong>
+                    {edit.iiko.price ? `${edit.iiko.price} ₽` : "цена не указана"}
+                  </strong>
+                  {edit.iiko.weight ? ` · ${edit.iiko.weight}` : ""}
+                </span>
+                <button
+                  type="button"
+                  className={btnSmGhost}
+                  disabled={busy}
+                  onClick={resetTextAndPriceToIiko}
+                >
+                  Сбросить тексты и цену к iiko
+                </button>
+              </div>
+            )}
+
             <div className="mb-4 overflow-hidden rounded-xl bg-sand">
               <div className="aspect-[4/3] sm:aspect-[16/9]">
-                {edit.draft.image && !edit.clearImage ? (
+                {(edit.draft.image && !edit.clearImage) || edit.iiko.image ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
-                    src={edit.draft.image}
+                    src={
+                      edit.draft.image && !edit.clearImage
+                        ? edit.draft.image
+                        : edit.iiko.image
+                    }
                     alt=""
                     className="size-full object-cover"
                   />
@@ -713,7 +814,7 @@ export const AdminIikoMenuPanel = ({
                     type="file"
                     accept="image/*"
                     className="hidden"
-                    disabled={busy}
+                    disabled={busy || edit.loading}
                     onChange={(e) => {
                       const file = e.target.files?.[0];
                       e.target.value = "";
@@ -721,11 +822,11 @@ export const AdminIikoMenuPanel = ({
                     }}
                   />
                 </label>
-                {edit.draft.image ? (
+                {edit.draft.image && !edit.clearImage ? (
                   <button
                     type="button"
                     className={btnSmGhost}
-                    disabled={busy}
+                    disabled={busy || edit.loading}
                     onClick={() =>
                       setEdit((prev) =>
                         prev
@@ -749,11 +850,17 @@ export const AdminIikoMenuPanel = ({
               <Field
                 label="Название (пусто = из iiko)"
                 value={edit.draft.name}
+                placeholder={edit.iiko.name ? `Из iiko: ${edit.iiko.name}` : ""}
                 onChange={(v) => patchDraft((row) => { row.name = v; })}
               />
               <Field
                 label="Описание (пусто = из iiko)"
                 value={edit.draft.description}
+                placeholder={
+                  edit.iiko.description
+                    ? `Из iiko: ${edit.iiko.description.slice(0, 80)}`
+                    : ""
+                }
                 multiline
                 onChange={(v) => patchDraft((row) => { row.description = v; })}
               />
@@ -761,11 +868,17 @@ export const AdminIikoMenuPanel = ({
                 <Field
                   label="Цена (пусто = из iiko)"
                   value={edit.draft.price}
+                  placeholder={
+                    edit.iiko.price
+                      ? `Из iiko: ${edit.iiko.price}`
+                      : "Не задана в iiko"
+                  }
                   onChange={(v) => patchDraft((row) => { row.price = v; })}
                 />
                 <Field
                   label="Вес (пусто = из iiko)"
                   value={edit.draft.weight}
+                  placeholder={edit.iiko.weight ? `Из iiko: ${edit.iiko.weight}` : ""}
                   onChange={(v) => patchDraft((row) => { row.weight = v; })}
                 />
               </div>
@@ -831,6 +944,11 @@ export const AdminIikoMenuPanel = ({
                     value={
                       edit.draft[key] != null ? String(edit.draft[key]) : ""
                     }
+                    placeholder={
+                      edit.iiko[key] != null
+                        ? `Из iiko: ${edit.iiko[key]}`
+                        : ""
+                    }
                     onChange={(v) =>
                       patchDraft((row) => {
                         if (!v.trim()) {
@@ -858,7 +976,7 @@ export const AdminIikoMenuPanel = ({
               <button
                 type="button"
                 className={btnDark}
-                disabled={busy}
+                disabled={busy || edit.loading}
                 onClick={() => void saveOverride()}
               >
                 {busy ? "Сохранение…" : "Сохранить"}

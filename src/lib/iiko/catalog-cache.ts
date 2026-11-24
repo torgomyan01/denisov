@@ -1,4 +1,4 @@
-import { moscowDayKey } from "@/lib/admin-analytics";
+import { revalidatePath } from "next/cache";
 import {
   fetchIikoCatalog,
   type IikoCatalog,
@@ -8,6 +8,15 @@ import { prisma } from "@/lib/prisma";
 
 const CACHE_ID = "main";
 
+const resolveTtlMs = (): number => {
+  const raw = Number(process.env.IIKO_MENU_CACHE_MINUTES);
+  const minutes = Number.isFinite(raw) && raw >= 1 && raw <= 1440 ? raw : 5;
+  return Math.round(minutes * 60 * 1000);
+};
+
+/** Short process memory to avoid re-parsing JSON on every request. */
+const MEMORY_TTL_MS = 60_000;
+
 export type IikoCatalogSource = "cache" | "live";
 
 export type IikoCatalogLoadResult =
@@ -16,7 +25,7 @@ export type IikoCatalogLoadResult =
       catalog: IikoCatalog;
       source: IikoCatalogSource;
       fetchedAt: string;
-      /** Served from DB while a live refresh failed. */
+      /** Served from cache while a background refresh runs or failed. */
       stale: boolean;
     }
   | { ok: false; error: string };
@@ -37,12 +46,11 @@ type MemorySlot = {
   loadedAtMs: number;
 };
 
-/** Short process memory to avoid re-parsing JSON on every request. */
 let memorySlot: MemorySlot | null = null;
-const MEMORY_TTL_MS = 60_000;
+let backgroundRefresh: Promise<void> | null = null;
 
-const isFreshForToday = (fetchedAt: Date, now = new Date()): boolean =>
-  moscowDayKey(fetchedAt) === moscowDayKey(now);
+const isFreshCache = (fetchedAt: Date, now = new Date()): boolean =>
+  now.getTime() - fetchedAt.getTime() < resolveTtlMs();
 
 const parseCatalog = (json: string): IikoCatalog | null => {
   try {
@@ -104,9 +112,7 @@ const writeDbCache = async (catalog: IikoCatalog, fetchedAt: Date) => {
   };
 };
 
-const fromMemory = (
-  now = new Date(),
-): IikoCatalogLoadResult | null => {
+const fromMemory = (now = new Date()): IikoCatalogLoadResult | null => {
   if (!memorySlot) return null;
   if (Date.now() - memorySlot.loadedAtMs > MEMORY_TTL_MS) return null;
   return {
@@ -114,15 +120,56 @@ const fromMemory = (
     catalog: memorySlot.catalog,
     source: "cache",
     fetchedAt: memorySlot.fetchedAt.toISOString(),
-    stale: !isFreshForToday(memorySlot.fetchedAt, now),
+    stale: !isFreshCache(memorySlot.fetchedAt, now),
   };
 };
 
+/** Single deduplicated background refresh so visitors never wait on iiko. */
+const triggerBackgroundRefresh = (): void => {
+  if (backgroundRefresh) return;
+
+  const run = async () => {
+    try {
+      const live = await fetchIikoCatalog();
+      if (!live.ok) return;
+      const fetchedAt = new Date();
+      try {
+        await writeDbCache(live.catalog, fetchedAt);
+      } catch {
+        memorySlot = {
+          catalog: live.catalog,
+          fetchedAt,
+          loadedAtMs: Date.now(),
+        };
+      }
+      try {
+        revalidatePath("/");
+        revalidatePath("/menu");
+      } catch {
+        /* outside request context — memory/DB already updated */
+      }
+    } finally {
+      backgroundRefresh = null;
+    }
+  };
+
+  backgroundRefresh = (async () => {
+    try {
+      const { after } = await import("next/server");
+      after(() => {
+        void run();
+      });
+    } catch {
+      await run();
+    }
+  })();
+};
+
 /**
- * iiko catalog with daily DB cache.
- * - Same Moscow calendar day → serve cache (no iiko call).
- * - New day / empty → fetch live, save, return.
- * - Live fail + any cache → serve stale cache (site stays up).
+ * iiko catalog with Stale-While-Revalidate cache (default 5 min TTL):
+ * - Fresh cache → serve immediately (0ms iiko wait).
+ * - Stale cache → serve immediately AND refresh from iiko in the background.
+ * - Empty cache / force: true → fetch live directly, save, return.
  */
 export const getIikoCatalog = async (options?: {
   force?: boolean;
@@ -132,25 +179,32 @@ export const getIikoCatalog = async (options?: {
 
   if (!force) {
     const mem = fromMemory(now);
-    if (mem?.ok && !mem.stale) return mem;
+    if (mem?.ok) {
+      if (mem.stale) triggerBackgroundRefresh();
+      return mem;
+    }
 
     const cached = await readDbCache();
-    if (cached && isFreshForToday(cached.fetchedAt, now)) {
+    if (cached) {
       memorySlot = {
         catalog: cached.catalog,
         fetchedAt: cached.fetchedAt,
         loadedAtMs: Date.now(),
       };
+      const fresh = isFreshCache(cached.fetchedAt, now);
+      if (!fresh) {
+        triggerBackgroundRefresh();
+      }
       return {
         ok: true,
         catalog: cached.catalog,
         source: "cache",
         fetchedAt: cached.fetchedAt.toISOString(),
-        stale: false,
+        stale: !fresh,
       };
     }
 
-    // Keep stale cache ready if live refresh fails.
+    // Cold start (no DB cache yet) — fetch synchronously once.
     const live = await fetchIikoCatalog();
     if (live.ok) {
       try {
@@ -168,21 +222,6 @@ export const getIikoCatalog = async (options?: {
         source: "live",
         fetchedAt: now.toISOString(),
         stale: false,
-      };
-    }
-
-    if (cached) {
-      memorySlot = {
-        catalog: cached.catalog,
-        fetchedAt: cached.fetchedAt,
-        loadedAtMs: Date.now(),
-      };
-      return {
-        ok: true,
-        catalog: cached.catalog,
-        source: "cache",
-        fetchedAt: cached.fetchedAt.toISOString(),
-        stale: true,
       };
     }
 
@@ -236,17 +275,18 @@ export const getIikoCatalogCacheMeta = async (): Promise<IikoCatalogCacheMeta> =
   return {
     hasCache: true,
     fetchedAt: cached.fetchedAt.toISOString(),
-    isFresh: isFreshForToday(cached.fetchedAt),
+    isFresh: isFreshCache(cached.fetchedAt),
     menuId: cached.menuId,
     menuName: cached.menuName,
-    categories: cached.catalog.stats?.categories ?? cached.catalog.categories.length,
+    categories:
+      cached.catalog.stats?.categories ?? cached.catalog.categories.length,
     items:
       cached.catalog.stats?.items ??
       cached.catalog.categories.reduce((n, c) => n + c.items.length, 0),
   };
 };
 
-/** Default modifiers map from the daily catalog cache (for order create). */
+/** Default modifiers map from the catalog cache (for order create). */
 export const loadIikoDefaultModifiersByProductId = async (): Promise<
   Map<string, IikoDefaultModifier[]>
 > => {

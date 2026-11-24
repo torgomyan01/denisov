@@ -192,6 +192,122 @@ export const patchIikoMenuFlagsAction = async (
   }
 };
 
+export type IikoMenuItemEditPayload = {
+  iiko: {
+    name: string;
+    description: string;
+    price: string;
+    weight: string;
+    image: string;
+    kcal: number | null;
+    protein: number | null;
+    fat: number | null;
+    carbs: number | null;
+  };
+  override: {
+    name: string;
+    description: string;
+    price: string;
+    weight: string;
+    image: string;
+    kcal: number | null;
+    protein: number | null;
+    fat: number | null;
+    carbs: number | null;
+    showInDelivery: boolean;
+    inStock: boolean;
+    showInUpsell: boolean;
+    upsellSortOrder: number;
+  };
+};
+
+export const getIikoMenuItemEditAction = async (
+  iikoProductId: string,
+): Promise<ActionResult<IikoMenuItemEditPayload>> => {
+  try {
+    await requireAuth();
+    const id = z.string().uuid().safeParse(iikoProductId);
+    if (!id.success) {
+      return { success: false, error: "Некорректный productId" };
+    }
+
+    const [catalogRes, row] = await Promise.all([
+      getIikoCatalog(),
+      prisma.iikoMenuOverride.findUnique({
+        where: { iikoProductId: id.data },
+      }),
+    ]);
+
+    let catalogItem:
+      | {
+          name: string;
+          description: string;
+          price: number | null;
+          weight: number | null;
+          imageUrl: string;
+          kcal: number | null;
+          protein: number | null;
+          fat: number | null;
+          carbs: number | null;
+        }
+      | undefined;
+
+    if (catalogRes.ok) {
+      for (const cat of catalogRes.catalog.categories) {
+        const found = cat.items.find((item) => item.productId === id.data);
+        if (found) {
+          catalogItem = found;
+          break;
+        }
+      }
+    }
+
+    return {
+      success: true,
+      data: {
+        iiko: {
+          name: catalogItem?.name ?? "",
+          description: catalogItem?.description ?? "",
+          price:
+            catalogItem?.price != null && Number.isFinite(catalogItem.price)
+              ? String(catalogItem.price)
+              : "",
+          weight:
+            catalogItem?.weight != null &&
+            Number.isFinite(catalogItem.weight) &&
+            catalogItem.weight > 0
+              ? `${Math.round(catalogItem.weight)} г`
+              : "",
+          image: catalogItem?.imageUrl ?? "",
+          kcal: catalogItem?.kcal ?? null,
+          protein: catalogItem?.protein ?? null,
+          fat: catalogItem?.fat ?? null,
+          carbs: catalogItem?.carbs ?? null,
+        },
+        override: {
+          name: row?.name ?? "",
+          description: row?.description ?? "",
+          price: row?.price ?? "",
+          weight: row?.weight ?? "",
+          image: row?.image ?? "",
+          kcal: row?.kcal ?? null,
+          protein: row?.protein ?? null,
+          fat: row?.fat ?? null,
+          carbs: row?.carbs ?? null,
+          showInDelivery: row ? row.showInDelivery : true,
+          inStock: row ? row.inStock : true,
+          showInUpsell: row ? row.showInUpsell : false,
+          upsellSortOrder: row ? row.upsellSortOrder : 0,
+        },
+      },
+    };
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Не удалось загрузить позицию";
+    return { success: false, error: message };
+  }
+};
+
 export const upsertIikoMenuOverrideAction = async (
   input: unknown,
 ): Promise<ActionResult<SiteData>> => {
