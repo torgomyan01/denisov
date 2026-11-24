@@ -1,4 +1,3 @@
-import { revalidatePath } from "next/cache";
 import {
   fetchIikoCatalog,
   type IikoCatalog,
@@ -8,14 +7,11 @@ import { prisma } from "@/lib/prisma";
 
 const CACHE_ID = "main";
 
-const resolveTtlMs = (): number => {
-  const raw = Number(process.env.IIKO_MENU_CACHE_MINUTES);
-  const minutes = Number.isFinite(raw) && raw >= 1 && raw <= 1440 ? raw : 5;
-  return Math.round(minutes * 60 * 1000);
-};
+/** Freshness indicator for admin UI (cron runs every 5 min, allow 15 min window). */
+const FRESH_WINDOW_MS = 15 * 60 * 1000;
 
-/** Short process memory to avoid re-parsing JSON on every request. */
-const MEMORY_TTL_MS = 60_000;
+/** Short process memory to avoid re-parsing JSON on every request while picking up cron DB updates fast. */
+const MEMORY_TTL_MS = 30_000;
 
 export type IikoCatalogSource = "cache" | "live";
 
@@ -25,7 +21,6 @@ export type IikoCatalogLoadResult =
       catalog: IikoCatalog;
       source: IikoCatalogSource;
       fetchedAt: string;
-      /** Served from cache while a background refresh runs or failed. */
       stale: boolean;
     }
   | { ok: false; error: string };
@@ -47,10 +42,9 @@ type MemorySlot = {
 };
 
 let memorySlot: MemorySlot | null = null;
-let backgroundRefresh: Promise<void> | null = null;
 
 const isFreshCache = (fetchedAt: Date, now = new Date()): boolean =>
-  now.getTime() - fetchedAt.getTime() < resolveTtlMs();
+  now.getTime() - fetchedAt.getTime() < FRESH_WINDOW_MS;
 
 const parseCatalog = (json: string): IikoCatalog | null => {
   try {
@@ -124,52 +118,10 @@ const fromMemory = (now = new Date()): IikoCatalogLoadResult | null => {
   };
 };
 
-/** Single deduplicated background refresh so visitors never wait on iiko. */
-const triggerBackgroundRefresh = (): void => {
-  if (backgroundRefresh) return;
-
-  const run = async () => {
-    try {
-      const live = await fetchIikoCatalog();
-      if (!live.ok) return;
-      const fetchedAt = new Date();
-      try {
-        await writeDbCache(live.catalog, fetchedAt);
-      } catch {
-        memorySlot = {
-          catalog: live.catalog,
-          fetchedAt,
-          loadedAtMs: Date.now(),
-        };
-      }
-      try {
-        revalidatePath("/");
-        revalidatePath("/menu");
-      } catch {
-        /* outside request context — memory/DB already updated */
-      }
-    } finally {
-      backgroundRefresh = null;
-    }
-  };
-
-  backgroundRefresh = (async () => {
-    try {
-      const { after } = await import("next/server");
-      after(() => {
-        void run();
-      });
-    } catch {
-      await run();
-    }
-  })();
-};
-
 /**
- * iiko catalog with Stale-While-Revalidate cache (default 5 min TTL):
- * - Fresh cache → serve immediately (0ms iiko wait).
- * - Stale cache → serve immediately AND refresh from iiko in the background.
- * - Empty cache / force: true → fetch live directly, save, return.
+ * iiko catalog backed by MySQL `IikoMenuCache`:
+ * - Normal reads (`force: false`) serve from DB (populated by server cron `npm run iiko:sync-menu`).
+ * - Cold start (empty DB) or `force: true` (cron / admin button) fetches live from iiko and saves to DB.
  */
 export const getIikoCatalog = async (options?: {
   force?: boolean;
@@ -179,10 +131,7 @@ export const getIikoCatalog = async (options?: {
 
   if (!force) {
     const mem = fromMemory(now);
-    if (mem?.ok) {
-      if (mem.stale) triggerBackgroundRefresh();
-      return mem;
-    }
+    if (mem?.ok) return mem;
 
     const cached = await readDbCache();
     if (cached) {
@@ -191,20 +140,16 @@ export const getIikoCatalog = async (options?: {
         fetchedAt: cached.fetchedAt,
         loadedAtMs: Date.now(),
       };
-      const fresh = isFreshCache(cached.fetchedAt, now);
-      if (!fresh) {
-        triggerBackgroundRefresh();
-      }
       return {
         ok: true,
         catalog: cached.catalog,
         source: "cache",
         fetchedAt: cached.fetchedAt.toISOString(),
-        stale: !fresh,
+        stale: !isFreshCache(cached.fetchedAt, now),
       };
     }
 
-    // Cold start (no DB cache yet) — fetch synchronously once.
+    // Cold start (no DB snapshot yet) — fetch once so the site still works.
     const live = await fetchIikoCatalog();
     if (live.ok) {
       try {

@@ -562,17 +562,17 @@ export const AdminIikoMenuPanel = ({
             </h2>
             <p className="mt-[0.4rem] max-w-[46rem] text-[0.92rem] leading-normal text-ink/48">
               {categories.length} категорий · {itemCount} позиций.
-              Кэш меню обновляется из iiko автоматически в фоне каждые 5 минут
-              (без задержки для гостей) или мгновенно по кнопке. Пустые поля в
-              карточке берутся из iiko; заполненные в админке имеют приоритет.
+              Сайт читает меню из БД — обновление из iiko выполняется cron-задачей
+              на сервере (или вручную по кнопке). Пустые поля в карточке берутся
+              из iiko; заполненные в админке имеют приоритет.
             </p>
             <p className="mt-2 text-[12px] text-ink/45">
-              Кэш:{" "}
+              Синхронизация:{" "}
               {cacheMeta?.hasCache
                 ? `${formatCacheWhen(cacheMeta.fetchedAt)}${
-                    cacheMeta.isFresh ? " · свежий" : " · обновится в фоне"
+                    cacheMeta.isFresh ? " · актуально" : " · давно не обновлялось"
                   } · ${cacheMeta.items} поз.`
-                : "ещё не создан — нажмите «Обновить из iiko»"}
+                : "ещё не синхронизировано — нажмите «Обновить из iiko»"}
             </p>
           </div>
           <button
