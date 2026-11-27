@@ -53,6 +53,11 @@ type CartState = {
   deliveryAddress: string;
   deliveryLat: number | null;
   deliveryLng: number | null;
+  deliveryApartment: string;
+  deliveryEntrance: string;
+  deliveryFloor: string;
+  deliveryIntercom: string;
+  deliveryCourierComment: string;
   timeMode: PickupTimeMode;
   scheduledAt: string | null;
   isOpen: boolean;
@@ -286,6 +291,11 @@ const initialState: CartState = {
   deliveryAddress: "",
   deliveryLat: null,
   deliveryLng: null,
+  deliveryApartment: "",
+  deliveryEntrance: "",
+  deliveryFloor: "",
+  deliveryIntercom: "",
+  deliveryCourierComment: "",
   timeMode: "asap",
   scheduledAt: null,
   isOpen: false,
@@ -474,6 +484,33 @@ const cartSlice = createSlice({
       state.deliveryLng = null;
       persistCart(state);
     },
+    setDeliveryDetails(
+      state,
+      action: PayloadAction<{
+        apartment?: string;
+        entrance?: string;
+        floor?: string;
+        intercom?: string;
+        courierComment?: string;
+      }>,
+    ) {
+      const p = action.payload;
+      if (p.apartment !== undefined) {
+        state.deliveryApartment = p.apartment.slice(0, 64);
+      }
+      if (p.entrance !== undefined) {
+        state.deliveryEntrance = p.entrance.slice(0, 64);
+      }
+      if (p.floor !== undefined) {
+        state.deliveryFloor = p.floor.slice(0, 32);
+      }
+      if (p.intercom !== undefined) {
+        state.deliveryIntercom = p.intercom.slice(0, 64);
+      }
+      if (p.courierComment !== undefined) {
+        state.deliveryCourierComment = p.courierComment.slice(0, 500);
+      }
+    },
     setTimeMode(state, action: PayloadAction<PickupTimeMode>) {
       state.timeMode = action.payload;
       if (action.payload === "asap") state.scheduledAt = null;
@@ -513,6 +550,7 @@ export const {
   setDeliveryAddress,
   setDeliveryLocation,
   clearDeliveryLocation,
+  setDeliveryDetails,
   setTimeMode,
   setScheduledAt,
 } = cartSlice.actions;

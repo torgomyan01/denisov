@@ -12,7 +12,7 @@ import {
   X,
 } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { getCustomerAction } from "@/actions/customer-auth";
 import { saveMyCartAction } from "@/actions/customer-cart";
 import { getPublicDeliverySettingsAction } from "@/actions/delivery-zones";
@@ -78,6 +78,7 @@ import {
   isCartCloudPersist,
   setComment,
   setDeliveryAddress,
+  setDeliveryDetails,
   setDeliveryLocation,
   setFulfillmentMode,
   setPickupPointId,
@@ -124,6 +125,11 @@ export const CartDrawer = ({
   const deliveryAddress = cartState.deliveryAddress;
   const deliveryLat = cartState.deliveryLat;
   const deliveryLng = cartState.deliveryLng;
+  const deliveryApartment = cartState.deliveryApartment;
+  const deliveryEntrance = cartState.deliveryEntrance;
+  const deliveryFloor = cartState.deliveryFloor;
+  const deliveryIntercom = cartState.deliveryIntercom;
+  const deliveryCourierComment = cartState.deliveryCourierComment;
   const timeMode = cartState.timeMode;
   const scheduledAt = cartState.scheduledAt;
   const count = cartItemCount(items);
@@ -225,11 +231,38 @@ export const CartDrawer = ({
     fulfillmentMode === "pickup" ? "Самовывоз" : "Доставка";
   const deliveryAddressLabel = deliveryAddress.trim();
   const deliveryHasHouse = hasHouseNumber(deliveryAddressLabel);
+  const deliveryHasApartment = deliveryApartment.trim().length > 0;
   const deliveryReady =
     deliveryLat != null &&
     deliveryLng != null &&
     inZone &&
-    deliveryHasHouse;
+    deliveryHasHouse &&
+    deliveryHasApartment;
+
+  // Prefill saved customer delivery details once when cart fields are empty.
+  const prefilledDetailsRef = useRef(false);
+  useEffect(() => {
+    if (!customer || prefilledDetailsRef.current) return;
+    prefilledDetailsRef.current = true;
+    dispatch(
+      setDeliveryDetails({
+        apartment: deliveryApartment || customer.deliveryApartment || "",
+        entrance: deliveryEntrance || customer.deliveryEntrance || "",
+        floor: deliveryFloor || customer.deliveryFloor || "",
+        intercom: deliveryIntercom || customer.deliveryIntercom || "",
+        courierComment:
+          deliveryCourierComment || customer.deliveryCourierComment || "",
+      }),
+    );
+  }, [
+    customer,
+    deliveryApartment,
+    deliveryEntrance,
+    deliveryFloor,
+    deliveryIntercom,
+    deliveryCourierComment,
+    dispatch,
+  ]);
   const locationValue =
     fulfillmentMode === "pickup"
       ? selectedPoint?.name || "Выберите точку"
@@ -604,6 +637,97 @@ export const CartDrawer = ({
                                 dispatch(clearDeliveryLocation());
                               }}
                             />
+
+                            <div className="grid grid-cols-2 gap-2 pt-0.5">
+                              <label className="flex flex-col gap-1 text-[10px] font-bold tracking-[0.12em] text-ink/48 uppercase">
+                                Квартира / офис *
+                                <input
+                                  type="text"
+                                  className="w-full rounded-[13px] border border-ink/12 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(251,248,241,0.88))] px-3 py-2 text-[0.9rem] font-medium text-ink outline-none transition-[border-color,box-shadow] placeholder:font-normal placeholder:text-ink/38 focus:border-clay/50 focus:shadow-[0_0_0_3px_rgba(156,107,74,0.12)]"
+                                  value={deliveryApartment}
+                                  onChange={(e) =>
+                                    dispatch(
+                                      setDeliveryDetails({
+                                        apartment: e.target.value,
+                                      }),
+                                    )
+                                  }
+                                  maxLength={64}
+                                  autoComplete="address-line2"
+                                  placeholder="12"
+                                />
+                              </label>
+                              <label className="flex flex-col gap-1 text-[10px] font-bold tracking-[0.12em] text-ink/48 uppercase">
+                                Подъезд
+                                <input
+                                  type="text"
+                                  className="w-full rounded-[13px] border border-ink/12 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(251,248,241,0.88))] px-3 py-2 text-[0.9rem] font-medium text-ink outline-none transition-[border-color,box-shadow] placeholder:font-normal placeholder:text-ink/38 focus:border-clay/50 focus:shadow-[0_0_0_3px_rgba(156,107,74,0.12)]"
+                                  value={deliveryEntrance}
+                                  onChange={(e) =>
+                                    dispatch(
+                                      setDeliveryDetails({
+                                        entrance: e.target.value,
+                                      }),
+                                    )
+                                  }
+                                  maxLength={64}
+                                  placeholder="1"
+                                />
+                              </label>
+                              <label className="flex flex-col gap-1 text-[10px] font-bold tracking-[0.12em] text-ink/48 uppercase">
+                                Этаж
+                                <input
+                                  type="text"
+                                  className="w-full rounded-[13px] border border-ink/12 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(251,248,241,0.88))] px-3 py-2 text-[0.9rem] font-medium text-ink outline-none transition-[border-color,box-shadow] placeholder:font-normal placeholder:text-ink/38 focus:border-clay/50 focus:shadow-[0_0_0_3px_rgba(156,107,74,0.12)]"
+                                  value={deliveryFloor}
+                                  onChange={(e) =>
+                                    dispatch(
+                                      setDeliveryDetails({
+                                        floor: e.target.value,
+                                      }),
+                                    )
+                                  }
+                                  maxLength={32}
+                                  placeholder="4"
+                                />
+                              </label>
+                              <label className="flex flex-col gap-1 text-[10px] font-bold tracking-[0.12em] text-ink/48 uppercase">
+                                Домофон
+                                <input
+                                  type="text"
+                                  className="w-full rounded-[13px] border border-ink/12 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(251,248,241,0.88))] px-3 py-2 text-[0.9rem] font-medium text-ink outline-none transition-[border-color,box-shadow] placeholder:font-normal placeholder:text-ink/38 focus:border-clay/50 focus:shadow-[0_0_0_3px_rgba(156,107,74,0.12)]"
+                                  value={deliveryIntercom}
+                                  onChange={(e) =>
+                                    dispatch(
+                                      setDeliveryDetails({
+                                        intercom: e.target.value,
+                                      }),
+                                    )
+                                  }
+                                  maxLength={64}
+                                  placeholder="12К456"
+                                />
+                              </label>
+                            </div>
+
+                            <label className="flex flex-col gap-1 text-[10px] font-bold tracking-[0.12em] text-ink/48 uppercase">
+                              Комментарий курьеру
+                              <input
+                                type="text"
+                                className="w-full rounded-[13px] border border-ink/12 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(251,248,241,0.88))] px-3 py-2 text-[0.88rem] font-medium text-ink outline-none transition-[border-color,box-shadow] placeholder:font-normal placeholder:text-ink/38 focus:border-clay/50 focus:shadow-[0_0_0_3px_rgba(156,107,74,0.12)]"
+                                value={deliveryCourierComment}
+                                onChange={(e) =>
+                                  dispatch(
+                                    setDeliveryDetails({
+                                      courierComment: e.target.value,
+                                    }),
+                                  )
+                                }
+                                maxLength={500}
+                                placeholder="Код от калитки, куда оставить заказ…"
+                              />
+                            </label>
+
                             <p
                               className={cartDeliveryAddress(
                                 deliveryReady,
@@ -614,10 +738,12 @@ export const CartDrawer = ({
                                 ? "Выберите улицу и номер дома из подсказок или на карте"
                                 : !deliveryHasHouse
                                   ? "Укажите номер дома для доставки"
-                                  : inZone
-                                    ? deliveryAddressLabel ||
-                                      "Адрес в зоне доставки"
-                                    : "Вне зоны доставки — выберите другой адрес или самовывоз"}
+                                  : !inZone
+                                    ? "Вне зоны доставки — выберите другой адрес или самовывоз"
+                                    : !deliveryHasApartment
+                                      ? "Укажите квартиру или офис"
+                                      : deliveryAddressLabel ||
+                                        "Адрес в зоне доставки"}
                             </p>
                             <button
                               type="button"

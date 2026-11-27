@@ -96,15 +96,12 @@ export const CheckoutStep = ({
       customer.name ||
       "",
   );
-  const [apartment, setApartment] = useState(
-    customer.deliveryApartment ?? "",
-  );
-  const [entrance, setEntrance] = useState(customer.deliveryEntrance ?? "");
-  const [floor, setFloor] = useState(customer.deliveryFloor ?? "");
-  const [intercom, setIntercom] = useState(customer.deliveryIntercom ?? "");
-  const [courierComment, setCourierComment] = useState(
-    customer.deliveryCourierComment ?? "",
-  );
+  const apartment = cartState.deliveryApartment || customer.deliveryApartment || "";
+  const entrance = cartState.deliveryEntrance || customer.deliveryEntrance || "";
+  const floor = cartState.deliveryFloor || customer.deliveryFloor || "";
+  const intercom = cartState.deliveryIntercom || customer.deliveryIntercom || "";
+  const courierComment =
+    cartState.deliveryCourierComment || customer.deliveryCourierComment || "";
   const [payMethod, setPayMethod] = useState<CheckoutPaymentMethod>(
     deliveryOnlyOnline ? "card" : "on_receipt",
   );
@@ -285,87 +282,48 @@ export const CheckoutStep = ({
           style={enterStyle(2)}
           aria-label="Адрес доставки"
         >
-          <div className="flex items-center gap-[0.7rem]">
-            <span className={cardIconClass} aria-hidden="true">
-              <MapPin size={16} strokeWidth={2} className={cartIcon} />
-            </span>
-            <div>
-              <strong className="block text-[0.95rem] leading-[1.25] font-[650] text-ink">
-                Адрес доставки
-              </strong>
-              <span className="text-[0.78rem] leading-[1.35] text-ink/52">
-                Сохраним для следующих заказов
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-[0.7rem]">
+              <span className={cardIconClass} aria-hidden="true">
+                <MapPin size={16} strokeWidth={2} className={cartIcon} />
               </span>
+              <div>
+                <strong className="block text-[0.95rem] leading-[1.25] font-[650] text-ink">
+                  Адрес доставки
+                </strong>
+                <span className="text-[0.78rem] leading-[1.35] text-ink/52">
+                  Сохраним для следующих заказов
+                </span>
+              </div>
             </div>
+            <button
+              type="button"
+              className="cursor-pointer border-0 bg-transparent text-[11px] font-bold tracking-[0.1em] text-clay uppercase transition-colors hover:text-ink"
+              onClick={onBack}
+            >
+              Изменить
+            </button>
           </div>
-          {cartState.deliveryAddress.trim() ? (
-            <p className="rounded-xl bg-ink/[0.03] px-3 py-[0.65rem] text-[0.9rem] leading-[1.35] text-ink/75">
-              {cartState.deliveryAddress.trim()}
+          <div className="rounded-xl bg-ink/[0.03] px-3 py-[0.65rem]">
+            <p className="m-0 text-[0.9rem] leading-[1.35] font-medium text-ink">
+              {cartState.deliveryAddress.trim() || "Адрес не указан"}
             </p>
-          ) : (
-            <p className="text-[0.85rem] text-ink/48">
-              Точка на карте выбрана — уточните детали ниже
+            <p className="mt-1 m-0 text-[0.8rem] leading-[1.4] text-ink/60">
+              {[
+                apartment.trim() ? `кв./офис ${apartment.trim()}` : "",
+                entrance.trim() ? `подъезд ${entrance.trim()}` : "",
+                floor.trim() ? `этаж ${floor.trim()}` : "",
+                intercom.trim() ? `домофон ${intercom.trim()}` : "",
+              ]
+                .filter(Boolean)
+                .join(" · ")}
             </p>
-          )}
-          <div className="grid grid-cols-2 gap-[0.65rem]">
-            <label className={labelClass}>
-              Квартира / офис
-              <input
-                type="text"
-                className={inputClass}
-                value={apartment}
-                onChange={(e) => setApartment(e.target.value)}
-                required
-                maxLength={64}
-                autoComplete="address-line2"
-                placeholder="12"
-              />
-            </label>
-            <label className={labelClass}>
-              Подъезд
-              <input
-                type="text"
-                className={inputClass}
-                value={entrance}
-                onChange={(e) => setEntrance(e.target.value)}
-                maxLength={64}
-                placeholder="1"
-              />
-            </label>
-            <label className={labelClass}>
-              Этаж
-              <input
-                type="text"
-                className={inputClass}
-                value={floor}
-                onChange={(e) => setFloor(e.target.value)}
-                maxLength={32}
-                placeholder="4"
-              />
-            </label>
-            <label className={labelClass}>
-              Домофон
-              <input
-                type="text"
-                className={inputClass}
-                value={intercom}
-                onChange={(e) => setIntercom(e.target.value)}
-                maxLength={64}
-                placeholder="12К456"
-              />
-            </label>
+            {courierComment.trim() ? (
+              <p className="mt-1 m-0 text-[0.78rem] leading-[1.35] text-ink/52">
+                Комментарий: {courierComment.trim()}
+              </p>
+            ) : null}
           </div>
-          <label className={labelClass}>
-            Комментарий курьеру
-            <textarea
-              className={`${inputClass} min-h-[4.5rem] resize-y`}
-              value={courierComment}
-              onChange={(e) => setCourierComment(e.target.value)}
-              maxLength={500}
-              rows={3}
-              placeholder="Код от калитки, куда оставить заказ…"
-            />
-          </label>
         </section>
       ) : null}
 
