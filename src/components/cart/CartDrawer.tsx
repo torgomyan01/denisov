@@ -35,6 +35,7 @@ import {
   cartTitle,
 } from "@/components/cart/cart-styles";
 import { AddressSuggestField } from "@/components/cart/AddressSuggestField";
+import { hasHouseNumber } from "@/lib/address-validation";
 import { DeliveryMapModal } from "@/components/cart/DeliveryMapModal";
 import { PickupPointPickerModal } from "@/components/cart/PickupPointPickerModal";
 import {
@@ -222,9 +223,13 @@ export const CartDrawer = ({
 
   const locationLabel =
     fulfillmentMode === "pickup" ? "Самовывоз" : "Доставка";
-  const deliveryReady =
-    deliveryLat != null && deliveryLng != null && inZone;
   const deliveryAddressLabel = deliveryAddress.trim();
+  const deliveryHasHouse = hasHouseNumber(deliveryAddressLabel);
+  const deliveryReady =
+    deliveryLat != null &&
+    deliveryLng != null &&
+    inZone &&
+    deliveryHasHouse;
   const locationValue =
     fulfillmentMode === "pickup"
       ? selectedPoint?.name || "Выберите точку"
@@ -595,21 +600,24 @@ export const CartDrawer = ({
                                 dispatch(clearDeliveryLocation());
                                 dispatch(setDeliveryAddress(address));
                               }}
+                              onClear={() => {
+                                dispatch(clearDeliveryLocation());
+                              }}
                             />
                             <p
                               className={cartDeliveryAddress(
-                                deliveryLat != null &&
-                                  deliveryLng != null &&
-                                  inZone,
+                                deliveryReady,
                               )}
                               role="status"
                             >
                               {deliveryLat == null || deliveryLng == null
-                                ? "Выберите адрес из подсказок или точку на карте"
-                                : inZone
-                                  ? deliveryAddressLabel ||
-                                    "Адрес в зоне доставки"
-                                  : "Вне зоны доставки — выберите другой адрес или самовывоз"}
+                                ? "Выберите улицу и номер дома из подсказок или на карте"
+                                : !deliveryHasHouse
+                                  ? "Укажите номер дома для доставки"
+                                  : inZone
+                                    ? deliveryAddressLabel ||
+                                      "Адрес в зоне доставки"
+                                    : "Вне зоны доставки — выберите другой адрес или самовывоз"}
                             </p>
                             <button
                               type="button"

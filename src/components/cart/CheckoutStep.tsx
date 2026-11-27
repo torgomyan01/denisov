@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useMemo, useState, type CSSProperties, type FormEvent } from "react";
 import { placeOrderAction } from "@/actions/orders";
+import { hasHouseNumber } from "@/lib/address-validation";
 import {
   cartCheckoutEnter,
   cartCheckoutSubmitButton,
@@ -113,30 +114,10 @@ export const CheckoutStep = ({
     : payMethod;
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [confirmAddressOpen, setConfirmAddressOpen] = useState(false);
 
-  const onSubmit = async (e: FormEvent) => {
-    e.preventDefault();
+  const submitOrder = async () => {
     if (busy) return;
-    if (!customer.phone) {
-      setError("Добавьте телефон в профиле, затем оформите заказ");
-      return;
-    }
-    if (isDelivery && !apartment.trim()) {
-      setError("Укажите квартиру или офис");
-      return;
-    }
-    if (deliveryOnlyOnline && activePayMethod !== "card") {
-      setError("Доставка только с онлайн-оплатой");
-      return;
-    }
-    if (activePayMethod === "card" && !onlinePayEnabled) {
-      setError(
-        deliveryOnlyOnline
-          ? "Онлайн-оплата временно недоступна. Доставка без предоплаты невозможна — попробуйте позже или выберите самовывоз."
-          : "Онлайн-оплата временно недоступна",
-      );
-      return;
-    }
     setBusy(true);
     setError("");
     try {
@@ -170,6 +151,41 @@ export const CheckoutStep = ({
     } finally {
       setBusy(false);
     }
+  };
+
+  const onSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (busy) return;
+    if (!customer.phone) {
+      setError("Добавьте телефон в профиле, затем оформите заказ");
+      return;
+    }
+    if (isDelivery && !hasHouseNumber(cartState.deliveryAddress)) {
+      setError("Укажите номер дома для доставки");
+      return;
+    }
+    if (isDelivery && !apartment.trim()) {
+      setError("Укажите квартиру или офис");
+      return;
+    }
+    if (deliveryOnlyOnline && activePayMethod !== "card") {
+      setError("Доставка только с онлайн-оплатой");
+      return;
+    }
+    if (activePayMethod === "card" && !onlinePayEnabled) {
+      setError(
+        deliveryOnlyOnline
+          ? "Онлайн-оплата временно недоступна. Доставка без предоплаты невозможна — попробуйте позже или выберите самовывоз."
+          : "Онлайн-оплата временно недоступна",
+      );
+      return;
+    }
+    if (isDelivery) {
+      setError("");
+      setConfirmAddressOpen(true);
+      return;
+    }
+    await submitOrder();
   };
 
   const submitLabel =
@@ -536,6 +552,78 @@ export const CheckoutStep = ({
           />
         ) : null}
       </button>
+
+      {confirmAddressOpen ? (
+        <div
+          className="fixed inset-0 z-[120] flex items-center justify-center bg-ink/55 p-4 backdrop-blur-[2px] animate-fade-in"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="confirm-delivery-address-title"
+          onClick={() => setConfirmAddressOpen(false)}
+        >
+          <div
+            className="w-full max-w-[26rem] rounded-[22px] border border-ink/10 bg-paper p-5 shadow-[0_24px_64px_rgba(33,30,25,0.28)]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className={cartKicker}>Доставка</p>
+            <h4
+              id="confirm-delivery-address-title"
+              className="mt-1 font-serif text-[1.45rem] leading-[1.15] font-normal text-ink"
+            >
+              Проверьте адрес доставки
+            </h4>
+            <p className="mt-1.5 text-[0.84rem] leading-[1.4] text-ink/55">
+              Курьер привезёт заказ именно по этому адресу:
+            </p>
+
+            <div className="mt-3.5 rounded-[14px] border border-clay/25 bg-sand/70 px-3.5 py-3">
+              <p className="m-0 text-[0.95rem] leading-[1.35] font-[650] text-ink">
+                {cartState.deliveryAddress.trim()}
+              </p>
+              <p className="mt-1.5 m-0 text-[0.82rem] leading-[1.4] text-ink/65">
+                {[
+                  apartment.trim() ? `кв./офис ${apartment.trim()}` : "",
+                  entrance.trim() ? `подъезд ${entrance.trim()}` : "",
+                  floor.trim() ? `этаж ${floor.trim()}` : "",
+                  intercom.trim() ? `домофон ${intercom.trim()}` : "",
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </p>
+              {courierComment.trim() ? (
+                <p className="mt-1.5 m-0 text-[0.8rem] leading-[1.35] text-ink/55">
+                  Комментарий: {courierComment.trim()}
+                </p>
+              ) : null}
+            </div>
+
+            <div className="mt-4 flex flex-col gap-2">
+              <button
+                type="button"
+                className={cartCheckoutSubmitButton}
+                disabled={busy}
+                onClick={() => {
+                  setConfirmAddressOpen(false);
+                  void submitOrder();
+                }}
+              >
+                Да, адрес верный
+              </button>
+              <button
+                type="button"
+                className="inline-flex min-h-11 w-full cursor-pointer items-center justify-center rounded-[14px] border border-ink/14 bg-transparent px-4 py-2.5 text-[11px] font-bold tracking-[0.12em] text-ink/75 uppercase transition-colors hover:border-ink/30 hover:text-ink"
+                disabled={busy}
+                onClick={() => {
+                  setConfirmAddressOpen(false);
+                  onBack();
+                }}
+              >
+                Изменить адрес
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </form>
   );
 };

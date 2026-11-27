@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { hasHouseNumber } from "@/lib/address-validation";
 import { requireAuth } from "@/lib/auth";
 import { getCustomer, requireCustomer } from "@/lib/customer-auth";
 import {
@@ -189,6 +190,21 @@ export const placeOrderAction = async (
       }
       pickupPointName = point.name;
       pickupPointAddress = point.address;
+    }
+
+    if (cart.fulfillmentMode === "delivery") {
+      if (cart.deliveryLat == null || cart.deliveryLng == null) {
+        return {
+          success: false,
+          error: "Выберите улицу и дом доставки",
+        };
+      }
+      if (!hasHouseNumber(cart.deliveryAddress)) {
+        return {
+          success: false,
+          error: "Укажите номер дома для доставки",
+        };
+      }
     }
 
     if (
