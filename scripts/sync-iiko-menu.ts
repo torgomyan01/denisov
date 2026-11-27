@@ -48,8 +48,9 @@ const main = async () => {
   const items =
     result.catalog.stats?.items ??
     result.catalog.categories.reduce((n, c) => n + c.items.length, 0);
+  const inStopList = result.catalog.stats?.inStopList ?? 0;
   console.log(
-    `[${started}] iiko menu synced: ${cats} categories, ${items} items (menuId=${result.catalog.menuId})`,
+    `[${started}] iiko menu synced: ${cats} categories, ${items} items, ${inStopList} in stop-list (menuId=${result.catalog.menuId})`,
   );
 };
 

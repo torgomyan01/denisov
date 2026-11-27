@@ -60,7 +60,11 @@ const mergeItem = (
     fat: override?.fat ?? catalogItem.fat,
     carbs: override?.carbs ?? catalogItem.carbs,
     showInDelivery: override ? override.showInDelivery : true,
-    inStock: override ? override.inStock : true,
+    inStock: catalogItem.inStopList
+      ? false
+      : override
+        ? override.inStock
+        : true,
     showInUpsell: override ? override.showInUpsell : false,
     upsellSortOrder: override ? override.upsellSortOrder : 0,
     iikoProductId: catalogItem.productId,

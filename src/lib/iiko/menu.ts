@@ -40,6 +40,8 @@ export type IikoCatalogItem = {
   modifierGroups: IikoModifierGroup[];
   /** Auto-picked modifiers so delivery create passes iiko minQuantity checks. */
   defaultModifiers: IikoDefaultModifier[];
+  /** True when iiko stop-list reports balance <= 0 for this product. */
+  inStopList?: boolean;
   missing: {
     description: boolean;
     price: boolean;
@@ -63,6 +65,7 @@ export type IikoCatalog = {
     withPrice: number;
     withImage: number;
     withDescription: number;
+    inStopList?: number;
   };
 };
 
@@ -180,6 +183,61 @@ const pickSize = (
   return sizes.find((s) => s.isDefault) ?? sizes[0] ?? null;
 };
 
+type StopListsResponse = {
+  terminalGroupStopLists?: Array<{
+    organizationId?: string;
+    items?: Array<{
+      terminalGroupId?: string;
+      items?: Array<{
+        balance?: number | null;
+        productId?: string | null;
+      }>;
+    }>;
+  }>;
+};
+
+/**
+ * Fetches iiko stop-list product IDs whose remaining balance is <= 0.
+ * Non-fatal: if the stop-list endpoint fails, returns an empty set so menu sync still succeeds.
+ */
+const fetchIikoStopListProductIds = async (
+  config: ReturnType<typeof getIikoConfig>,
+): Promise<Set<string>> => {
+  const out = new Set<string>();
+  try {
+    const res = await iikoRequest<StopListsResponse>(
+      "/api/1/stop_lists",
+      {
+        organizationIds: [config.organizationId],
+        ...(config.terminalGroupId
+          ? { terminalGroupIds: [config.terminalGroupId] }
+          : {}),
+      },
+      config,
+    );
+    for (const orgBlock of res.terminalGroupStopLists || []) {
+      for (const tgBlock of orgBlock.items || []) {
+        for (const row of tgBlock.items || []) {
+          const productId = String(row.productId || "").trim();
+          const balance =
+            typeof row.balance === "number" && Number.isFinite(row.balance)
+              ? row.balance
+              : 0;
+          if (productId && balance <= 0) {
+            out.add(productId);
+          }
+        }
+      }
+    }
+  } catch (error) {
+    console.warn(
+      "[iiko] stop_lists fetch failed, continuing without stop-list:",
+      error instanceof Error ? error.message : error,
+    );
+  }
+  return out;
+};
+
 export const fetchIikoCatalog = async (): Promise<
   | { ok: true; catalog: IikoCatalog }
   | { ok: false; error: string }
@@ -190,7 +248,10 @@ export const fetchIikoCatalog = async (): Promise<
   }
 
   try {
-    const menus = await iikoRequest<MenusResponse>("/api/2/menu", {}, config);
+    const [menus, stopListIds] = await Promise.all([
+      iikoRequest<MenusResponse>("/api/2/menu", {}, config),
+      fetchIikoStopListProductIds(config),
+    ]);
     const external = menus.externalMenus?.[0];
     if (!external?.id) {
       return { ok: false, error: "В iiko нет внешнего меню (externalMenus пуст)" };
@@ -239,9 +300,10 @@ export const fetchIikoCatalog = async (): Promise<
             typeof v === "number" && Number.isFinite(v) ? v : null;
           const { groups: modifierGroups, defaults: defaultModifiers } =
             buildModifierGroups(raw.modifierGroups, modifierById);
+          const productId = String(raw.productId || "");
 
           return {
-            productId: String(raw.productId || ""),
+            productId,
             menuItemId: String(raw.menuItemId || ""),
             name: (raw.name || "Без названия").trim(),
             description,
@@ -255,6 +317,7 @@ export const fetchIikoCatalog = async (): Promise<
             carbs: numOrNull(nutritions?.carbs),
             modifierGroups,
             defaultModifiers,
+            inStopList: productId ? stopListIds.has(productId) : false,
             missing: {
               description: !description,
               price: price == null,
@@ -284,6 +347,7 @@ export const fetchIikoCatalog = async (): Promise<
           withPrice: flat.filter((i) => !i.missing.price).length,
           withImage: flat.filter((i) => !i.missing.image).length,
           withDescription: flat.filter((i) => !i.missing.description).length,
+          inStopList: flat.filter((i) => i.inStopList).length,
         },
       },
     };
